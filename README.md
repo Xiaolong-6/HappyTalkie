@@ -26,21 +26,26 @@ A Wi-Fi-only Pixel Watch is still physically offline when it has neither Bluetoo
 
 - Android phone app
 - Wear OS watch app
-- identical application ID and signing identity on both devices
+- identical application ID on both devices
 - CALL / ANSWER / END signaling
 - high-priority incoming-call notification, sound, and vibration
 - long-press TALK recording
 - voice transfer with persistent DataItems/Assets
 - queued delivery after reconnection
-- automatic playback for voice received during an active session
-- notification for voice messages received outside an active session
+- automatic playback of received voice
 - GitHub Actions debug APK build
 
 V0.1 is **not full-duplex VoIP**. Audio is half-duplex: hold TALK, speak, release, then the clip is delivered and played on the other side.
 
-## Development signing
+## Signing
 
-The project uses one repository development keystore for both modules so phone and watch APKs keep the same signature across CI runs. This key is **development-only** and must never be reused for a Play Store production release.
+Wear OS Data Layer requires the phone and watch apps to have both the same package name and matching signatures.
+
+- Local Android Studio/Gradle builds use the normal persistent Android debug keystore on your computer, so both APKs match across local rebuilds.
+- GitHub Actions caches one CI debug keystore so normal CI rebuilds also remain compatible.
+- No signing private key is stored in the repository.
+
+For a future Play Store release, use a real release key stored outside source control.
 
 ## Build and install
 
