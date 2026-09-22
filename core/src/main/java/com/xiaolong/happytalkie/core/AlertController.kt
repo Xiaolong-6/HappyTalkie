@@ -132,6 +132,17 @@ object AlertController {
         }
     }
 
+    private fun acquireWakeLock(context: Context) {
+        val manager = context.getSystemService(PowerManager::class.java) ?: return
+        val lock = manager.newWakeLock(
+            PowerManager.PARTIAL_WAKE_LOCK,
+            "HappyTalkie:IncomingCall"
+        )
+        lock.setReferenceCounted(false)
+        runCatching { lock.acquire(Protocol.CALL_TIMEOUT_MS + 5_000L) }
+        wakeLock = lock
+    }
+
     private fun startRinging(context: Context) {
         val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
             ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
