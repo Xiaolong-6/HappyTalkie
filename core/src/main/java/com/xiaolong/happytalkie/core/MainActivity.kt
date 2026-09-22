@@ -200,7 +200,8 @@ class MainActivity : Activity() {
             StateStore.setStatus(this, "Ringing " + peer + "…")
             refreshUi()
 
-            handler.postDelayed({
+            callTimeout?.let(handler::removeCallbacks)
+            callTimeout = Runnable {
                 if (
                     StateStore.outgoingCall(this) == callId &&
                     StateStore.activeCall(this) == null
@@ -212,7 +213,10 @@ class MainActivity : Activity() {
                     )
                     refreshUi()
                 }
-            }, Protocol.CALL_TIMEOUT_MS)
+                callTimeout = null
+            }.also {
+                handler.postDelayed(it, Protocol.CALL_TIMEOUT_MS)
+            }
         }
     }
 
@@ -259,9 +263,13 @@ class MainActivity : Activity() {
             recording = true
             StateStore.setStatus(this, "Recording… release TALK to send")
             refreshUi()
-            handler.postDelayed({
+            recordingTimeout?.let(handler::removeCallbacks)
+            recordingTimeout = Runnable {
+                recordingTimeout = null
                 if (recording) finishRecording()
-            }, Protocol.MAX_RECORDING_MS.toLong())
+            }.also {
+                handler.postDelayed(it, Protocol.MAX_RECORDING_MS.toLong())
+            }
         } else {
             StateStore.setStatus(this, "Could not start microphone")
             refreshUi()
@@ -271,7 +279,8 @@ class MainActivity : Activity() {
     private fun finishRecording() {
         if (!recording) return
         recording = false
-        handler.removeCallbacksAndMessages(null)
+        recordingTimeout?.let(handler::removeCallbacks)
+        recordingTimeout = null
 
         val file = recorder.stop()
         if (file == null) {
@@ -304,7 +313,8 @@ class MainActivity : Activity() {
     private fun cancelRecording() {
         if (!recording) return
         recording = false
-        handler.removeCallbacksAndMessages(null)
+        recordingTimeout?.let(handler::removeCallbacks)
+        recordingTimeout = null
         recorder.cancel()
         StateStore.setStatus(this, "Recording cancelled")
         refreshUi()
