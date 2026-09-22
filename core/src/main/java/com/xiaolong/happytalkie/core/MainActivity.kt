@@ -31,6 +31,8 @@ class MainActivity : Activity() {
     private val handler = Handler(Looper.getMainLooper())
     private var recording = false
     private var receiverRegistered = false
+    private var recordingTimeout: Runnable? = null
+    private var callTimeout: Runnable? = null
 
     private val stateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -72,7 +74,10 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
-        handler.removeCallbacksAndMessages(null)
+        recordingTimeout?.let(handler::removeCallbacks)
+        callTimeout?.let(handler::removeCallbacks)
+        recordingTimeout = null
+        callTimeout = null
         if (recording) recorder.cancel()
         super.onDestroy()
     }
