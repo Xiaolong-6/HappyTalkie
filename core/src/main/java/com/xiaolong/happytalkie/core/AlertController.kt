@@ -14,6 +14,7 @@ import android.media.RingtoneManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -28,12 +29,14 @@ object AlertController {
     private var ringtone: Ringtone? = null
     private var vibrator: Vibrator? = null
     private var timeoutRunnable: Runnable? = null
+    private var wakeLock: PowerManager.WakeLock? = null
 
     fun startIncomingCall(context: Context, callId: String) {
         val appContext = context.applicationContext
         stop(appContext)
         ensureChannels(appContext)
         postCallNotification(appContext)
+        acquireWakeLock(appContext)
         startRinging(appContext)
 
         timeoutRunnable = Runnable {
@@ -55,6 +58,10 @@ object AlertController {
         ringtone = null
         runCatching { vibrator?.cancel() }
         vibrator = null
+        runCatching {
+            if (wakeLock?.isHeld == true) wakeLock?.release()
+        }
+        wakeLock = null
         val manager = context.getSystemService(NotificationManager::class.java)
         manager?.cancel(CALL_NOTIFICATION_ID)
     }
