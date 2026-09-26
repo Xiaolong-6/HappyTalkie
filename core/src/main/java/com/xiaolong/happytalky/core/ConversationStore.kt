@@ -112,6 +112,16 @@ internal interface ConversationDao {
 
     @Query(
         """
+        SELECT * FROM conversation_items
+        WHERE type = 'VOICE'
+          AND id = :id
+        LIMIT 1
+        """
+    )
+    fun voiceById(id: String): ConversationEntity?
+
+    @Query(
+        """
         SELECT COUNT(*) FROM conversation_items
         WHERE type = 'VOICE'
           AND direction = 'INCOMING'
@@ -276,6 +286,14 @@ object ConversationStore {
             .mapNotNull {
                 it.toModelOrNull()
             }
+
+    internal fun voiceById(
+        context: Context,
+        id: String
+    ): ConversationItem? =
+        dao(context)
+            .voiceById(id)
+            ?.toModelOrNull()
 
     internal fun unreadVoiceCount(
         context: Context
