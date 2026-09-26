@@ -1128,7 +1128,7 @@ fun WearInbox(
                         start = 14.dp,
                         end = 14.dp,
                         top = 12.dp,
-                        bottom = 48.dp,
+                        bottom = 62.dp,
                     ),
                 horizontalAlignment =
                     Alignment.CenterHorizontally,
@@ -1429,7 +1429,7 @@ private fun WearTextComposer(
             }
         },
         modifier = modifier
-            .width(120.dp)
+            .width(142.dp)
             .height(30.dp),
         colors =
             CardDefaults.cardColors(
