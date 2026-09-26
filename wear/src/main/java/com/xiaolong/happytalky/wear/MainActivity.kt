@@ -1031,6 +1031,20 @@ fun WearInbox(
             }
         }
 
+    var deleteConfirmationVisible by
+        remember {
+            mutableStateOf(false)
+        }
+
+    LaunchedEffect(
+        deleteConfirmationVisible
+    ) {
+        if (deleteConfirmationVisible) {
+            delay(1_500L)
+            deleteConfirmationVisible = false
+        }
+    }
+
     val listState =
         rememberLazyListState()
     val focusRequester =
@@ -1254,8 +1268,12 @@ fun WearInbox(
                                                 peerName,
                                             onPlay =
                                                 onPlay,
-                                            onDelete =
-                                                onDelete,
+                                            onDelete = {
+                                                    ids ->
+                                                onDelete(ids)
+                                                deleteConfirmationVisible =
+                                                    true
+                                            },
                                         )
                                     }
                             }
@@ -1294,6 +1312,41 @@ fun WearInbox(
                         bottom = 28.dp
                     ),
             )
+
+            if (deleteConfirmationVisible) {
+                Box(
+                    modifier = Modifier
+                        .align(
+                            Alignment.Center
+                        )
+                        .zIndex(5f)
+                        .background(
+                            Color(0xFF173B2A),
+                            RoundedCornerShape(
+                                14.dp
+                            )
+                        )
+                        .padding(
+                            horizontal = 10.dp,
+                            vertical = 6.dp,
+                        ),
+                    contentAlignment =
+                        Alignment.Center,
+                ) {
+                    Text(
+                        text = "TALK deleted ✓",
+                        style =
+                            MaterialTheme
+                                .typography
+                                .labelMedium,
+                        color =
+                            Color(0xFFB9F6CA),
+                        fontWeight =
+                            FontWeight.Bold,
+                        maxLines = 1,
+                    )
+                }
+            }
         }
     }
 }
