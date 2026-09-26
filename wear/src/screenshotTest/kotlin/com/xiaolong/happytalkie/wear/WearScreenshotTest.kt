@@ -6,6 +6,8 @@ import androidx.wear.compose.material3.MaterialTheme
 import com.android.tools.screenshot.PreviewTest
 import com.xiaolong.happytalkie.core.CallVisualState
 import com.xiaolong.happytalkie.core.HappyTalkieUiState
+import com.xiaolong.happytalkie.core.PeerConnectionState
+import com.xiaolong.happytalkie.core.PeerRoute
 
 private const val WATCH_DEVICE =
     "spec:width=192dp,height=192dp,dpi=320,isRound=true"
@@ -26,8 +28,11 @@ fun WatchReadyScreenshot() {
                 status = "Ready",
                 callState = CallVisualState.READY,
                 peerName = "Phone",
+                peerConnection = PeerConnectionState.CONNECTED,
+                peerRoute = PeerRoute.NEARBY_BLUETOOTH,
             ),
             onCall = {},
+            onDecline = {},
             onTalkStart = {},
             onTalkFinish = {},
             onTalkCancel = {},
@@ -51,8 +56,11 @@ fun WatchIncomingScreenshot() {
                 status = "Phone is calling",
                 callState = CallVisualState.INCOMING,
                 peerName = "Phone",
+                peerConnection = PeerConnectionState.CONNECTED,
+                peerRoute = PeerRoute.NEARBY_BLUETOOTH,
             ),
             onCall = {},
+            onDecline = {},
             onTalkStart = {},
             onTalkFinish = {},
             onTalkCancel = {},
@@ -77,8 +85,11 @@ fun WatchRecordingScreenshot() {
                 callState = CallVisualState.READY,
                 recording = true,
                 peerName = "Phone",
+                peerConnection = PeerConnectionState.CONNECTED,
+                peerRoute = PeerRoute.NEARBY_BLUETOOTH,
             ),
             onCall = {},
+            onDecline = {},
             onTalkStart = {},
             onTalkFinish = {},
             onTalkCancel = {},
