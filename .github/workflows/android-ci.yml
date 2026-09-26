@@ -57,7 +57,7 @@ jobs:
             exit 1
           fi
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" "platforms;android-37" "build-tools;36.0.0"
+          "$SDKMANAGER" --channel=3 "platforms;android-37" "build-tools;36.0.0"
 
       - name: Test and build
         shell: bash
