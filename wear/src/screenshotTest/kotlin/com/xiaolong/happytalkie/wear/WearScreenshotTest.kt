@@ -37,6 +37,7 @@ fun WatchReadyScreenshot() {
             onTalkStart = {},
             onTalkFinish = {},
             onTalkCancel = {},
+            onPlay = {},
         )
     }
 }
@@ -64,6 +65,7 @@ fun WatchIncomingScreenshot() {
             onTalkStart = {},
             onTalkFinish = {},
             onTalkCancel = {},
+            onPlay = {},
         )
     }
 }
@@ -93,6 +95,7 @@ fun WatchRecordingScreenshot() {
             onTalkStart = {},
             onTalkFinish = {},
             onTalkCancel = {},
+            onPlay = {},
         )
     }
 }
@@ -123,6 +126,7 @@ fun WatchOfflineScreenshot() {
             onTalkStart = {},
             onTalkFinish = {},
             onTalkCancel = {},
+            onPlay = {},
         )
     }
 }
@@ -152,6 +156,7 @@ fun WatchLiveScreenshot() {
             onTalkStart = {},
             onTalkFinish = {},
             onTalkCancel = {},
+            onPlay = {},
         )
     }
 }
@@ -182,6 +187,7 @@ fun WatchReconnectingScreenshot() {
             onTalkStart = {},
             onTalkFinish = {},
             onTalkCancel = {},
+            onPlay = {},
         )
     }
 }
