@@ -2,6 +2,7 @@ package com.xiaolong.happytalkie.core
 
 import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioDeviceInfo
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioRecord
@@ -30,9 +31,61 @@ object LiveCallAudio {
     @Volatile private var echoCanceler: AcousticEchoCanceler? = null
     @Volatile private var noiseSuppressor: NoiseSuppressor? = null
     @Volatile private var previousAudioMode: Int? = null
+    @Volatile private var speakerEnabled = false
 
     fun isRunning(): Boolean = running.get()
     fun isStarting(): Boolean = starting.get()
+
+    fun isSpeakerEnabled(context: Context): Boolean {
+        val manager =
+            context.getSystemService(AudioManager::class.java)
+                ?: return speakerEnabled
+
+        speakerEnabled =
+            if (Build.VERSION.SDK_INT >= 31) {
+                manager.communicationDevice?.type ==
+                    AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+            } else {
+                @Suppress("DEPRECATION")
+                manager.isSpeakerphoneOn
+            }
+        return speakerEnabled
+    }
+
+    fun setSpeakerEnabled(context: Context, enabled: Boolean): Boolean {
+        val manager =
+            context.getSystemService(AudioManager::class.java)
+                ?: return false
+
+        val applied =
+            if (Build.VERSION.SDK_INT >= 31) {
+                if (enabled) {
+                    val speaker =
+                        manager.availableCommunicationDevices
+                            .firstOrNull {
+                                it.type ==
+                                    AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+                            }
+                    speaker != null &&
+                        manager.setCommunicationDevice(speaker)
+                } else {
+                    manager.clearCommunicationDevice()
+                    true
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                runCatching {
+                    manager.isSpeakerphoneOn = enabled
+                    true
+                }.getOrDefault(false)
+            }
+
+        if (applied) {
+            speakerEnabled = enabled
+            EventBus.notifyStateChanged(context)
+        }
+        return applied
+    }
 
     fun startOutgoing(
         context: Context,
@@ -151,8 +204,22 @@ object LiveCallAudio {
             val manager = context.getSystemService(AudioManager::class.java)
             previousAudioMode = manager?.mode
             manager?.mode = AudioManager.MODE_IN_COMMUNICATION
-            @Suppress("DEPRECATION")
-            runCatching { manager?.isSpeakerphoneOn = true }
+
+            // Phone calls start on the system-selected communication route
+            // (earpiece / headset). Speaker is an explicit user choice.
+            if (
+                !context.packageManager.hasSystemFeature(
+                    android.content.pm.PackageManager.FEATURE_WATCH
+                )
+            ) {
+                if (Build.VERSION.SDK_INT >= 31) {
+                    runCatching { manager?.clearCommunicationDevice() }
+                } else {
+                    @Suppress("DEPRECATION")
+                    runCatching { manager?.isSpeakerphoneOn = false }
+                }
+                speakerEnabled = false
+            }
 
             val echo =
                 if (AcousticEchoCanceler.isAvailable())
@@ -294,8 +361,20 @@ object LiveCallAudio {
             runCatching { manager?.mode = oldMode }
         }
         previousAudioMode = null
-        @Suppress("DEPRECATION")
-        runCatching { manager?.isSpeakerphoneOn = false }
+
+        if (
+            !context.packageManager.hasSystemFeature(
+                android.content.pm.PackageManager.FEATURE_WATCH
+            )
+        ) {
+            if (Build.VERSION.SDK_INT >= 31) {
+                runCatching { manager?.clearCommunicationDevice() }
+            } else {
+                @Suppress("DEPRECATION")
+                runCatching { manager?.isSpeakerphoneOn = false }
+            }
+        }
+        speakerEnabled = false
 
         if (wasRunning) {
             EventBus.notifyStateChanged(context)
