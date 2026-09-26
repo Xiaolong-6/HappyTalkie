@@ -153,9 +153,10 @@ This is intentional: the current live implementation uses a continuous Data Laye
 4. On the receiving device, verify a notification appears.
 5. Verify the audio **does not auto-play**.
 6. Tap the saved message to play it.
-7. On phone, enter **Manage** mode.
-8. Select one or more messages and delete them.
-9. Verify **Clear all** requires confirmation.
+7. On phone, long-press a TALK bubble to enter multi-selection.
+8. Select one or more messages and delete them from the temporary selection bar.
+9. Select all messages and verify the bulk delete path clears the history.
+10. On Watch, open **Inbox** and verify saved TALK messages can be explicitly played there.
 
 ### Offline TALK
 
