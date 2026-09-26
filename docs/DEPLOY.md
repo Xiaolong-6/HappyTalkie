@@ -88,19 +88,23 @@ Phone -> Watch and Watch -> Phone use the same flow:
 1. Tap **CALL**.
 2. The peer rings/vibrates.
 3. On the receiving device, open HappyTalkie and tap **ANSWER**.
-4. During a session, the same button becomes **END**.
+4. HappyTalkie opens live two-way audio automatically.
+5. Speak normally; no TALK button is required.
+6. Tap **END** to hang up.
 
-If the peer cannot be reached, HappyTalkie shows that it is offline and suggests leaving a voice message.
+If the peer cannot be reached, CALL ends cleanly.
 
 ### TALK
+
+TALK is independent of CALL:
 
 1. Press and hold **TALK**.
 2. Speak.
 3. Release **TALK**.
+4. The voice message appears in the conversation history.
+5. Tap any saved message to replay it.
 
-If a CALL session is active, the clip is delivered as push-to-talk audio.
-
-If no session is active, the clip is stored as a voice message. Data Layer keeps the item until the paired peer can synchronize it.
+TALK messages remain saved on both ends after delivery.
 
 ## Test the Wi-Fi-only Pixel Watch case
 
@@ -114,9 +118,10 @@ Then test the actual remote scenario:
 4. Wake the watch and wait for Wi-Fi to be active.
 5. Tap **CALL** on the phone.
 6. Confirm that the watch rings.
-7. Test TALK in both directions.
+7. After ANSWER, speak in both directions and verify live audio.
+8. End the call, then test TALK messages independently in both directions.
 
-Google Play services can transition from Bluetooth to its cloud relay rather than maintaining a continuous low-latency socket. V0.1 therefore treats CALL as signaling and TALK as short audio clips rather than full-duplex VoIP.
+CALL uses a continuous Data Layer channel, while TALK uses persistent DataItems/Assets. Wi-Fi/cloud-path latency will depend on the actual Wear OS connection state.
 
 ## Offline test
 
