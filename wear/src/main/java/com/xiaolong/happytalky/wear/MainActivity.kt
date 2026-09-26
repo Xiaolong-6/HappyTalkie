@@ -785,13 +785,9 @@ fun WearTalkInbox(
 ) {
     val sortedMessages =
         remember(messages) {
-            messages.sortedWith(
-                compareBy<VoiceMessage> {
-                    it.isRead
-                }.thenByDescending {
-                    it.createdAt
-                }
-            )
+            messages.sortedByDescending {
+                it.createdAt
+            }
         }
     val listState =
         rememberLazyListState()
