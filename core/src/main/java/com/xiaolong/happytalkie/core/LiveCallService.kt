@@ -112,8 +112,10 @@ class LiveCallService : Service() {
     }
 
     private fun notification(text: String): Notification {
-        val openIntent = Intent(this, MainActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        val openIntent = packageManager
+            .getLaunchIntentForPackage(packageName)
+            ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            ?: Intent(Intent.ACTION_MAIN).setPackage(packageName)
         val pending = PendingIntent.getActivity(
             this,
             11,
