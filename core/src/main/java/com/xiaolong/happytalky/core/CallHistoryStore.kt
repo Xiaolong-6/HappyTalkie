@@ -32,7 +32,10 @@ data class CallHistoryEntry(
     val occurredAt: Long,
     val direction: CallDirection,
     val outcome: CallOutcome,
-    val durationMs: Long = 0L
+    val durationMs: Long = 0L,
+    val startedAt: Long? = null,
+    val endedAt: Long? = null,
+    val mode: CallMode = CallMode.NORMAL
 ) {
     fun displayTime(): String =
         SimpleDateFormat(
@@ -94,6 +97,10 @@ data class CallHistoryEntry(
 object CallHistoryStore {
     private const val FILE_NAME =
         "call-history.jsonl"
+    private const val MIGRATION_PREFS =
+        "happytalky_conversation_migration"
+    private const val KEY_CALLS_MIGRATED =
+        "call_metadata_v1"
 
     @Synchronized
     fun append(
@@ -103,16 +110,18 @@ object CallHistoryStore {
         outcome: CallOutcome,
         startedAt: Long = 0L,
         endedAt: Long =
-            System.currentTimeMillis()
+            System.currentTimeMillis(),
+        mode: CallMode = CallMode.NORMAL
     ): CallHistoryEntry {
-        list(
+        ensureLegacyMigrated(context)
+
+        ConversationStore.callByCallId(
             context,
-            limit = 100
-        ).firstOrNull {
-            it.callId == callId
-        }?.let {
-            return it
-        }
+            callId
+        )?.toCallHistoryEntryOrNull()
+            ?.let {
+                return it
+            }
 
         val duration =
             if (
@@ -138,16 +147,21 @@ object CallHistoryStore {
                     },
                 direction = direction,
                 outcome = outcome,
-                durationMs = duration
+                durationMs = duration,
+                startedAt =
+                    startedAt
+                        .takeIf {
+                            it > 0L
+                        },
+                endedAt = endedAt,
+                mode = mode
             )
 
-        val file = historyFile(context)
-        file.parentFile?.mkdirs()
-        file.appendText(
-            encode(entry) + "\n"
+        ConversationStore.insertIfAbsent(
+            context,
+            entry.toConversationItem()
         )
 
-        trim(context)
         return entry
     }
 
@@ -156,40 +170,134 @@ object CallHistoryStore {
         context: Context,
         limit: Int = 50
     ): List<CallHistoryEntry> {
-        val file = historyFile(context)
-        if (!file.exists()) {
-            return emptyList()
-        }
+        ensureLegacyMigrated(context)
 
-        return file
-            .readLines()
-            .asReversed()
-            .mapNotNull(::decode)
-            .take(limit)
+        return ConversationStore
+            .calls(
+                context,
+                limit
+            )
+            .mapNotNull {
+                it.toCallHistoryEntryOrNull()
+            }
     }
 
     @Synchronized
     fun clear(context: Context) {
-        historyFile(context).delete()
+        ensureLegacyMigrated(context)
+        ConversationStore.clearCalls(
+            context
+        )
     }
 
-    private fun trim(context: Context) {
-        val file = historyFile(context)
-        if (!file.exists()) return
+    private fun ensureLegacyMigrated(
+        context: Context
+    ) {
+        val prefs =
+            context.getSharedPreferences(
+                MIGRATION_PREFS,
+                Context.MODE_PRIVATE
+            )
 
-        val lines =
-            file.readLines()
-        if (lines.size <= 100) {
+        if (
+            prefs.getBoolean(
+                KEY_CALLS_MIGRATED,
+                false
+            )
+        ) {
             return
         }
 
-        file.writeText(
-            lines
-                .takeLast(100)
-                .joinToString(
-                    separator = "\n",
-                    postfix = "\n"
+        val file =
+            historyFile(context)
+
+        if (file.exists()) {
+            file.readLines()
+                .mapNotNull(::decodeLegacy)
+                .forEach { entry ->
+                    ConversationStore
+                        .insertIfAbsent(
+                            context,
+                            entry
+                                .toConversationItem()
+                        )
+                }
+        }
+
+        prefs.edit()
+            .putBoolean(
+                KEY_CALLS_MIGRATED,
+                true
+            )
+            .apply()
+    }
+
+    private fun CallHistoryEntry.toConversationItem():
+        ConversationItem =
+        ConversationItem(
+            id = id,
+            type = ConversationItemType.CALL,
+            direction =
+                if (
+                    direction ==
+                        CallDirection.INCOMING
+                ) {
+                    ConversationDirection.INCOMING
+                } else {
+                    ConversationDirection.OUTGOING
+                },
+            createdAt = occurredAt,
+            readAt = occurredAt,
+            deliveryState = DeliveryState.READ,
+            durationMs = durationMs,
+            callId = callId,
+            callOutcome = outcome.name,
+            callMode = mode,
+            startedAt = startedAt,
+            endedAt = endedAt
+        )
+
+    private fun ConversationItem.toCallHistoryEntryOrNull():
+        CallHistoryEntry? {
+        if (
+            type !=
+                ConversationItemType.CALL
+        ) {
+            return null
+        }
+
+        val id =
+            callId
+                ?: return null
+        val parsedOutcome =
+            runCatching {
+                CallOutcome.valueOf(
+                    callOutcome ?: return null
                 )
+            }.getOrNull()
+                ?: return null
+
+        return CallHistoryEntry(
+            id = this.id,
+            callId = id,
+            occurredAt = createdAt,
+            direction =
+                if (
+                    direction ==
+                        ConversationDirection
+                            .INCOMING
+                ) {
+                    CallDirection.INCOMING
+                } else {
+                    CallDirection.OUTGOING
+                },
+            outcome = parsedOutcome,
+            durationMs = durationMs,
+            startedAt = startedAt,
+            endedAt = endedAt,
+            mode =
+                callMode
+                    ?: CallMode.NORMAL
         )
     }
 
@@ -201,36 +309,34 @@ object CallHistoryStore {
             FILE_NAME
         )
 
-    private fun encode(
-        entry: CallHistoryEntry
-    ): String =
-        JSONObject()
-            .put("id", entry.id)
-            .put("callId", entry.callId)
-            .put(
-                "occurredAt",
-                entry.occurredAt
-            )
-            .put(
-                "direction",
-                entry.direction.name
-            )
-            .put(
-                "outcome",
-                entry.outcome.name
-            )
-            .put(
-                "durationMs",
-                entry.durationMs
-            )
-            .toString()
-
-    private fun decode(
+    private fun decodeLegacy(
         raw: String
     ): CallHistoryEntry? =
         runCatching {
             val obj =
                 JSONObject(raw)
+            val occurredAt =
+                obj.getLong(
+                    "occurredAt"
+                )
+            val durationMs =
+                obj.optLong(
+                    "durationMs",
+                    0L
+                )
+            val startedAt =
+                if (durationMs > 0L) {
+                    occurredAt
+                } else {
+                    null
+                }
+            val endedAt =
+                if (durationMs > 0L) {
+                    occurredAt +
+                        durationMs
+                } else {
+                    occurredAt
+                }
 
             CallHistoryEntry(
                 id =
@@ -239,10 +345,7 @@ object CallHistoryStore {
                     obj.getString(
                         "callId"
                     ),
-                occurredAt =
-                    obj.getLong(
-                        "occurredAt"
-                    ),
+                occurredAt = occurredAt,
                 direction =
                     CallDirection.valueOf(
                         obj.getString(
@@ -255,11 +358,10 @@ object CallHistoryStore {
                             "outcome"
                         )
                     ),
-                durationMs =
-                    obj.optLong(
-                        "durationMs",
-                        0L
-                    )
+                durationMs = durationMs,
+                startedAt = startedAt,
+                endedAt = endedAt,
+                mode = CallMode.NORMAL
             )
         }.getOrNull()
 }

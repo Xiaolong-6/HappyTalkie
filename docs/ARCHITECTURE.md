@@ -2,12 +2,12 @@
 
 ## Product contract
 
-HappyTalky exposes only two primary communication actions:
+HappyTalky keeps two primary child-facing voice actions:
 
 - **CALL** = synchronous live two-way voice
 - **TALK** = asynchronous persistent voice message
 
-Text chat is intentionally out of scope.
+The conversation model also reserves **TEXT** as a secondary message type so text/emoji can join the same timeline without creating a separate storage or history subsystem.
 
 ## Modules
 
@@ -16,6 +16,22 @@ Text chat is intentionally out of scope.
 - `wear`: Wear Compose Material 3 activity and round-screen interaction design.
 
 Both application modules use application ID `com.xiaolong.happytalky` and must be signed identically.
+
+## Conversation persistence
+
+Phone and Watch each keep their own local Room database. They share the schema and protocol semantics, not one physical database.
+
+The `conversation_items` table is the metadata source of truth for:
+
+- TALK voice messages;
+- CALL events;
+- future TEXT messages.
+
+Every row carries a stable ID, direction, creation time, read time and delivery state, plus type-specific fields. CALL rows also retain call ID, outcome, mode, start/end timestamps and duration.
+
+TALK audio remains in app-private `voice-history` files. The first database access imports legacy TALK filename/read-state metadata and legacy CALL JSONL entries once, preserving existing installs while new writes go to Room.
+
+The current Store APIs remain synchronous during this migration so the existing UI/state machine does not change behavior. A later UI pass can expose Room as Flow without changing the persisted schema.
 
 ## Companion discovery
 
@@ -129,9 +145,9 @@ TALK records AAC/M4A:
 - 32 kb/s
 - maximum 60 s per recording
 
-Every message gets a stable UUID and timestamp.
+Every message gets a stable UUID and timestamp. Its metadata is stored in the unified conversation database.
 
-Local copies are stored under the app-private `voice-history` directory.
+Local audio copies are stored under the app-private `voice-history` directory.
 
 Transfer uses a persistent DataItem + Asset:
 

@@ -3,7 +3,7 @@
 ## Product invariants
 
 - Keep the primary UI child-friendly: CALL and TALK only.
-- Do not add text chat.
+- Text messaging is allowed as a secondary conversation capability; CALL and TALK remain the primary child-facing actions.
 - CALL is transient real-time signaling.
 - TALK must support store-and-forward delivery when the peer is temporarily offline.
 - Phone and Wear OS apps must retain the same application ID and matching signatures.
@@ -22,5 +22,6 @@ gradle :core:testDebugUnitTest :mobile:assembleDebug :wear:assembleDebug
 ## Change policy
 
 For new protocol paths, keep them under `/happytalky`.
+Conversation metadata belongs in the shared Room timeline; large audio payloads stay in app-private files/Data Layer Assets.
 For voice DataItems, use unique paths so offline messages cannot overwrite one another.
 Any change to CALL/TALK state transitions should be tested on both roles because most behavior is intentionally shared in `core`.

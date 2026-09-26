@@ -20,7 +20,8 @@ data class VoiceMessage(
     val direction: VoiceDirection,
     val file: File,
     val durationMs: Long = 0L,
-    val readAt: Long? = null
+    val readAt: Long? = null,
+    val deliveryState: DeliveryState = DeliveryState.LOCAL
 ) {
     val isRead: Boolean
         get() =
@@ -48,12 +49,20 @@ data class VoiceMessage(
 
 object VoiceMessageStore {
     private const val DIRECTORY = "voice-history"
-    private const val READ_PREFS = "happytalky_voice_read_state"
+    private const val READ_PREFS =
+        "happytalky_voice_read_state"
+    private const val MIGRATION_PREFS =
+        "happytalky_conversation_migration"
+    private const val KEY_VOICE_MIGRATED =
+        "voice_metadata_v1"
 
+    @Synchronized
     fun saveOutgoing(
         context: Context,
         source: File
     ): VoiceMessage {
+        ensureLegacyMigrated(context)
+
         val createdAt =
             System.currentTimeMillis()
         val id =
@@ -72,22 +81,34 @@ object VoiceMessageStore {
         )
         source.delete()
 
-        return VoiceMessage(
-            id = id,
-            createdAt = createdAt,
-            direction = VoiceDirection.OUTGOING,
-            file = target,
-            durationMs = durationMs(target),
-            readAt = createdAt
+        val message =
+            VoiceMessage(
+                id = id,
+                createdAt = createdAt,
+                direction = VoiceDirection.OUTGOING,
+                file = target,
+                durationMs = durationMs(target),
+                readAt = createdAt,
+                deliveryState = DeliveryState.LOCAL
+            )
+
+        ConversationStore.upsert(
+            context,
+            message.toConversationItem()
         )
+
+        return message
     }
 
+    @Synchronized
     fun saveIncoming(
         context: Context,
         id: String,
         createdAt: Long,
         input: InputStream
     ): VoiceMessage {
+        ensureLegacyMigrated(context)
+
         val safeCreatedAt =
             if (createdAt > 0L) {
                 createdAt
@@ -103,6 +124,12 @@ object VoiceMessageStore {
                 id
             )
 
+        val existing =
+            ConversationStore.voiceById(
+                context,
+                id
+            )
+
         if (
             !target.exists() ||
             target.length() == 0L
@@ -110,92 +137,143 @@ object VoiceMessageStore {
             target.outputStream().use { output ->
                 input.copyTo(output)
             }
-            clearReadState(context, id)
+            clearLegacyReadState(
+                context,
+                id
+            )
         }
 
-        return VoiceMessage(
-            id = id,
-            createdAt = safeCreatedAt,
-            direction = VoiceDirection.INCOMING,
-            file = target,
-            durationMs = durationMs(target),
-            readAt = readAt(context, id)
+        val readAt =
+            existing?.readAt ?:
+                legacyReadAt(
+                    context,
+                    id
+                )
+
+        val message =
+            VoiceMessage(
+                id = id,
+                createdAt = safeCreatedAt,
+                direction = VoiceDirection.INCOMING,
+                file = target,
+                durationMs = durationMs(target),
+                readAt = readAt,
+                deliveryState =
+                    if (readAt != null) {
+                        DeliveryState.READ
+                    } else {
+                        DeliveryState.DELIVERED
+                    }
+            )
+
+        ConversationStore.upsert(
+            context,
+            message.toConversationItem()
         )
+
+        return message
     }
 
+    @Synchronized
     fun list(
         context: Context,
         limit: Int = 50
-    ): List<VoiceMessage> =
-        directory(context)
-            .listFiles()
-            .orEmpty()
+    ): List<VoiceMessage> {
+        ensureLegacyMigrated(context)
+
+        return ConversationStore
+            .voices(
+                context,
+                limit
+            )
             .mapNotNull {
-                parse(
-                    context,
-                    it
+                it.toVoiceMessageOrNull(
+                    context
                 )
             }
-            .sortedByDescending { it.createdAt }
-            .take(limit)
+    }
 
-    fun unreadCount(context: Context): Int =
-        directory(context)
-            .listFiles()
-            .orEmpty()
-            .mapNotNull(::parseName)
-            .count {
-                it.direction ==
-                    VoiceDirection.INCOMING &&
-                    readAt(
-                        context,
-                        it.id
-                    ) == null
-            }
+    @Synchronized
+    fun unreadCount(
+        context: Context
+    ): Int {
+        ensureLegacyMigrated(context)
+        return ConversationStore
+            .unreadVoiceCount(context)
+    }
 
+    @Synchronized
     fun markRead(
         context: Context,
         id: String,
         at: Long = System.currentTimeMillis()
     ) {
+        ensureLegacyMigrated(context)
+
+        ConversationStore.markVoiceRead(
+            context,
+            id,
+            at
+        )
+
+        // Keep the legacy marker while this schema migration is young so
+        // downgrading a debug build does not resurrect already-read TALK.
         readPrefs(context)
             .edit()
             .putLong(id, at)
             .apply()
     }
 
+    @Synchronized
     fun delete(
         context: Context,
         ids: Set<String>
     ): Int {
         if (ids.isEmpty()) return 0
+        ensureLegacyMigrated(context)
 
-        var deleted = 0
-
-        directory(context)
-            .listFiles()
-            .orEmpty()
-            .mapNotNull {
-                parse(
+        val existing =
+            ConversationStore
+                .voices(
                     context,
-                    it
+                    Int.MAX_VALUE
                 )
-            }
-            .filter { it.id in ids }
-            .forEach { message ->
-                if (message.file.delete()) {
-                    deleted += 1
-                    clearReadState(
-                        context,
-                        message.id
-                    )
+                .filter {
+                    it.id in ids
                 }
-            }
+
+        existing.forEach {
+            it.audioFileName
+                ?.let { name ->
+                    File(
+                        directory(context),
+                        name
+                    ).delete()
+                }
+        }
+
+        val deleted =
+            ConversationStore.deleteVoices(
+                context,
+                ids
+            )
+
+        ids.forEach {
+            clearLegacyReadState(
+                context,
+                it
+            )
+        }
 
         return deleted
     }
 
-    fun clear(context: Context): Int {
+    @Synchronized
+    fun clear(
+        context: Context
+    ): Int {
+        ensureLegacyMigrated(context)
+
         var deleted = 0
 
         directory(context)
@@ -212,6 +290,10 @@ object VoiceMessageStore {
                 }
             }
 
+        ConversationStore.clearVoices(
+            context
+        )
+
         readPrefs(context)
             .edit()
             .clear()
@@ -219,6 +301,116 @@ object VoiceMessageStore {
 
         return deleted
     }
+
+    private fun ensureLegacyMigrated(
+        context: Context
+    ) {
+        val prefs =
+            context.getSharedPreferences(
+                MIGRATION_PREFS,
+                Context.MODE_PRIVATE
+            )
+
+        if (
+            prefs.getBoolean(
+                KEY_VOICE_MIGRATED,
+                false
+            )
+        ) {
+            return
+        }
+
+        directory(context)
+            .listFiles()
+            .orEmpty()
+            .mapNotNull {
+                parseLegacy(
+                    context,
+                    it
+                )
+            }
+            .forEach { message ->
+                ConversationStore.insertIfAbsent(
+                    context,
+                    message.toConversationItem()
+                )
+            }
+
+        prefs.edit()
+            .putBoolean(
+                KEY_VOICE_MIGRATED,
+                true
+            )
+            .apply()
+    }
+
+    private fun VoiceMessage.toConversationItem():
+        ConversationItem =
+        ConversationItem(
+            id = id,
+            type = ConversationItemType.VOICE,
+            direction =
+                direction.toConversationDirection(),
+            createdAt = createdAt,
+            readAt = readAt,
+            deliveryState = deliveryState,
+            audioFileName = file.name,
+            durationMs = durationMs
+        )
+
+    private fun ConversationItem.toVoiceMessageOrNull(
+        context: Context
+    ): VoiceMessage? {
+        if (
+            type !=
+                ConversationItemType.VOICE
+        ) {
+            return null
+        }
+
+        val fileName =
+            audioFileName
+                ?: return null
+        val file =
+            File(
+                directory(context),
+                fileName
+            )
+
+        if (!file.exists()) {
+            return null
+        }
+
+        return VoiceMessage(
+            id = id,
+            createdAt = createdAt,
+            direction =
+                direction.toVoiceDirection(),
+            file = file,
+            durationMs = durationMs,
+            readAt = readAt,
+            deliveryState = deliveryState
+        )
+    }
+
+    private fun VoiceDirection.toConversationDirection():
+        ConversationDirection =
+        if (this == VoiceDirection.INCOMING) {
+            ConversationDirection.INCOMING
+        } else {
+            ConversationDirection.OUTGOING
+        }
+
+    private fun ConversationDirection.toVoiceDirection():
+        VoiceDirection =
+        if (
+            this ==
+                ConversationDirection.INCOMING
+        ) {
+            VoiceDirection.INCOMING
+        } else {
+            VoiceDirection.OUTGOING
+        }
 
     private fun messageFile(
         context: Context,
@@ -260,7 +452,7 @@ object VoiceMessageStore {
             Context.MODE_PRIVATE
         )
 
-    private fun readAt(
+    private fun legacyReadAt(
         context: Context,
         id: String
     ): Long? {
@@ -277,7 +469,7 @@ object VoiceMessageStore {
             }
     }
 
-    private fun clearReadState(
+    private fun clearLegacyReadState(
         context: Context,
         id: String
     ) {
@@ -363,13 +555,25 @@ object VoiceMessageStore {
         )
     }
 
-    private fun parse(
+    private fun parseLegacy(
         context: Context,
         file: File
     ): VoiceMessage? {
         val parsed =
             parseName(file)
                 ?: return null
+        val readAt =
+            if (
+                parsed.direction ==
+                    VoiceDirection.OUTGOING
+            ) {
+                parsed.createdAt
+            } else {
+                legacyReadAt(
+                    context,
+                    parsed.id
+                )
+            }
 
         return VoiceMessage(
             id = parsed.id,
@@ -377,17 +581,18 @@ object VoiceMessageStore {
             direction = parsed.direction,
             file = file,
             durationMs = durationMs(file),
-            readAt =
-                if (
+            readAt = readAt,
+            deliveryState =
+                when {
                     parsed.direction ==
-                        VoiceDirection.OUTGOING
-                ) {
-                    parsed.createdAt
-                } else {
-                    readAt(
-                        context,
-                        parsed.id
-                    )
+                        VoiceDirection.OUTGOING ->
+                        DeliveryState.SENT
+
+                    readAt != null ->
+                        DeliveryState.READ
+
+                    else ->
+                        DeliveryState.DELIVERED
                 }
         )
     }
