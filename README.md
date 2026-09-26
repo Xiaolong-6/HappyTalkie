@@ -1,55 +1,55 @@
 # HappyTalkie
 
-A deliberately simple Android + Wear OS companion app for a paired phone and Pixel Watch.
+HappyTalkie is a deliberately simple Android + Wear OS companion app for a paired phone and Pixel Watch.
 
-## What it does
+It has two communication modes:
 
-HappyTalkie has only two primary controls:
-
-- **CALL** — ring the paired device, answer an incoming call, or end the current session.
-- **TALK** — press and hold to record; release to send.
-
-When both devices are reachable, CALL establishes a lightweight session and TALK behaves like push-to-talk audio. If the other device is offline or does not answer, TALK becomes a store-and-forward voice message. The voice message is synchronized when the paired device reconnects.
+- **CALL** — ring the paired device, answer, then speak naturally over a live two-way audio stream.
+- **TALK** — hold to record and release to send a persistent voice message.
 
 There is no text chat.
 
-## Connectivity model
+## Why two modes?
 
-HappyTalkie uses the Wear OS Data Layer API. Google Play services routes traffic:
+CALL is for synchronous conversation. After ANSWER, HappyTalkie opens a bidirectional Wear OS Data Layer channel and streams microphone audio in both directions.
 
-- directly over Bluetooth when the phone and watch are nearby;
-- through Google's network relay when Bluetooth is unavailable and both devices have Internet access (for example, phone on mobile data and Pixel Watch on Wi-Fi).
+TALK is asynchronous. It works without a call, is stored in a simple phone/watch voice conversation history, and can be replayed later. Data Layer DataItems/Assets allow TALK messages to synchronize after temporary disconnection.
 
-A Wi-Fi-only Pixel Watch is still physically offline when it has neither Bluetooth to the paired phone nor usable Wi-Fi. No application can overcome that hardware/network limitation. HappyTalkie's offline behavior is therefore to queue voice messages until connectivity returns.
+## Connectivity
 
-## V0.1 scope
+HappyTalkie uses Wear OS Data Layer:
 
-- Android phone app
-- Wear OS watch app
-- identical application ID on both devices
-- CALL / ANSWER / END signaling
-- high-priority incoming-call notification, sound, and vibration
-- long-press TALK recording
-- voice transfer with persistent DataItems/Assets
-- queued delivery after reconnection
-- automatic playback of received voice
-- GitHub Actions debug APK build
+- Bluetooth when phone and watch are nearby;
+- Wi-Fi / Google Play services connectivity when the watch is away from the phone but online.
 
-V0.1 is **not full-duplex VoIP**. Audio is half-duplex: hold TALK, speak, release, then the clip is delivered and played on the other side.
+A Wi-Fi-only Pixel Watch cannot communicate while it has neither Bluetooth to its paired phone nor usable Wi-Fi. HappyTalkie cannot change that hardware limitation.
+
+## 0.2.0
+
+- real two-way CALL audio after ANSWER
+- persistent TALK voice-message history
+- replay any saved TALK message
+- polished phone and Pixel Watch UI
+- HappyTalkie launcher and in-app branding
+- incoming call ringing/vibration
+- foreground microphone service for active calls
+- Android phone + Wear OS APKs from GitHub Actions
 
 ## Signing
 
-Wear OS Data Layer requires the phone and watch apps to have both the same package name and matching signatures.
+Wear OS Data Layer requires the phone and watch apps to have the same package name and matching signatures.
 
-- Local Android Studio/Gradle builds use the normal persistent Android debug keystore on your computer, so both APKs match across local rebuilds.
-- GitHub Actions caches one CI debug keystore so normal CI rebuilds also remain compatible.
-- No signing private key is stored in the repository.
-
-For a future Play Store release, use a real release key stored outside source control.
+- local debug builds use your persistent Android debug keystore;
+- GitHub Actions caches a CI debug keystore;
+- no signing private key is stored in this repository.
 
 ## Build and install
 
 See [docs/DEPLOY.md](docs/DEPLOY.md).
+
+## Architecture
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Package
 
