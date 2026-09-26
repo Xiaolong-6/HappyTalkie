@@ -60,6 +60,33 @@ object VoiceMessageStore {
             .take(limit)
     }
 
+    fun delete(context: Context, ids: Set<String>): Int {
+        if (ids.isEmpty()) return 0
+
+        var deleted = 0
+        directory(context)
+            .listFiles()
+            .orEmpty()
+            .mapNotNull(::parse)
+            .filter { it.id in ids }
+            .forEach { message ->
+                if (message.file.delete()) deleted += 1
+            }
+        return deleted
+    }
+
+    fun clear(context: Context): Int {
+        var deleted = 0
+        directory(context)
+            .listFiles()
+            .orEmpty()
+            .filter { it.isFile && it.extension.lowercase() == "m4a" }
+            .forEach { file ->
+                if (file.delete()) deleted += 1
+            }
+        return deleted
+    }
+
     private fun messageFile(
         context: Context,
         createdAt: Long,
