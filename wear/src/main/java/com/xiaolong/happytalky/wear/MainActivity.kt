@@ -622,22 +622,57 @@ private fun LastCallSummary(
     entry: CallHistoryEntry
 ) {
     val detail =
-        if (
-            entry.outcome ==
-                CallOutcome.COMPLETED &&
-            entry.durationMs > 0L
-        ) {
-            entry.displayTime() +
-                " · " +
-                entry.displayDuration()
-        } else {
-            entry.shortLabel() +
-                " · " +
-                entry.displayTime()
+        when (entry.outcome) {
+            CallOutcome.COMPLETED ->
+                if (entry.durationMs > 0L) {
+                    "Last " +
+                        entry.displayTime() +
+                        " · " +
+                        entry.displayDuration()
+                } else {
+                    "Last call · " +
+                        entry.displayTime()
+                }
+
+            CallOutcome.DECLINED_BY_ME ->
+                "Declined · " +
+                    entry.displayTime()
+
+            CallOutcome.DECLINED_BY_PEER ->
+                "Rejected · " +
+                    entry.displayTime()
+
+            CallOutcome.NO_ANSWER ->
+                "No answer · " +
+                    entry.displayTime()
+
+            CallOutcome.MISSED ->
+                "Missed · " +
+                    entry.displayTime()
+
+            CallOutcome.CANCELLED_BY_ME ->
+                "Cancelled · " +
+                    entry.displayTime()
+
+            CallOutcome.CANCELLED_BY_PEER ->
+                "Peer cancel · " +
+                    entry.displayTime()
+
+            CallOutcome.BUSY ->
+                "Busy · " +
+                    entry.displayTime()
+
+            CallOutcome.FAILED ->
+                "Failed · " +
+                    entry.displayTime()
+
+            CallOutcome.DISCONNECTED ->
+                "Dropped · " +
+                    entry.displayTime()
         }
 
     Text(
-        text = "Last · " + detail,
+        text = detail,
         style =
             MaterialTheme
                 .typography
@@ -989,7 +1024,11 @@ private fun SwipeDeleteTalkMessage(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
-                    Color(0xFF8D2634),
+                    if (offsetX < -1f) {
+                        Color(0xFF8D2634)
+                    } else {
+                        Color.Transparent
+                    },
                     RoundedCornerShape(
                         22.dp
                     )
