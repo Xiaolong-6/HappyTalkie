@@ -4,6 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.wear.compose.material3.MaterialTheme
 import com.android.tools.screenshot.PreviewTest
+import com.xiaolong.happytalky.core.CallDirection
+import com.xiaolong.happytalky.core.CallHistoryEntry
+import com.xiaolong.happytalky.core.CallOutcome
 import com.xiaolong.happytalky.core.CallVisualState
 import com.xiaolong.happytalky.core.HappyTalkyUiState
 import com.xiaolong.happytalky.core.PeerConnectionState
@@ -15,6 +18,25 @@ import java.io.File
 private const val WATCH_DEVICE =
     "spec:width=192dp,height=192dp,dpi=320,isRound=true"
 private const val WATCH_BACKGROUND = 0xFF000000
+
+private val watchCallHistory =
+    listOf(
+        CallHistoryEntry(
+            id = "call-1",
+            callId = "call-id-1",
+            occurredAt = 1_760_000_180_000L,
+            direction = CallDirection.INCOMING,
+            outcome = CallOutcome.DECLINED_BY_ME,
+        ),
+        CallHistoryEntry(
+            id = "call-2",
+            callId = "call-id-2",
+            occurredAt = 1_760_000_240_000L,
+            direction = CallDirection.OUTGOING,
+            outcome = CallOutcome.COMPLETED,
+            durationMs = 74_000L,
+        ),
+    )
 
 private val watchMessages =
     listOf(
@@ -53,6 +75,8 @@ fun WatchReadyScreenshot() {
                 peerConnection = PeerConnectionState.CONNECTED,
                 peerRoute = PeerRoute.NEARBY_DIRECT,
                 messages = watchMessages,
+                unreadVoiceCount = 1,
+                callHistory = watchCallHistory,
             ),
             onCall = {},
             onDecline = {},
@@ -227,6 +251,8 @@ fun WatchTalkInboxScreenshot() {
     MaterialTheme {
         WearTalkInbox(
             messages = watchMessages,
+            callHistory = watchCallHistory,
+            unreadCount = 1,
             peerName = "Phone",
             onBack = {},
             onPlay = {},
