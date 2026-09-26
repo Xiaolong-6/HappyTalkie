@@ -22,7 +22,7 @@ TALK is asynchronous and privacy-preserving:
 
 ## TEXT
 
-TEXT uses persistent Wear OS Data Layer DataItems, so a message can be written while the peer is temporarily unavailable and synchronize later. HappyTalky shows this state as **Queued**; it does not claim Delivered or Read until those states are actually acknowledged.
+TEXT uses persistent Wear OS Data Layer DataItems, so a message can be written while the peer is temporarily unavailable and synchronize later. A locally accepted send is shown as **Sent** when the peer is reachable or **Queued** when it is offline; neither label claims remote receipt. HappyTalky does not claim Delivered or Read until those states are explicitly acknowledged.
 
 Phone uses a normal Material 3 composer. Wear shows a compact Message composer in Inbox and delegates real entry to the Wear OS system RemoteInput experience, including dictation, emoji, quick replies and the configured IME.
 
