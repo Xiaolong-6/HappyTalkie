@@ -192,8 +192,17 @@ class HappyTalkyListenerService : WearableListenerService() {
             StateStore.incomingCall(this) != null
 
         if (busy) {
+            CallHistoryStore.append(
+                this,
+                callId,
+                CallDirection.INCOMING,
+                CallOutcome.BUSY
+            )
             DataLayerTransport(this)
-                .sendSignal(Protocol.CALL_BUSY, callId) { }
+                .sendSignal(
+                    Protocol.CALL_BUSY,
+                    callId
+                ) { }
             return
         }
 
@@ -215,6 +224,10 @@ class HappyTalkyListenerService : WearableListenerService() {
         StateStore.setIncomingCall(this, null)
         StateStore.setOutgoingCall(this, null)
         StateStore.setActiveCall(this, callId)
+        StateStore.setActiveStartedAt(
+            this,
+            System.currentTimeMillis()
+        )
         StateStore.clearReconnectWindow(this)
         StateStore.setPeerConnection(
             this,
@@ -230,6 +243,12 @@ class HappyTalkyListenerService : WearableListenerService() {
     private fun receiveDecline(callId: String) {
         if (StateStore.outgoingCall(this) != callId) return
 
+        CallHistoryStore.append(
+            this,
+            callId,
+            CallDirection.OUTGOING,
+            CallOutcome.DECLINED_BY_PEER
+        )
         StateStore.clearCallState(this)
         StateStore.setStatus(this, "Call declined")
         AlertController.stop(this)
@@ -241,6 +260,12 @@ class HappyTalkyListenerService : WearableListenerService() {
     private fun receiveCancel(callId: String) {
         if (StateStore.incomingCall(this) != callId) return
 
+        CallHistoryStore.append(
+            this,
+            callId,
+            CallDirection.INCOMING,
+            CallOutcome.CANCELLED_BY_PEER
+        )
         StateStore.clearCallState(this)
         StateStore.setStatus(this, "Call cancelled")
         AlertController.stop(this)
@@ -252,6 +277,12 @@ class HappyTalkyListenerService : WearableListenerService() {
     private fun receiveBusy(callId: String) {
         if (StateStore.outgoingCall(this) != callId) return
 
+        CallHistoryStore.append(
+            this,
+            callId,
+            CallDirection.OUTGOING,
+            CallOutcome.BUSY
+        )
         StateStore.clearCallState(this)
         StateStore.setStatus(this, "Peer is busy")
         AlertController.stop(this)
@@ -267,6 +298,35 @@ class HappyTalkyListenerService : WearableListenerService() {
             StateStore.outgoingCall(this) == callId
 
         if (!relevant) return
+
+        val wasActive =
+            StateStore.activeCall(this) ==
+                callId
+        val direction =
+            if (StateStore.callInitiator(this)) {
+                CallDirection.OUTGOING
+            } else {
+                CallDirection.INCOMING
+            }
+
+        CallHistoryStore.append(
+            this,
+            callId,
+            direction,
+            if (wasActive) {
+                CallOutcome.COMPLETED
+            } else {
+                CallOutcome.CANCELLED_BY_PEER
+            },
+            startedAt =
+                if (wasActive) {
+                    StateStore.activeStartedAt(
+                        this
+                    )
+                } else {
+                    0L
+                }
+        )
 
         StateStore.clearCallState(this)
         StateStore.setStatus(this, "Call ended")
