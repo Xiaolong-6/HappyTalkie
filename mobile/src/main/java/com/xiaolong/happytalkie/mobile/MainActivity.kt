@@ -1,0 +1,670 @@
+package com.xiaolong.happytalkie.mobile
+
+import android.os.Bundle
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.compose.setContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Call
+import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.Typography
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.graphicsLayer
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.xiaolong.happytalkie.core.CallVisualState
+import com.xiaolong.happytalkie.core.HappyTalkieActivity
+import com.xiaolong.happytalkie.core.HappyTalkieUiState
+import com.xiaolong.happytalkie.core.VoiceDirection
+import com.xiaolong.happytalkie.core.VoiceMessage
+
+class MainActivity : HappyTalkieActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+
+        setContent {
+            HappyTalkiePhoneTheme {
+                HappyTalkiePhoneScreen(
+                    state = uiState,
+                    onCall = ::handleCallAction,
+                    onTalkStart = ::beginTalk,
+                    onTalkFinish = ::finishTalk,
+                    onTalkCancel = ::cancelTalk,
+                    onPlay = ::playMessage,
+                )
+            }
+        }
+    }
+}
+
+private val PhoneColors = darkColorScheme(
+    primary = Color(0xFF5EA8FF),
+    onPrimary = Color(0xFF001B3D),
+    primaryContainer = Color(0xFF153C74),
+    onPrimaryContainer = Color(0xFFD7E6FF),
+    secondary = Color(0xFF70D7FF),
+    onSecondary = Color(0xFF003548),
+    tertiary = Color(0xFFFFD35A),
+    background = Color(0xFF050A16),
+    onBackground = Color(0xFFF4F7FF),
+    surface = Color(0xFF0E172A),
+    onSurface = Color(0xFFF4F7FF),
+    surfaceVariant = Color(0xFF17243C),
+    onSurfaceVariant = Color(0xFFB9C6DA),
+    error = Color(0xFFFF6B79),
+)
+
+@Composable
+private fun HappyTalkiePhoneTheme(content: @Composable () -> Unit) {
+    MaterialTheme(
+        colorScheme = PhoneColors,
+        typography = Typography(),
+        content = content,
+    )
+}
+
+@Composable
+private fun HappyTalkiePhoneScreen(
+    state: HappyTalkieUiState,
+    onCall: () -> Unit,
+    onTalkStart: () -> Unit,
+    onTalkFinish: () -> Unit,
+    onTalkCancel: () -> Unit,
+    onPlay: (VoiceMessage) -> Unit,
+) {
+    val scrollState = rememberScrollState()
+
+    Scaffold(
+        containerColor = Color.Transparent,
+        contentWindowInsets = WindowInsets.safeDrawing,
+    ) { insets ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color(0xFF071023),
+                            Color(0xFF050A16),
+                            Color(0xFF030711),
+                        )
+                    )
+                )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(scrollState)
+                    .padding(insets)
+                    .padding(horizontal = 22.dp, vertical = 18.dp),
+            ) {
+                AppHeader(state)
+                Spacer(Modifier.height(22.dp))
+                CallRow(state = state, onCall = onCall)
+                Spacer(Modifier.height(18.dp))
+                TalkHero(
+                    state = state,
+                    onStart = onTalkStart,
+                    onFinish = onTalkFinish,
+                    onCancel = onTalkCancel,
+                )
+                Spacer(Modifier.height(28.dp))
+                RecentTalk(
+                    messages = state.messages.take(6),
+                    peerName = state.peerName,
+                    onPlay = onPlay,
+                )
+                Spacer(Modifier.height(24.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppHeader(state: HappyTalkieUiState) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Surface(
+            modifier = Modifier.size(54.dp),
+            shape = RoundedCornerShape(17.dp),
+            color = Color(0xFF1767F4),
+        ) {
+            Image(
+                painter = painterResource(
+                    com.xiaolong.happytalkie.core.R.drawable.ic_happytalkie_brand
+                ),
+                contentDescription = "HappyTalkie",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(scaleX = 1.20f, scaleY = 1.20f)
+                    .clip(RoundedCornerShape(17.dp)),
+            )
+        }
+
+        Spacer(Modifier.width(14.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "HappyTalkie",
+                fontSize = 27.sp,
+                lineHeight = 30.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Text(
+                text = "Phone ↔ ${state.peerName}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        StatusPill(state)
+    }
+}
+
+@Composable
+private fun StatusPill(state: HappyTalkieUiState) {
+    val (dot, container) = when (state.callState) {
+        CallVisualState.LIVE -> Color(0xFF67E6A0) to Color(0xFF123B2D)
+        CallVisualState.INCOMING -> Color(0xFF67E6A0) to Color(0xFF123B2D)
+        CallVisualState.OUTGOING, CallVisualState.CONNECTING ->
+            Color(0xFFFFD35A) to Color(0xFF423719)
+        CallVisualState.READY -> Color(0xFF67E6A0) to Color(0xFF13253A)
+    }
+
+    Surface(
+        shape = CircleShape,
+        color = container,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 11.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .background(dot, CircleShape)
+            )
+            Spacer(Modifier.width(7.dp))
+            Text(
+                text = statusShortLabel(state),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+    }
+}
+
+private fun statusShortLabel(state: HappyTalkieUiState): String =
+    when (state.callState) {
+        CallVisualState.LIVE -> "Live"
+        CallVisualState.INCOMING -> "Incoming"
+        CallVisualState.OUTGOING -> "Calling"
+        CallVisualState.CONNECTING -> "Connecting"
+        CallVisualState.READY ->
+            if (state.status.contains("offline", true)) "Offline" else "Ready"
+    }
+
+@Composable
+private fun CallRow(
+    state: HappyTalkieUiState,
+    onCall: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f),
+        tonalElevation = 2.dp,
+    ) {
+        Row(
+            modifier = Modifier.padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = callEyebrow(state),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = callAccent(state),
+                    fontWeight = FontWeight.Bold,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = callTitle(state),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = callSupportingText(state),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            Spacer(Modifier.width(14.dp))
+
+            Button(
+                onClick = onCall,
+                enabled = state.callEnabled,
+                modifier = Modifier.size(78.dp),
+                shape = CircleShape,
+                contentPadding = PaddingValues(0.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = callButtonColor(state),
+                    contentColor = Color.White,
+                    disabledContainerColor = Color(0xFF263752),
+                    disabledContentColor = Color(0xFF8492AA),
+                ),
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = callIcon(state),
+                        contentDescription = callActionLabel(state),
+                        modifier = Modifier.size(25.dp),
+                    )
+                    Spacer(Modifier.height(3.dp))
+                    Text(
+                        text = callActionLabel(state),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TalkHero(
+    state: HappyTalkieUiState,
+    onStart: () -> Unit,
+    onFinish: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    val recording = state.recording
+    val container by animateColorAsState(
+        targetValue = if (recording) Color(0xFFE43E57) else Color(0xFF1676FF),
+        label = "talkContainer",
+    )
+    val scale by animateFloatAsState(
+        targetValue = if (recording) 0.985f else 1f,
+        label = "talkScale",
+    )
+
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "TALK",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Color(0xFF76DBFF),
+                    fontWeight = FontWeight.Bold,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "Voice message",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Text(
+                text = if (recording) "Release to send" else "Hold",
+                style = MaterialTheme.typography.labelLarge,
+                color = if (recording) Color(0xFFFFB3BE)
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        Spacer(Modifier.height(10.dp))
+
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(108.dp)
+                .graphicsLayer(scaleX = scale, scaleY = scale)
+                .semantics {
+                    role = Role.Button
+                    contentDescription =
+                        if (recording) "Release to send TALK"
+                        else "Hold to record TALK"
+                }
+                .pointerInput(state.talkEnabled) {
+                    detectTapGestures(
+                        onPress = {
+                            if (!state.talkEnabled) return@detectTapGestures
+                            onStart()
+                            val released = tryAwaitRelease()
+                            if (released) onFinish() else onCancel()
+                        }
+                    )
+                },
+            shape = RoundedCornerShape(32.dp),
+            color = if (state.talkEnabled) container else Color(0xFF1B2941),
+            contentColor = Color.White,
+            shadowElevation = if (state.talkEnabled) 8.dp else 0.dp,
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 22.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Surface(
+                    modifier = Modifier.size(60.dp),
+                    shape = CircleShape,
+                    color = Color.White.copy(
+                        alpha = if (state.talkEnabled) 0.16f else 0.08f
+                    ),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = if (recording) Icons.Rounded.Stop
+                            else Icons.Rounded.Mic,
+                            contentDescription = null,
+                            modifier = Modifier.size(31.dp),
+                            tint = if (state.talkEnabled) Color.White
+                            else Color(0xFF7C8AA2),
+                        )
+                    }
+                }
+
+                Spacer(Modifier.width(17.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = when {
+                            !state.talkEnabled -> "TALK unavailable during call"
+                            recording -> "Recording…"
+                            else -> "Hold to talk"
+                        },
+                        fontSize = 22.sp,
+                        lineHeight = 25.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (state.talkEnabled) Color.White
+                        else Color(0xFF8795AC),
+                    )
+                    Spacer(Modifier.height(3.dp))
+                    Text(
+                        text = when {
+                            !state.talkEnabled -> "Finish the live call first"
+                            recording -> "Release when you’re done"
+                            else -> "Stored and delivered when the Watch is reachable"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (state.talkEnabled) Color.White.copy(alpha = 0.78f)
+                        else Color(0xFF6E7C93),
+                        maxLines = 2,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecentTalk(
+    messages: List<VoiceMessage>,
+    peerName: String,
+    onPlay: (VoiceMessage) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "Recent TALK",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = "Tap to play",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+
+    Spacer(Modifier.height(10.dp))
+
+    if (messages.isEmpty()) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(22.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.58f),
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Surface(
+                    modifier = Modifier.size(40.dp),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Rounded.PlayArrow,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "No messages yet",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = "Your voice history will appear here",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            messages.forEach { message ->
+                MessageRow(
+                    message = message,
+                    peerName = peerName,
+                    onPlay = onPlay,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MessageRow(
+    message: VoiceMessage,
+    peerName: String,
+    onPlay: (VoiceMessage) -> Unit,
+) {
+    val outgoing = message.direction == VoiceDirection.OUTGOING
+    Surface(
+        onClick = { onPlay(message) },
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Surface(
+                modifier = Modifier.size(42.dp),
+                shape = CircleShape,
+                color = if (outgoing) Color(0xFF1A6DF0)
+                else MaterialTheme.colorScheme.surfaceVariant,
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Rounded.PlayArrow,
+                        contentDescription = "Play TALK",
+                        tint = Color.White,
+                    )
+                }
+            }
+
+            Spacer(Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (outgoing) "Me" else peerName,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = "Voice message · ${message.displayTime()}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+
+            Text(
+                text = "Play",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+    }
+}
+
+private fun callEyebrow(state: HappyTalkieUiState): String =
+    when (state.callState) {
+        CallVisualState.LIVE -> "LIVE NOW"
+        CallVisualState.INCOMING -> "INCOMING CALL"
+        CallVisualState.OUTGOING -> "CALLING"
+        CallVisualState.CONNECTING -> "CONNECTING"
+        CallVisualState.READY -> "LIVE CALL"
+    }
+
+private fun callTitle(state: HappyTalkieUiState): String =
+    when (state.callState) {
+        CallVisualState.LIVE -> "You’re connected"
+        CallVisualState.INCOMING -> "${state.peerName} is calling"
+        CallVisualState.OUTGOING -> "Calling ${state.peerName}"
+        CallVisualState.CONNECTING -> "Opening live audio"
+        CallVisualState.READY -> "Talk now"
+    }
+
+private fun callSupportingText(state: HappyTalkieUiState): String =
+    when (state.callState) {
+        CallVisualState.LIVE -> "Tap END when the conversation is finished"
+        CallVisualState.INCOMING -> "Answer to start a live conversation"
+        CallVisualState.OUTGOING -> "Waiting for ${state.peerName} to answer"
+        CallVisualState.CONNECTING -> "Almost ready"
+        CallVisualState.READY -> "Ring ${state.peerName} and speak in real time"
+    }
+
+private fun callActionLabel(state: HappyTalkieUiState): String =
+    when (state.callState) {
+        CallVisualState.LIVE -> "END"
+        CallVisualState.INCOMING -> "ANSWER"
+        CallVisualState.OUTGOING -> "CALLING"
+        CallVisualState.CONNECTING -> "WAIT"
+        CallVisualState.READY -> "CALL"
+    }
+
+private fun callIcon(state: HappyTalkieUiState): ImageVector =
+    if (state.callState == CallVisualState.LIVE) Icons.Rounded.Stop
+    else Icons.Rounded.Call
+
+private fun callAccent(state: HappyTalkieUiState): Color =
+    when (state.callState) {
+        CallVisualState.LIVE -> Color(0xFF67E6A0)
+        CallVisualState.INCOMING -> Color(0xFF67E6A0)
+        CallVisualState.OUTGOING, CallVisualState.CONNECTING -> Color(0xFFFFD35A)
+        CallVisualState.READY -> Color(0xFFFFD35A)
+    }
+
+private fun callButtonColor(state: HappyTalkieUiState): Color =
+    when (state.callState) {
+        CallVisualState.LIVE -> Color(0xFFE6475D)
+        CallVisualState.INCOMING -> Color(0xFF22B66F)
+        CallVisualState.OUTGOING, CallVisualState.CONNECTING -> Color(0xFF3F5B89)
+        CallVisualState.READY -> Color(0xFF1877FF)
+    }
+
+@Preview(
+    showBackground = true,
+    backgroundColor = 0xFF050A16,
+    widthDp = 412,
+    heightDp = 915,
+)
+@Composable
+private fun PhonePreview() {
+    HappyTalkiePhoneTheme {
+        HappyTalkiePhoneScreen(
+            state = HappyTalkieUiState(),
+            onCall = {},
+            onTalkStart = {},
+            onTalkFinish = {},
+            onTalkCancel = {},
+            onPlay = {},
+        )
+    }
+}
