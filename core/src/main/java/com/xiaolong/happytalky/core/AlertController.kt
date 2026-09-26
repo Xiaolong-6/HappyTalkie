@@ -304,7 +304,7 @@ object AlertController {
 
         if (openTalkInbox) {
             intent.putExtra(
-                Protocol.EXTRA_OPEN_TALK_INBOX,
+                Protocol.EXTRA_OPEN_INBOX,
                 true
             )
         }
