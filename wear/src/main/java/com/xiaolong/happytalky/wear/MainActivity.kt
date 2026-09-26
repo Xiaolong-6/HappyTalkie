@@ -1111,6 +1111,9 @@ fun WearInbox(
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
+                    .padding(
+                        bottom = 64.dp
+                    )
                     .focusRequester(
                         focusRequester
                     )
@@ -1129,7 +1132,7 @@ fun WearInbox(
                         start = 14.dp,
                         end = 14.dp,
                         top = 12.dp,
-                        bottom = 72.dp,
+                        bottom = 8.dp,
                     ),
                 horizontalAlignment =
                     Alignment.CenterHorizontally,
