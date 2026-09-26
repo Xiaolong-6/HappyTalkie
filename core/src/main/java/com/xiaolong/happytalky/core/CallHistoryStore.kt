@@ -130,7 +130,12 @@ object CallHistoryStore {
                     UUID.randomUUID()
                         .toString(),
                 callId = callId,
-                occurredAt = endedAt,
+                occurredAt =
+                    if (startedAt > 0L) {
+                        startedAt
+                    } else {
+                        endedAt
+                    },
                 direction = direction,
                 outcome = outcome,
                 durationMs = duration
