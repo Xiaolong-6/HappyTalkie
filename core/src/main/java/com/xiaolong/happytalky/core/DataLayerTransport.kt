@@ -26,9 +26,17 @@ class DataLayerTransport(context: Context) {
     private val io =
         Executors.newSingleThreadExecutor()
 
-    private val targetCapability: String
+    private val targetRole: EndpointRole
         get() =
             if (role == EndpointRole.PHONE) {
+                EndpointRole.WATCH
+            } else {
+                EndpointRole.PHONE
+            }
+
+    private val targetCapability: String
+        get() =
+            if (targetRole == EndpointRole.WATCH) {
                 Protocol.CAPABILITY_WATCH
             } else {
                 Protocol.CAPABILITY_PHONE
@@ -49,6 +57,14 @@ class DataLayerTransport(context: Context) {
                         ?: info.nodes
                             .sortedBy { it.id }
                             .firstOrNull()
+
+                if (node != null) {
+                    PeerInfoStore.saveNodeFallback(
+                        appContext,
+                        targetRole,
+                        node.displayName
+                    )
+                }
 
                 mainHandler.post {
                     callback(node)
@@ -143,6 +159,66 @@ class DataLayerTransport(context: Context) {
                     }
                 }
         }
+    }
+
+    fun publishDeviceInfo(
+        callback: (Boolean) -> Unit = {}
+    ) {
+        val info =
+            LocalDeviceIdentity.info(
+                appContext
+            )
+        val request =
+            PutDataMapRequest.create(
+                Protocol.DEVICE_INFO_PREFIX +
+                    info.deviceId
+            )
+
+        request.dataMap.putString(
+            Protocol.KEY_ID,
+            info.deviceId
+        )
+        request.dataMap.putString(
+            Protocol.KEY_ROLE,
+            info.role.wireValue
+        )
+        request.dataMap.putString(
+            Protocol.KEY_MANUFACTURER,
+            info.manufacturer
+        )
+        request.dataMap.putString(
+            Protocol.KEY_MODEL,
+            info.model
+        )
+        request.dataMap.putString(
+            Protocol.KEY_APP_VERSION,
+            info.appVersion
+        )
+        request.dataMap.putInt(
+            Protocol.KEY_PROTOCOL_VERSION,
+            info.protocolVersion
+        )
+        request.dataMap.putStringArrayList(
+            Protocol.KEY_CAPABILITIES,
+            ArrayList(
+                info.capabilities.sorted()
+            )
+        )
+
+        dataClient.putDataItem(
+            request.asPutDataRequest()
+                .setUrgent()
+        )
+            .addOnSuccessListener {
+                mainHandler.post {
+                    callback(true)
+                }
+            }
+            .addOnFailureListener {
+                mainHandler.post {
+                    callback(false)
+                }
+            }
     }
 
     fun queueVoice(

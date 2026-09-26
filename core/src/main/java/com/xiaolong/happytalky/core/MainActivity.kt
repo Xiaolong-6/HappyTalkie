@@ -37,6 +37,7 @@ data class HappyTalkyUiState(
     val talkEnabled: Boolean = true,
     val speakerOn: Boolean = false,
     val peerName: String = "Watch",
+    val peerCapabilities: Set<String> = emptySet(),
     val peerConnection: PeerConnectionState = PeerConnectionState.UNKNOWN,
     val peerRoute: PeerRoute = PeerRoute.UNKNOWN,
     val messages: List<VoiceMessage> = emptyList(),
@@ -94,6 +95,7 @@ abstract class HappyTalkyActivity : ComponentActivity() {
 
         role = EndpointRole.fromContext(this)
         transport = DataLayerTransport(this)
+        transport.publishDeviceInfo()
         recorder = AudioRecorder(this)
         connectivityManager =
             getSystemService(ConnectivityManager::class.java)
@@ -747,6 +749,9 @@ abstract class HappyTalkyActivity : ComponentActivity() {
                         live &&
                         LiveCallAudio.isSpeakerEnabled(this),
                 peerName = peer,
+                peerCapabilities =
+                    peerInfo()?.capabilities
+                        .orEmpty(),
                 peerConnection = connection,
                 peerRoute = route,
                 messages =
@@ -830,12 +835,28 @@ abstract class HappyTalkyActivity : ComponentActivity() {
         }
     }
 
+    protected fun peerSupports(
+        capability: String
+    ): Boolean =
+        peerInfo()
+            ?.capabilities
+            ?.contains(capability) == true
+
+    private fun peerInfo(): DeviceInfo? =
+        PeerInfoStore.get(
+            this,
+            if (role == EndpointRole.PHONE) {
+                EndpointRole.WATCH
+            } else {
+                EndpointRole.PHONE
+            }
+        )
+
     private fun peerName(): String =
-        if (role == EndpointRole.PHONE) {
-            "Watch"
-        } else {
-            "Phone"
-        }
+        PeerInfoStore.peerLabel(
+            this,
+            role
+        )
 
     companion object {
         private const val REQUEST_PERMISSIONS = 42
