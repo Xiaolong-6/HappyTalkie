@@ -56,27 +56,36 @@ data class CallHistoryEntry(
         )
     }
 
-    fun shortLabel(): String {
-        val prefix =
-            if (mode == CallMode.PRIORITY) {
-                "Priority "
-            } else {
-                ""
-            }
-
-        return when (outcome) {
+    fun shortLabel(): String =
+        when (outcome) {
             CallOutcome.COMPLETED ->
                 if (durationMs > 0L) {
-                    "${prefix}call · ${displayDuration()}"
+                    if (mode == CallMode.PRIORITY) {
+                        "Priority call · ${displayDuration()}"
+                    } else {
+                        "Call · ${displayDuration()}"
+                    }
+                } else if (
+                    mode == CallMode.PRIORITY
+                ) {
+                    "Priority call ended"
                 } else {
-                    "${prefix}call ended"
+                    "Call ended"
                 }
 
             CallOutcome.DECLINED_BY_ME ->
-                "Declined ${prefix.lowercase()}call"
+                if (mode == CallMode.PRIORITY) {
+                    "Declined priority call"
+                } else {
+                    "Declined call"
+                }
 
             CallOutcome.DECLINED_BY_PEER ->
-                "${prefix}call declined"
+                if (mode == CallMode.PRIORITY) {
+                    "Priority call declined"
+                } else {
+                    "Call declined"
+                }
 
             CallOutcome.NO_ANSWER ->
                 if (mode == CallMode.PRIORITY) {
@@ -93,7 +102,11 @@ data class CallHistoryEntry(
                 }
 
             CallOutcome.CANCELLED_BY_ME ->
-                "Cancelled ${prefix.lowercase()}call"
+                if (mode == CallMode.PRIORITY) {
+                    "Cancelled priority call"
+                } else {
+                    "Cancelled call"
+                }
 
             CallOutcome.CANCELLED_BY_PEER ->
                 if (mode == CallMode.PRIORITY) {
@@ -106,12 +119,19 @@ data class CallHistoryEntry(
                 "Busy"
 
             CallOutcome.FAILED ->
-                "${prefix}call failed"
+                if (mode == CallMode.PRIORITY) {
+                    "Priority call failed"
+                } else {
+                    "Call failed"
+                }
 
             CallOutcome.DISCONNECTED ->
-                "${prefix}call disconnected"
+                if (mode == CallMode.PRIORITY) {
+                    "Priority call disconnected"
+                } else {
+                    "Call disconnected"
+                }
         }
-    }
 }
 
 object CallHistoryStore {
