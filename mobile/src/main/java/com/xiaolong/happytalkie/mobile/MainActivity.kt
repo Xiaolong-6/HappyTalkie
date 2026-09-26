@@ -689,21 +689,146 @@ private fun RecentTalk(
     messages: List<VoiceMessage>,
     peerName: String,
     onPlay: (VoiceMessage) -> Unit,
+    onDelete: (Set<String>) -> Unit,
+    onClear: () -> Unit,
 ) {
+    var managing by remember { mutableStateOf(false) }
+    var selectedIds by remember(messages) {
+        mutableStateOf(emptySet<String>())
+    }
+    var confirmClear by remember {
+        mutableStateOf(false)
+    }
+
+    if (confirmClear) {
+        AlertDialog(
+            onDismissRequest = { confirmClear = false },
+            title = {
+                Text("Clear TALK history?")
+            },
+            text = {
+                Text(
+                    "This removes all saved voice messages from this device."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmClear = false
+                        managing = false
+                        selectedIds = emptySet()
+                        onClear()
+                    }
+                ) {
+                    Text(
+                        "Clear all",
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { confirmClear = false }
+                ) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = "Recent TALK",
+            text =
+                if (managing) "Manage TALK"
+                else "Recent TALK",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.weight(1f),
         )
+
+        if (messages.isNotEmpty()) {
+            TextButton(
+                onClick = {
+                    managing = !managing
+                    if (!managing) {
+                        selectedIds = emptySet()
+                    }
+                },
+                contentPadding = PaddingValues(
+                    horizontal = 8.dp,
+                    vertical = 4.dp,
+                ),
+            ) {
+                Text(
+                    text = if (managing) "Done" else "Manage",
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
+        }
+    }
+
+    if (managing && messages.isNotEmpty()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            TextButton(
+                onClick = {
+                    selectedIds =
+                        if (selectedIds.size == messages.size) {
+                            emptySet()
+                        } else {
+                            messages.map { it.id }.toSet()
+                        }
+                }
+            ) {
+                Text(
+                    if (selectedIds.size == messages.size) {
+                        "Deselect all"
+                    } else {
+                        "Select all"
+                    }
+                )
+            }
+
+            Spacer(Modifier.weight(1f))
+
+            if (selectedIds.isNotEmpty()) {
+                TextButton(
+                    onClick = {
+                        val ids = selectedIds
+                        selectedIds = emptySet()
+                        onDelete(ids)
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Delete,
+                        contentDescription = null,
+                        modifier = Modifier.size(17.dp),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text("Delete ${selectedIds.size}")
+                }
+            }
+
+            TextButton(
+                onClick = { confirmClear = true }
+            ) {
+                Text(
+                    "Clear all",
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        }
+    } else if (!managing) {
         Text(
-            text = "Tap to play",
-            style = MaterialTheme.typography.labelMedium,
+            text = "Tap a message to play · audio never auto-plays",
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
@@ -742,7 +867,7 @@ private fun RecentTalk(
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
-                        text = "Your voice history will appear here",
+                        text = "Incoming TALK waits here until you choose to play it",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -750,12 +875,27 @@ private fun RecentTalk(
             }
         }
     } else {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             messages.forEach { message ->
                 MessageRow(
                     message = message,
                     peerName = peerName,
-                    onPlay = onPlay,
+                    managing = managing,
+                    selected = message.id in selectedIds,
+                    onClick = {
+                        if (managing) {
+                            selectedIds =
+                                if (message.id in selectedIds) {
+                                    selectedIds - message.id
+                                } else {
+                                    selectedIds + message.id
+                                }
+                        } else {
+                            onPlay(message)
+                        }
+                    },
                 )
             }
         }
@@ -766,14 +906,35 @@ private fun RecentTalk(
 private fun MessageRow(
     message: VoiceMessage,
     peerName: String,
-    onPlay: (VoiceMessage) -> Unit,
+    managing: Boolean,
+    selected: Boolean,
+    onClick: () -> Unit,
 ) {
-    val outgoing = message.direction == VoiceDirection.OUTGOING
+    val outgoing =
+        message.direction ==
+            VoiceDirection.OUTGOING
+
     Surface(
-        onClick = { onPlay(message) },
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
+        color =
+            if (selected) {
+                Color(0xFF163860)
+            } else {
+                MaterialTheme.colorScheme.surface.copy(
+                    alpha = 0.72f
+                )
+            },
+        border =
+            if (selected) {
+                BorderStroke(
+                    1.dp,
+                    Color(0xFF6DB5FF)
+                )
+            } else {
+                null
+            },
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -782,13 +943,37 @@ private fun MessageRow(
             Surface(
                 modifier = Modifier.size(42.dp),
                 shape = CircleShape,
-                color = if (outgoing) Color(0xFF1A6DF0)
-                else MaterialTheme.colorScheme.surfaceVariant,
+                color =
+                    if (outgoing) {
+                        Color(0xFF1A6DF0)
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant
+                    },
             ) {
-                Box(contentAlignment = Alignment.Center) {
+                Box(
+                    contentAlignment = Alignment.Center
+                ) {
                     Icon(
-                        imageVector = Icons.Rounded.PlayArrow,
-                        contentDescription = "Play TALK",
+                        imageVector =
+                            if (managing) {
+                                if (selected) {
+                                    Icons.Rounded.Done
+                                } else {
+                                    Icons.Rounded.PlayArrow
+                                }
+                            } else {
+                                Icons.Rounded.PlayArrow
+                            },
+                        contentDescription =
+                            if (managing) {
+                                if (selected) {
+                                    "Selected"
+                                } else {
+                                    "Select message"
+                                }
+                            } else {
+                                "Play TALK"
+                            },
                         tint = Color.White,
                     )
                 }
@@ -796,15 +981,20 @@ private fun MessageRow(
 
             Spacer(Modifier.width(12.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
                 Text(
-                    text = if (outgoing) "Me" else peerName,
+                    text =
+                        if (outgoing) "Me"
+                        else peerName,
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    text = "Voice message · ${message.displayTime()}",
+                    text =
+                        "Voice message · ${message.displayTime()}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -813,9 +1003,19 @@ private fun MessageRow(
             }
 
             Text(
-                text = "Play",
+                text =
+                    when {
+                        managing && selected -> "Selected"
+                        managing -> "Select"
+                        else -> "Play"
+                    },
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
+                color =
+                    if (selected) {
+                        Color(0xFF90C8FF)
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    },
             )
         }
     }
