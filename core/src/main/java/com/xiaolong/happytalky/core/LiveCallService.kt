@@ -318,7 +318,7 @@ class LiveCallService : Service() {
 
         DataLayerTransport(this)
             .sendSignal(
-                Protocol.CALL_END,
+                Protocol.CALL_DISCONNECTED,
                 callId
             ) { }
 
