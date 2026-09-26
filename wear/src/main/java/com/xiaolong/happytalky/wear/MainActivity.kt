@@ -1,14 +1,9 @@
 package com.xiaolong.happytalky.wear
 
 import android.app.Activity
-import android.app.NotificationManager
 import android.app.RemoteInput
-import android.content.Context
 import android.content.Intent
-import android.net.Uri
-import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
 import android.view.inputmethod.EditorInfo
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -100,6 +95,7 @@ import com.xiaolong.happytalky.core.Protocol
 import com.xiaolong.happytalky.core.VoiceDirection
 import com.xiaolong.happytalky.core.VoiceMessage
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class MainActivity : HappyTalkyActivity() {
@@ -142,7 +138,6 @@ class MainActivity : HappyTalkyActivity() {
                 false
             ) == true
 
-        requestFullScreenCallAccessOnce()
 
         setContent {
             MaterialTheme {
@@ -260,56 +255,6 @@ class MainActivity : HappyTalkyActivity() {
         )
     }
 
-    private fun requestFullScreenCallAccessOnce() {
-        if (Build.VERSION.SDK_INT < 34) {
-            return
-        }
-
-        val manager =
-            getSystemService(
-                NotificationManager::class.java
-            )
-
-        if (
-            manager?.canUseFullScreenIntent() ==
-                true
-        ) {
-            return
-        }
-
-        val prefs =
-            getSharedPreferences(
-                "happytalky_wear_setup",
-                Context.MODE_PRIVATE
-            )
-
-        if (
-            prefs.getBoolean(
-                "asked_full_screen_call",
-                false
-            )
-        ) {
-            return
-        }
-
-        prefs.edit()
-            .putBoolean(
-                "asked_full_screen_call",
-                true
-            )
-            .apply()
-
-        runCatching {
-            startActivity(
-                Intent(
-                    Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
-                    Uri.parse(
-                        "package:$packageName"
-                    )
-                )
-            )
-        }
-    }
 
     companion object {
         private const val REMOTE_TEXT_KEY =
