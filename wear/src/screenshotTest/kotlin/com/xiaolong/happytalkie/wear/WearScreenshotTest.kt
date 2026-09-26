@@ -27,6 +27,7 @@ fun WatchReadyScreenshot() {
             state = HappyTalkieUiState(
                 status = "Ready",
                 callState = CallVisualState.READY,
+                callEnabled = true,
                 peerName = "Phone",
                 peerConnection = PeerConnectionState.CONNECTED,
                 peerRoute = PeerRoute.NEARBY_BLUETOOTH,
@@ -36,7 +37,6 @@ fun WatchReadyScreenshot() {
             onTalkStart = {},
             onTalkFinish = {},
             onTalkCancel = {},
-            onPlay = {},
         )
     }
 }
@@ -64,7 +64,6 @@ fun WatchIncomingScreenshot() {
             onTalkStart = {},
             onTalkFinish = {},
             onTalkCancel = {},
-            onPlay = {},
         )
     }
 }
@@ -84,6 +83,7 @@ fun WatchRecordingScreenshot() {
                 status = "Recording TALK…",
                 callState = CallVisualState.READY,
                 recording = true,
+                callEnabled = true,
                 peerName = "Phone",
                 peerConnection = PeerConnectionState.CONNECTED,
                 peerRoute = PeerRoute.NEARBY_BLUETOOTH,
@@ -93,7 +93,6 @@ fun WatchRecordingScreenshot() {
             onTalkStart = {},
             onTalkFinish = {},
             onTalkCancel = {},
-            onPlay = {},
         )
     }
 }
