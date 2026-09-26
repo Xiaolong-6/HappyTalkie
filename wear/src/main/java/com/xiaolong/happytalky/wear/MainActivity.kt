@@ -137,7 +137,7 @@ class MainActivity : HappyTalkyActivity() {
         super.onCreate(savedInstanceState)
         openInboxRequested =
             intent?.getBooleanExtra(
-                Protocol.EXTRA_OPEN_TALK_INBOX,
+                Protocol.EXTRA_OPEN_INBOX,
                 false
             ) == true
 
@@ -172,7 +172,7 @@ class MainActivity : HappyTalkyActivity() {
         super.onNewIntent(intent)
         openInboxRequested =
             intent.getBooleanExtra(
-                Protocol.EXTRA_OPEN_TALK_INBOX,
+                Protocol.EXTRA_OPEN_INBOX,
                 false
             )
     }
