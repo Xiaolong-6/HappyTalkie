@@ -50,6 +50,24 @@ class ConversationItemTest {
     }
 
     @Test
+    fun roomEntityRoundTripsTextMetadata() {
+        val item =
+            ConversationItem(
+                id = "text-1",
+                type = ConversationItemType.TEXT,
+                direction = ConversationDirection.OUTGOING,
+                createdAt = 4_000L,
+                deliveryState = DeliveryState.QUEUED,
+                text = "Coming! 👍"
+            )
+
+        assertEquals(
+            item,
+            item.toEntity().toModelOrNull()
+        )
+    }
+
+    @Test
     fun malformedPersistedEnumIsIgnored() {
         val entity =
             ConversationEntity(
