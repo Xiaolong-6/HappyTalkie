@@ -188,7 +188,7 @@ object AlertController {
 
         return PendingIntent.getActivity(
             context,
-            20,
+            if (openTalkInbox) 23 else 20,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or
                 PendingIntent.FLAG_IMMUTABLE
