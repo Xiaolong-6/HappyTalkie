@@ -1,5 +1,6 @@
 package com.xiaolong.happytalkie.wear
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -28,6 +29,7 @@ import androidx.compose.material.icons.rounded.NetworkCell
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,12 +62,20 @@ import com.xiaolong.happytalkie.core.HappyTalkieActivity
 import com.xiaolong.happytalkie.core.HappyTalkieUiState
 import com.xiaolong.happytalkie.core.PeerConnectionState
 import com.xiaolong.happytalkie.core.PeerRoute
+import com.xiaolong.happytalkie.core.Protocol
 import com.xiaolong.happytalkie.core.VoiceDirection
 import com.xiaolong.happytalkie.core.VoiceMessage
 
 class MainActivity : HappyTalkieActivity() {
+    private var openInboxRequested by mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        openInboxRequested =
+            intent?.getBooleanExtra(
+                Protocol.EXTRA_OPEN_TALK_INBOX,
+                false
+            ) == true
 
         setContent {
             MaterialTheme {
@@ -77,9 +87,22 @@ class MainActivity : HappyTalkieActivity() {
                     onTalkFinish = ::finishTalk,
                     onTalkCancel = ::cancelTalk,
                     onPlay = ::playMessage,
+                    openInbox = openInboxRequested,
+                    onInboxOpened = {
+                        openInboxRequested = false
+                    },
                 )
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        openInboxRequested =
+            intent.getBooleanExtra(
+                Protocol.EXTRA_OPEN_TALK_INBOX,
+                false
+            )
     }
 }
 
@@ -92,8 +115,17 @@ fun WearHome(
     onTalkFinish: () -> Unit,
     onTalkCancel: () -> Unit,
     onPlay: (VoiceMessage) -> Unit,
+    openInbox: Boolean = false,
+    onInboxOpened: () -> Unit = {},
 ) {
     var showInbox by remember { mutableStateOf(false) }
+
+    LaunchedEffect(openInbox) {
+        if (openInbox) {
+            showInbox = true
+            onInboxOpened()
+        }
+    }
 
     if (showInbox) {
         WearTalkInbox(
