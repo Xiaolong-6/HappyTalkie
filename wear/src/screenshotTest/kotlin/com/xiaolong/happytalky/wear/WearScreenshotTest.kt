@@ -326,7 +326,7 @@ fun WatchReconnectingScreenshot() {
 @Composable
 fun WatchTalkInboxScreenshot() {
     MaterialTheme {
-        WearTalkInbox(
+        WearInbox(
             messages = watchMessages,
             callHistory = watchCallHistory,
             timeline = watchConversation,
@@ -352,7 +352,7 @@ fun WatchTalkInboxScreenshot() {
 @Composable
 fun WatchMixedInboxScreenshot() {
     MaterialTheme {
-        WearTalkInbox(
+        WearInbox(
             messages = watchMessages,
             callHistory = watchCallHistory,
             timeline = watchConversation,
@@ -376,7 +376,7 @@ fun WatchMixedInboxScreenshot() {
 @Composable
 fun WatchCallHistoryScreenshot() {
     MaterialTheme {
-        WearTalkInbox(
+        WearInbox(
             messages = emptyList(),
             callHistory = watchCallHistory,
             unreadCount = 0,
