@@ -1,13 +1,17 @@
 package com.xiaolong.happytalky.wear
 
+import android.app.Activity
 import android.app.NotificationManager
+import android.app.RemoteInput
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.view.inputmethod.EditorInfo
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -77,11 +81,16 @@ import androidx.wear.compose.material3.Icon
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.Text
 import androidx.wear.compose.material3.TextButton
+import androidx.wear.input.RemoteInputIntentHelper
+import androidx.wear.input.wearableExtender
 import com.xiaolong.happytalky.core.CallDirection
 import com.xiaolong.happytalky.core.CallMode
 import com.xiaolong.happytalky.core.CallHistoryEntry
 import com.xiaolong.happytalky.core.CallOutcome
 import com.xiaolong.happytalky.core.CallVisualState
+import com.xiaolong.happytalky.core.ConversationDirection
+import com.xiaolong.happytalky.core.ConversationItem
+import com.xiaolong.happytalky.core.ConversationItemType
 import com.xiaolong.happytalky.core.HappyTalkyActivity
 import com.xiaolong.happytalky.core.HappyTalkyUiState
 import com.xiaolong.happytalky.core.PeerConnectionState
@@ -94,6 +103,35 @@ import kotlinx.coroutines.launch
 
 class MainActivity : HappyTalkyActivity() {
     private var openInboxRequested by mutableStateOf(false)
+
+    private val textInputLauncher =
+        registerForActivityResult(
+            ActivityResultContracts
+                .StartActivityForResult()
+        ) { result ->
+            if (
+                result.resultCode !=
+                    Activity.RESULT_OK
+            ) {
+                return@registerForActivityResult
+            }
+
+            val data =
+                result.data
+                    ?: return@registerForActivityResult
+            val reply =
+                RemoteInput
+                    .getResultsFromIntent(data)
+                    ?.getCharSequence(
+                        REMOTE_TEXT_KEY
+                    )
+                    ?.toString()
+                    .orEmpty()
+
+            if (reply.isNotBlank()) {
+                sendText(reply)
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -118,9 +156,12 @@ class MainActivity : HappyTalkyActivity() {
                     onDelete = ::deleteMessages,
                     onPriorityCallsChanged =
                         ::setPriorityCallsEnabled,
+                    onComposeText =
+                        ::launchTextInput,
                     openInbox = openInboxRequested,
                     onInboxOpened = {
                         openInboxRequested = false
+                        markTextMessagesRead()
                     },
                 )
             }
@@ -134,6 +175,88 @@ class MainActivity : HappyTalkyActivity() {
                 Protocol.EXTRA_OPEN_TALK_INBOX,
                 false
             )
+    }
+
+    private fun launchTextInput() {
+        if (!uiState.textEnabled) {
+            return
+        }
+
+        val remoteInput =
+            RemoteInput.Builder(
+                REMOTE_TEXT_KEY
+            )
+                .setLabel("Message")
+                .setAllowFreeFormInput(true)
+                .setChoices(
+                    arrayOf<CharSequence>(
+                        "👍",
+                        "❤️",
+                        "😂",
+                        "👌"
+                    )
+                )
+                .wearableExtender {
+                    setEmojisAllowed(true)
+                    setInputActionType(
+                        EditorInfo.IME_ACTION_SEND
+                    )
+                }
+                .build()
+
+        val intent =
+            RemoteInputIntentHelper
+                .createActionRemoteInputIntent()
+
+        RemoteInputIntentHelper
+            .putRemoteInputsExtra(
+                intent,
+                listOf(remoteInput)
+            )
+        RemoteInputIntentHelper
+            .putTitleExtra(
+                intent,
+                "Message ${uiState.peerName}"
+            )
+        RemoteInputIntentHelper
+            .putConfirmLabelExtra(
+                intent,
+                "Send"
+            )
+        RemoteInputIntentHelper
+            .putCancelLabelExtra(
+                intent,
+                "Cancel"
+            )
+
+        val context =
+            uiState.timeline
+                .filter {
+                    it.type ==
+                        ConversationItemType.TEXT &&
+                        it.direction ==
+                            ConversationDirection
+                                .INCOMING
+                }
+                .sortedBy {
+                    it.createdAt
+                }
+                .mapNotNull {
+                    it.text
+                }
+                .takeLast(4)
+
+        if (context.isNotEmpty()) {
+            RemoteInputIntentHelper
+                .putSmartReplyContextExtra(
+                    intent,
+                    context
+                )
+        }
+
+        textInputLauncher.launch(
+            intent
+        )
     }
 
     private fun requestFullScreenCallAccessOnce() {
@@ -186,6 +309,11 @@ class MainActivity : HappyTalkyActivity() {
             )
         }
     }
+
+    companion object {
+        private const val REMOTE_TEXT_KEY =
+            "happytalky_text_reply"
+    }
 }
 
 @Composable
@@ -199,6 +327,7 @@ fun WearHome(
     onPlay: (VoiceMessage) -> Unit,
     onDelete: (Set<String>) -> Unit = {},
     onPriorityCallsChanged: (Boolean) -> Unit = {},
+    onComposeText: () -> Unit = {},
     openInbox: Boolean = false,
     onInboxOpened: () -> Unit = {},
 ) {
@@ -209,6 +338,11 @@ fun WearHome(
     LaunchedEffect(openInbox) {
         if (openInbox) {
             showInbox = true
+        }
+    }
+
+    LaunchedEffect(showInbox) {
+        if (showInbox) {
             onInboxOpened()
         }
     }
@@ -232,9 +366,15 @@ fun WearHome(
         WearTalkInbox(
             messages = state.messages,
             callHistory = state.callHistory,
+            timeline = state.timeline,
             unreadCount =
-                state.unreadVoiceCount,
+                state.unreadVoiceCount +
+                    state.unreadTextCount,
             peerName = state.peerName,
+            textEnabled =
+                state.textEnabled,
+            onComposeText =
+                onComposeText,
             priorityCallsEnabled =
                 state.localPriorityCallsAllowed,
             onPriorityCallsChanged =
@@ -335,7 +475,8 @@ private fun WearHomePage(
 
                 TalkInboxButton(
                     unread =
-                        state.unreadVoiceCount,
+                        state.unreadVoiceCount +
+                            state.unreadTextCount,
                     onClick =
                         onOpenInbox,
                 )
@@ -833,20 +974,111 @@ fun WearTalkInbox(
     messages: List<VoiceMessage>,
     callHistory: List<CallHistoryEntry> =
         emptyList(),
+    timeline: List<ConversationItem> =
+        emptyList(),
     unreadCount: Int = 0,
     peerName: String,
+    textEnabled: Boolean = false,
+    onComposeText: () -> Unit = {},
     priorityCallsEnabled: Boolean = false,
     onPriorityCallsChanged: (Boolean) -> Unit = {},
     onBack: () -> Unit,
     onPlay: (VoiceMessage) -> Unit,
     onDelete: (Set<String>) -> Unit = {},
 ) {
-    val sortedMessages =
+    val voiceById =
         remember(messages) {
-            messages.sortedByDescending {
-                it.createdAt
+            messages.associateBy {
+                it.id
             }
         }
+    val callById =
+        remember(callHistory) {
+            callHistory.associateBy {
+                it.id
+            }
+        }
+    val displayTimeline =
+        remember(
+            timeline,
+            messages,
+            callHistory
+        ) {
+            if (timeline.isNotEmpty()) {
+                timeline.sortedByDescending {
+                    it.createdAt
+                }
+            } else {
+                buildList {
+                    messages.forEach {
+                        add(
+                            ConversationItem(
+                                id = it.id,
+                                type =
+                                    ConversationItemType.VOICE,
+                                direction =
+                                    if (
+                                        it.direction ==
+                                            VoiceDirection.INCOMING
+                                    ) {
+                                        ConversationDirection.INCOMING
+                                    } else {
+                                        ConversationDirection.OUTGOING
+                                    },
+                                createdAt =
+                                    it.createdAt,
+                                readAt =
+                                    it.readAt,
+                                deliveryState =
+                                    it.deliveryState,
+                                audioFileName =
+                                    it.file.name,
+                                durationMs =
+                                    it.durationMs
+                            )
+                        )
+                    }
+
+                    callHistory.forEach {
+                        add(
+                            ConversationItem(
+                                id = it.id,
+                                type =
+                                    ConversationItemType.CALL,
+                                direction =
+                                    if (
+                                        it.direction ==
+                                            CallDirection.INCOMING
+                                    ) {
+                                        ConversationDirection.INCOMING
+                                    } else {
+                                        ConversationDirection.OUTGOING
+                                    },
+                                createdAt =
+                                    it.occurredAt,
+                                readAt =
+                                    it.occurredAt,
+                                callId =
+                                    it.callId,
+                                callOutcome =
+                                    it.outcome.name,
+                                callMode =
+                                    it.mode,
+                                durationMs =
+                                    it.durationMs,
+                                startedAt =
+                                    it.startedAt,
+                                endedAt =
+                                    it.endedAt
+                            )
+                        )
+                    }
+                }.sortedByDescending {
+                    it.createdAt
+                }
+            }
+        }
+
     val listState =
         rememberLazyListState()
     val focusRequester =
@@ -864,226 +1096,394 @@ fun WearTalkInbox(
         containerColor = Color.Black,
         contentColor = Color.White,
     ) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .focusRequester(
-                    focusRequester
-                )
-                .onRotaryScrollEvent {
-                        event ->
-                    scope.launch {
-                        listState.scrollBy(
-                            event.verticalScrollPixels
-                        )
-                    }
-                    true
-                }
-                .focusable(),
-            contentPadding =
-                PaddingValues(
-                    start = 14.dp,
-                    end = 14.dp,
-                    top = 12.dp,
-                    bottom = 28.dp,
-                ),
-            horizontalAlignment =
-                Alignment.CenterHorizontally,
-            verticalArrangement =
-                Arrangement.spacedBy(6.dp),
+        Box(
+            modifier =
+                Modifier.fillMaxSize()
         ) {
-            item {
-                TextButton(
-                    onClick = onBack,
-                    modifier =
-                        Modifier.width(144.dp),
-                ) {
-                    Text(
-                        text =
-                            if (
-                                unreadCount > 0
-                            ) {
-                                "‹ Inbox · " +
-                                    unreadCount +
-                                    " unread"
-                            } else {
-                                "‹ Inbox"
-                            },
-                        style =
-                            MaterialTheme
-                                .typography
-                                .labelMedium,
-                        fontWeight =
-                            if (
-                                unreadCount > 0
-                            ) {
-                                FontWeight.Bold
-                            } else {
-                                FontWeight.SemiBold
-                            },
-                        color =
-                            if (
-                                unreadCount > 0
-                            ) {
-                                Color(
-                                    0xFFFFD35A
-                                )
-                            } else {
-                                Color.White
-                            },
-                        maxLines = 1,
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .focusRequester(
+                        focusRequester
                     )
-                }
-            }
-
-            item {
-                Card(
-                    onClick = {
-                        onPriorityCallsChanged(
-                            !priorityCallsEnabled
-                        )
-                    },
-                    modifier = Modifier
-                        .width(146.dp)
-                        .height(40.dp),
-                    colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Color(0xFF111A29),
-                            contentColor =
-                                Color.White,
-                        ),
-                ) {
-                    Row(
+                    .onRotaryScrollEvent {
+                            event ->
+                        scope.launch {
+                            listState.scrollBy(
+                                event.verticalScrollPixels
+                            )
+                        }
+                        true
+                    }
+                    .focusable(),
+                contentPadding =
+                    PaddingValues(
+                        start = 14.dp,
+                        end = 14.dp,
+                        top = 12.dp,
+                        bottom = 58.dp,
+                    ),
+                horizontalAlignment =
+                    Alignment.CenterHorizontally,
+                verticalArrangement =
+                    Arrangement.spacedBy(6.dp),
+            ) {
+                item {
+                    TextButton(
+                        onClick = onBack,
                         modifier =
-                            Modifier.fillMaxSize(),
-                        verticalAlignment =
-                            Alignment.CenterVertically,
-                        horizontalArrangement =
-                            Arrangement.SpaceBetween,
+                            Modifier.width(144.dp),
                     ) {
                         Text(
-                            text = "Priority",
+                            text =
+                                if (
+                                    unreadCount > 0
+                                ) {
+                                    "‹ Inbox · " +
+                                        unreadCount +
+                                        " unread"
+                                } else {
+                                    "‹ Inbox"
+                                },
                             style =
                                 MaterialTheme
                                     .typography
                                     .labelMedium,
                             fontWeight =
-                                FontWeight.SemiBold,
+                                if (
+                                    unreadCount > 0
+                                ) {
+                                    FontWeight.Bold
+                                } else {
+                                    FontWeight.SemiBold
+                                },
+                            color =
+                                if (
+                                    unreadCount > 0
+                                ) {
+                                    Color(
+                                        0xFFFFD35A
+                                    )
+                                } else {
+                                    Color.White
+                                },
                             maxLines = 1,
                         )
+                    }
+                }
 
+                item {
+                    Card(
+                        onClick = {
+                            onPriorityCallsChanged(
+                                !priorityCallsEnabled
+                            )
+                        },
+                        modifier = Modifier
+                            .width(146.dp)
+                            .height(34.dp),
+                        colors =
+                            CardDefaults.cardColors(
+                                containerColor =
+                                    Color(0xFF111A29),
+                                contentColor =
+                                    Color.White,
+                            ),
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(
+                                    horizontal = 10.dp
+                                ),
+                            verticalAlignment =
+                                Alignment.CenterVertically,
+                            horizontalArrangement =
+                                Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                text = "Priority",
+                                style =
+                                    MaterialTheme
+                                        .typography
+                                        .labelSmall,
+                                fontWeight =
+                                    FontWeight.SemiBold,
+                                maxLines = 1,
+                            )
+
+                            Text(
+                                text =
+                                    if (
+                                        priorityCallsEnabled
+                                    ) {
+                                        "ON"
+                                    } else {
+                                        "OFF"
+                                    },
+                                style =
+                                    MaterialTheme
+                                        .typography
+                                        .labelSmall,
+                                fontWeight =
+                                    FontWeight.Bold,
+                                color =
+                                    if (
+                                        priorityCallsEnabled
+                                    ) {
+                                        Color(
+                                            0xFFFFD35A
+                                        )
+                                    } else {
+                                        Color(
+                                            0xFF8E9AAF
+                                        )
+                                    },
+                            )
+                        }
+                    }
+                }
+
+                if (
+                    displayTimeline.isEmpty()
+                ) {
+                    item {
                         Text(
                             text =
-                                if (
-                                    priorityCallsEnabled
-                                ) {
-                                    "ON"
-                                } else {
-                                    "OFF"
-                                },
+                                "No messages yet",
                             style =
                                 MaterialTheme
                                     .typography
-                                    .labelSmall,
-                            fontWeight =
-                                FontWeight.Bold,
+                                    .labelMedium,
                             color =
-                                if (
-                                    priorityCallsEnabled
-                                ) {
-                                    Color(0xFFFFD35A)
-                                } else {
-                                    Color(0xFF8E9AAF)
-                                },
-                            maxLines = 1,
+                                Color(0xFF8C9AAF),
+                            textAlign =
+                                TextAlign.Center,
                         )
+                    }
+                } else {
+                    items(
+                        items =
+                            displayTimeline,
+                        key = {
+                            it.id
+                        },
+                    ) { item ->
+                        when (item.type) {
+                            ConversationItemType.VOICE -> {
+                                voiceById[item.id]
+                                    ?.let { message ->
+                                        SwipeDeleteTalkMessage(
+                                            message =
+                                                message,
+                                            peerName =
+                                                peerName,
+                                            onPlay =
+                                                onPlay,
+                                            onDelete =
+                                                onDelete,
+                                        )
+                                    }
+                            }
+
+                            ConversationItemType.TEXT -> {
+                                WearTextMessage(
+                                    item = item,
+                                    peerName =
+                                        peerName,
+                                )
+                            }
+
+                            ConversationItemType.CALL -> {
+                                callById[item.id]
+                                    ?.let { entry ->
+                                        WearCallHistoryCard(
+                                            entry =
+                                                entry
+                                        )
+                                    }
+                            }
+                        }
                     }
                 }
             }
 
-            callHistory
-                .firstOrNull()
-                ?.let { latest ->
-                    item {
-                        LastCallSummary(
-                            latest
-                        )
-                    }
-                }
-
-            if (
-                sortedMessages.isEmpty()
-            ) {
-                item {
-                    Text(
-                        text =
-                            "No saved TALK",
-                        style =
-                            MaterialTheme
-                                .typography
-                                .labelMedium,
-                        color =
-                            Color(0xFF8C9AAF),
-                        textAlign =
-                            TextAlign.Center,
+            WearTextComposer(
+                enabled = textEnabled,
+                onCompose = onComposeText,
+                modifier = Modifier
+                    .align(
+                        Alignment.BottomCenter
                     )
-                }
-            } else {
-                items(
-                    items =
-                        sortedMessages,
-                    key = {
-                        it.id
-                    },
-                ) { message ->
-                    SwipeDeleteTalkMessage(
-                        message = message,
-                        peerName = peerName,
-                        onPlay = onPlay,
-                        onDelete = onDelete,
-                    )
-                }
-            }
-
-            if (callHistory.isNotEmpty()) {
-                item {
-                    Text(
-                        text = "CALLS",
-                        style =
-                            MaterialTheme
-                                .typography
-                                .labelSmall,
-                        color =
-                            Color(0xFF8E9AAF),
-                        fontWeight =
-                            FontWeight.Bold,
-                        modifier =
-                            Modifier
-                                .width(140.dp)
-                                .padding(
-                                    top = 8.dp,
-                                    start = 4.dp,
-                                ),
-                    )
-                }
-
-                items(
-                    items =
-                        callHistory.take(10),
-                    key = {
-                        "call-" + it.id
-                    },
-                ) { entry ->
-                    WearCallHistoryCard(
-                        entry = entry
-                    )
-                }
-            }
+                    .padding(
+                        bottom = 6.dp
+                    ),
+            )
         }
     }
 }
+
+@Composable
+private fun WearTextMessage(
+    item: ConversationItem,
+    peerName: String,
+) {
+    val outgoing =
+        item.direction ==
+            ConversationDirection.OUTGOING
+    val text =
+        item.text
+            ?: return
+
+    Card(
+        onClick = {},
+        modifier =
+            Modifier.width(146.dp),
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    if (outgoing) {
+                        Color(0xFF173B63)
+                    } else {
+                        Color(0xFF121D2E)
+                    },
+                contentColor =
+                    Color.White,
+            ),
+    ) {
+        Column {
+            Text(
+                text =
+                    if (outgoing) {
+                        "Me"
+                    } else {
+                        peerName
+                    },
+                style =
+                    MaterialTheme
+                        .typography
+                        .labelSmall,
+                color =
+                    if (outgoing) {
+                        Color(0xFF8CC0FF)
+                    } else {
+                        Color(0xFF98A7BC)
+                    },
+                fontWeight =
+                    FontWeight.SemiBold,
+                maxLines = 1,
+            )
+
+            Text(
+                text = text,
+                style =
+                    MaterialTheme
+                        .typography
+                        .labelMedium,
+                color = Color.White,
+                maxLines = 3,
+                overflow =
+                    TextOverflow.Ellipsis,
+            )
+
+            Text(
+                text =
+                    wearMessageTime(
+                        item.createdAt
+                    ),
+                style =
+                    MaterialTheme
+                        .typography
+                        .labelSmall,
+                color =
+                    Color(0xFF98A7BC),
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
+private fun WearTextComposer(
+    enabled: Boolean,
+    onCompose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        onClick = {
+            if (enabled) {
+                onCompose()
+            }
+        },
+        modifier = modifier
+            .width(146.dp)
+            .height(40.dp),
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    if (enabled) {
+                        Color(0xFF173B63)
+                    } else {
+                        Color(0xFF111A29)
+                    },
+                contentColor =
+                    Color.White,
+            ),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(
+                    horizontal = 11.dp
+                ),
+            verticalAlignment =
+                Alignment.CenterVertically,
+            horizontalArrangement =
+                Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text =
+                    if (enabled) {
+                        "Message…"
+                    } else {
+                        "Text unavailable"
+                    },
+                style =
+                    MaterialTheme
+                        .typography
+                        .labelMedium,
+                color =
+                    if (enabled) {
+                        Color.White
+                    } else {
+                        Color(0xFF75849A)
+                    },
+                maxLines = 1,
+            )
+
+            Text(
+                text = "😊",
+                style =
+                    MaterialTheme
+                        .typography
+                        .labelMedium,
+            )
+        }
+    }
+}
+
+private fun wearMessageTime(
+    createdAt: Long
+): String =
+    java.text.SimpleDateFormat(
+        "HH:mm",
+        java.util.Locale.getDefault()
+    ).format(
+        java.util.Date(
+            createdAt
+        )
+    )
 
 @Composable
 private fun SwipeDeleteTalkMessage(
