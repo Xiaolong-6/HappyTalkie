@@ -180,7 +180,7 @@ Wear Material 3 presents a shorter wrist-first loop:
 - a direct hold/release TALK surface at the bottom, with the press gesture owned by the surface itself rather than a disabled child button;
 - swipe left from the home screen to enter Inbox;
 - Inbox supports touch scrolling and the watch rotary/crown;
-- unread incoming TALK is sorted first, counted, bold/highlighted, and loses emphasis after playback completes;
+- unread incoming TALK is counted and bold/highlighted in chronological history, and loses emphasis after playback completes;
 - each TALK row can be swiped left to reveal Delete;
 - recent CALL history is shown below TALK history, and the latest CALL is summarized on the home screen.
 
