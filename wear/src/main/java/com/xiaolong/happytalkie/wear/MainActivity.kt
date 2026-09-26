@@ -433,7 +433,7 @@ private fun TalkEdgeButton(
 }
 
 @Composable
-private fun WearTalkInbox(
+fun WearTalkInbox(
     messages: List<VoiceMessage>,
     peerName: String,
     onBack: () -> Unit,
