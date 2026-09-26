@@ -765,8 +765,7 @@ private fun TalkHoldButton(
                     }
             }
             .pointerInput(
-                enabled,
-                recording
+                enabled
             ) {
                 detectTapGestures(
                     onPress = {
