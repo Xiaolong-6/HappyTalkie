@@ -10,6 +10,7 @@ class CallActionReceiver : BroadcastReceiver() {
         when (intent.action) {
             ACTION_ANSWER -> answer(appContext)
             ACTION_DECLINE -> decline(appContext)
+            ACTION_HANG_UP -> hangUp(appContext)
         }
     }
 
@@ -48,10 +49,38 @@ class CallActionReceiver : BroadcastReceiver() {
             .sendSignal(Protocol.CALL_DECLINE, callId) { }
     }
 
+    private fun hangUp(context: Context) {
+        val active = StateStore.activeCall(context)
+        val outgoing = StateStore.outgoingCall(context)
+        val incoming = StateStore.incomingCall(context)
+        val callId = active ?: outgoing ?: incoming ?: return
+
+        val path = when {
+            active != null -> Protocol.CALL_END
+            outgoing != null -> Protocol.CALL_CANCEL
+            else -> Protocol.CALL_DECLINE
+        }
+
+        StateStore.clearCallState(context)
+        StateStore.setStatus(
+            context,
+            if (outgoing != null) "Call cancelled" else "Call ended"
+        )
+        AlertController.stop(context)
+        LiveCallAudio.stop(context)
+        LiveCallService.stop(context)
+        EventBus.notifyStateChanged(context)
+
+        DataLayerTransport(context)
+            .sendSignal(path, callId) { }
+    }
+
     companion object {
         const val ACTION_ANSWER =
             "com.xiaolong.happytalkie.action.ANSWER_CALL"
         const val ACTION_DECLINE =
             "com.xiaolong.happytalkie.action.DECLINE_CALL"
+        const val ACTION_HANG_UP =
+            "com.xiaolong.happytalkie.action.HANG_UP"
     }
 }
