@@ -111,7 +111,7 @@ class MainActivity : Activity() {
         }
 
         val brand = ImageView(this).apply {
-            setImageResource(com.xiaolong.happytalkie.core.R.drawable.ic_happytalkie_mark)
+            setImageResource(com.xiaolong.happytalkie.core.R.drawable.ic_happytalkie_brand)
             scaleType = ImageView.ScaleType.FIT_CENTER
             contentDescription = "HappyTalkie"
         }
