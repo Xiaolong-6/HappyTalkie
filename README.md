@@ -2,12 +2,12 @@
 
 HappyTalky is a deliberately simple Android + Wear OS companion app for a paired phone and Pixel Watch.
 
-It has two communication modes:
+Its primary child-facing communication actions are:
 
 - **CALL** — synchronous live two-way voice when the current phone/watch route is suitable for streaming.
 - **TALK** — hold to record and release to send a persistent voice message. TALK remains the fallback when a live CALL is unavailable.
 
-There is no text chat.
+The shared conversation model also supports secondary text messages so voice, calls, and text can live in one timeline.
 
 ## Why two modes?
 
@@ -45,6 +45,8 @@ CALL has an explicit lifecycle:
 7. end
 
 Incoming CALL uses an actionable high-priority call notification and lock-screen/full-screen presentation where Android permits it. The caller can cancel while ringing. Either side can end an active call.
+
+A Watch can separately opt in to **Priority calls**. When enabled and advertised to the Phone, an unanswered ordinary call can expose a Priority action after 5 seconds. Priority never bypasses the Watch setting, and automatic answer is gated on the Watch Activity being visibly resumed before microphone capture starts.
 
 Phone live calls include an explicit **Speaker** toggle. Phone audio does not force speaker mode by default. Wear uses its communication speaker route.
 
