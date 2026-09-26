@@ -155,11 +155,11 @@ object LiveCallAudio {
             runCatching { manager?.isSpeakerphoneOn = true }
 
             val echo =
-                if (AcousticEchoCanceler.isAvailable)
+                if (AcousticEchoCanceler.isAvailable())
                     AcousticEchoCanceler.create(audioRecord.audioSessionId)
                 else null
             val noise =
-                if (NoiseSuppressor.isAvailable)
+                if (NoiseSuppressor.isAvailable())
                     NoiseSuppressor.create(audioRecord.audioSessionId)
                 else null
             echo?.enabled = true
