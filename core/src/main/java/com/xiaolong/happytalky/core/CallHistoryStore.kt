@@ -56,42 +56,62 @@ data class CallHistoryEntry(
         )
     }
 
-    fun shortLabel(): String =
-        when (outcome) {
+    fun shortLabel(): String {
+        val prefix =
+            if (mode == CallMode.PRIORITY) {
+                "Priority "
+            } else {
+                ""
+            }
+
+        return when (outcome) {
             CallOutcome.COMPLETED ->
                 if (durationMs > 0L) {
-                    "Call · ${displayDuration()}"
+                    "${prefix}call · ${displayDuration()}"
                 } else {
-                    "Call ended"
+                    "${prefix}call ended"
                 }
 
             CallOutcome.DECLINED_BY_ME ->
-                "Declined call"
+                "Declined ${prefix.lowercase()}call"
 
             CallOutcome.DECLINED_BY_PEER ->
-                "Call declined"
+                "${prefix}call declined"
 
             CallOutcome.NO_ANSWER ->
-                "No answer"
+                if (mode == CallMode.PRIORITY) {
+                    "Priority call · no answer"
+                } else {
+                    "No answer"
+                }
 
             CallOutcome.MISSED ->
-                "Missed call"
+                if (mode == CallMode.PRIORITY) {
+                    "Missed priority call"
+                } else {
+                    "Missed call"
+                }
 
             CallOutcome.CANCELLED_BY_ME ->
-                "Cancelled call"
+                "Cancelled ${prefix.lowercase()}call"
 
             CallOutcome.CANCELLED_BY_PEER ->
-                "Caller cancelled"
+                if (mode == CallMode.PRIORITY) {
+                    "Priority caller cancelled"
+                } else {
+                    "Caller cancelled"
+                }
 
             CallOutcome.BUSY ->
                 "Busy"
 
             CallOutcome.FAILED ->
-                "Call failed"
+                "${prefix}call failed"
 
             CallOutcome.DISCONNECTED ->
-                "Call disconnected"
+                "${prefix}call disconnected"
         }
+    }
 }
 
 object CallHistoryStore {
@@ -111,7 +131,8 @@ object CallHistoryStore {
         startedAt: Long = 0L,
         endedAt: Long =
             System.currentTimeMillis(),
-        mode: CallMode = CallMode.NORMAL
+        mode: CallMode =
+            StateStore.callMode(context)
     ): CallHistoryEntry {
         ensureLegacyMigrated(context)
 
