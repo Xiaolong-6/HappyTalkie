@@ -1025,8 +1025,9 @@ private fun callEyebrow(state: HappyTalkieUiState): String =
     when (state.callState) {
         CallVisualState.LIVE -> "LIVE NOW"
         CallVisualState.INCOMING -> "INCOMING CALL"
-        CallVisualState.OUTGOING -> "CALLING"
+        CallVisualState.OUTGOING -> "RINGING"
         CallVisualState.CONNECTING -> "CONNECTING"
+        CallVisualState.RECONNECTING -> "RECONNECTING"
         CallVisualState.READY -> "LIVE CALL"
     }
 
@@ -1036,45 +1037,91 @@ private fun callTitle(state: HappyTalkieUiState): String =
         CallVisualState.INCOMING -> "${state.peerName} is calling"
         CallVisualState.OUTGOING -> "Calling ${state.peerName}"
         CallVisualState.CONNECTING -> "Opening live audio"
-        CallVisualState.READY -> "Talk now"
+        CallVisualState.RECONNECTING -> "Keeping the call alive"
+        CallVisualState.READY ->
+            if (state.callEnabled) "Talk now" else "CALL unavailable"
     }
 
 private fun callSupportingText(state: HappyTalkieUiState): String =
     when (state.callState) {
-        CallVisualState.LIVE -> "Tap END when the conversation is finished"
-        CallVisualState.INCOMING -> "Answer to start a live conversation"
-        CallVisualState.OUTGOING -> "Waiting for ${state.peerName} to answer"
-        CallVisualState.CONNECTING -> "Almost ready"
-        CallVisualState.READY -> "Ring ${state.peerName} and speak in real time"
+        CallVisualState.LIVE ->
+            "Live audio · use Speaker when you want hands-free sound"
+
+        CallVisualState.INCOMING ->
+            "Answer or decline — nothing starts until you choose"
+
+        CallVisualState.OUTGOING ->
+            "Waiting for ${state.peerName} · tap CANCEL to stop ringing"
+
+        CallVisualState.CONNECTING ->
+            "Setting up the live audio channel"
+
+        CallVisualState.RECONNECTING ->
+            "Route changed · retrying before the call is ended"
+
+        CallVisualState.READY ->
+            if (state.callEnabled) {
+                "Ring ${state.peerName} and speak in real time"
+            } else {
+                "TALK is still available and will deliver later"
+            }
     }
 
 private fun callActionLabel(state: HappyTalkieUiState): String =
     when (state.callState) {
         CallVisualState.LIVE -> "END"
         CallVisualState.INCOMING -> "ANSWER"
-        CallVisualState.OUTGOING -> "CALLING"
-        CallVisualState.CONNECTING -> "WAIT"
+        CallVisualState.OUTGOING -> "CANCEL"
+        CallVisualState.CONNECTING -> "END"
+        CallVisualState.RECONNECTING -> "END"
         CallVisualState.READY -> "CALL"
     }
 
 private fun callIcon(state: HappyTalkieUiState): ImageVector =
-    if (state.callState == CallVisualState.LIVE) Icons.Rounded.Stop
-    else Icons.Rounded.Call
+    when (state.callState) {
+        CallVisualState.LIVE,
+        CallVisualState.OUTGOING,
+        CallVisualState.CONNECTING,
+        CallVisualState.RECONNECTING ->
+            Icons.Rounded.CallEnd
+
+        CallVisualState.INCOMING,
+        CallVisualState.READY ->
+            Icons.Rounded.Call
+    }
 
 private fun callAccent(state: HappyTalkieUiState): Color =
     when (state.callState) {
-        CallVisualState.LIVE -> Color(0xFF67E6A0)
-        CallVisualState.INCOMING -> Color(0xFF67E6A0)
-        CallVisualState.OUTGOING, CallVisualState.CONNECTING -> Color(0xFFFFD35A)
-        CallVisualState.READY -> Color(0xFFFFD35A)
+        CallVisualState.LIVE,
+        CallVisualState.INCOMING ->
+            Color(0xFF67E6A0)
+
+        CallVisualState.OUTGOING,
+        CallVisualState.CONNECTING,
+        CallVisualState.RECONNECTING ->
+            Color(0xFFFFD35A)
+
+        CallVisualState.READY ->
+            if (state.callEnabled) {
+                Color(0xFFFFD35A)
+            } else {
+                Color(0xFF8C9BB0)
+            }
     }
 
 private fun callButtonColor(state: HappyTalkieUiState): Color =
     when (state.callState) {
-        CallVisualState.LIVE -> Color(0xFFE6475D)
-        CallVisualState.INCOMING -> Color(0xFF22B66F)
-        CallVisualState.OUTGOING, CallVisualState.CONNECTING -> Color(0xFF3F5B89)
-        CallVisualState.READY -> Color(0xFF1877FF)
+        CallVisualState.LIVE,
+        CallVisualState.OUTGOING,
+        CallVisualState.CONNECTING,
+        CallVisualState.RECONNECTING ->
+            Color(0xFFE6475D)
+
+        CallVisualState.INCOMING ->
+            Color(0xFF22B66F)
+
+        CallVisualState.READY ->
+            Color(0xFF1877FF)
     }
 
 @Preview(
