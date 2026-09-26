@@ -82,7 +82,7 @@ object AlertController {
             VOICE_NOTIFICATION_ID,
             baseBuilder(context, VOICE_CHANNEL)
                 .setContentTitle("HappyTalkie")
-                .setContentText("Voice message received · tap to play")
+                .setContentText("Voice message received · open TALK inbox")
                 .setCategory(Notification.CATEGORY_MESSAGE)
                 .setAutoCancel(true)
                 .build()
