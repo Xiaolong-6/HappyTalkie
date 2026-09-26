@@ -261,7 +261,7 @@ class HappyTalkyListenerService : WearableListenerService() {
                     }
 
                     path.startsWith(
-                        Protocol.TEXT_PREFIX
+                        Protocol.MESSAGE_PREFIX
                     ) -> {
                         val map =
                             DataMapItem
