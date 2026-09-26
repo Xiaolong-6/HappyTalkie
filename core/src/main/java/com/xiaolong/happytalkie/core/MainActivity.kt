@@ -13,6 +13,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -95,6 +96,14 @@ abstract class HappyTalkieActivity : ComponentActivity() {
             getSystemService(ConnectivityManager::class.java)
 
         requestNeededPermissions()
+        updateIncomingPresentation()
+        refreshUiState()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        updateIncomingPresentation()
         refreshUiState()
     }
 
@@ -567,6 +576,7 @@ abstract class HappyTalkieActivity : ComponentActivity() {
 
     private fun refreshUiState() {
         val incoming = StateStore.incomingCall(this)
+        updateIncomingPresentation(incoming != null)
         val outgoing = StateStore.outgoingCall(this)
         val active = StateStore.activeCall(this)
         val connection = StateStore.peerConnection(this)
@@ -657,6 +667,29 @@ abstract class HappyTalkieActivity : ComponentActivity() {
         StateStore.incomingCall(this) != null ||
             StateStore.outgoingCall(this) != null ||
             StateStore.activeCall(this) != null
+
+    private fun updateIncomingPresentation(
+        incoming: Boolean =
+            StateStore.incomingCall(this) != null
+    ) {
+        if (Build.VERSION.SDK_INT >= 27) {
+            setShowWhenLocked(incoming)
+            setTurnScreenOn(incoming)
+        } else {
+            @Suppress("DEPRECATION")
+            if (incoming) {
+                window.addFlags(
+                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                        WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+                )
+            } else {
+                window.clearFlags(
+                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                        WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+                )
+            }
+        }
+    }
 
     private fun requestNeededPermissions() {
         val missing =
