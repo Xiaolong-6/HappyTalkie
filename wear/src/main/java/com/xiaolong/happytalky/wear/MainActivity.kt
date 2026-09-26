@@ -1,8 +1,15 @@
 package com.xiaolong.happytalky.wear
 
+import android.app.NotificationManager
+import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,6 +20,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.matchParentSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -23,6 +32,7 @@ import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.CallEnd
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.CloudOff
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.NetworkCell
@@ -31,6 +41,7 @@ import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -39,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -46,6 +58,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material3.AppScaffold
 import androidx.wear.compose.material3.Button
@@ -57,6 +70,9 @@ import androidx.wear.compose.material3.Icon
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.Text
 import androidx.wear.compose.material3.TextButton
+import com.xiaolong.happytalky.core.CallDirection
+import com.xiaolong.happytalky.core.CallHistoryEntry
+import com.xiaolong.happytalky.core.CallOutcome
 import com.xiaolong.happytalky.core.CallVisualState
 import com.xiaolong.happytalky.core.HappyTalkyActivity
 import com.xiaolong.happytalky.core.HappyTalkyUiState
@@ -65,6 +81,7 @@ import com.xiaolong.happytalky.core.PeerRoute
 import com.xiaolong.happytalky.core.Protocol
 import com.xiaolong.happytalky.core.VoiceDirection
 import com.xiaolong.happytalky.core.VoiceMessage
+import kotlin.math.roundToInt
 
 class MainActivity : HappyTalkyActivity() {
     private var openInboxRequested by mutableStateOf(false)
@@ -77,6 +94,8 @@ class MainActivity : HappyTalkyActivity() {
                 false
             ) == true
 
+        requestFullScreenCallAccessOnce()
+
         setContent {
             MaterialTheme {
                 WearHome(
@@ -87,6 +106,7 @@ class MainActivity : HappyTalkyActivity() {
                     onTalkFinish = ::finishTalk,
                     onTalkCancel = ::cancelTalk,
                     onPlay = ::playMessage,
+                    onDelete = ::deleteMessages,
                     openInbox = openInboxRequested,
                     onInboxOpened = {
                         openInboxRequested = false
@@ -103,6 +123,57 @@ class MainActivity : HappyTalkyActivity() {
                 Protocol.EXTRA_OPEN_TALK_INBOX,
                 false
             )
+    }
+
+    private fun requestFullScreenCallAccessOnce() {
+        if (Build.VERSION.SDK_INT < 34) {
+            return
+        }
+
+        val manager =
+            getSystemService(
+                NotificationManager::class.java
+            )
+
+        if (
+            manager?.canUseFullScreenIntent() ==
+                true
+        ) {
+            return
+        }
+
+        val prefs =
+            getSharedPreferences(
+                "happytalky_wear_setup",
+                Context.MODE_PRIVATE
+            )
+
+        if (
+            prefs.getBoolean(
+                "asked_full_screen_call",
+                false
+            )
+        ) {
+            return
+        }
+
+        prefs.edit()
+            .putBoolean(
+                "asked_full_screen_call",
+                true
+            )
+            .apply()
+
+        runCatching {
+            startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                    Uri.parse(
+                        "package:$packageName"
+                    )
+                )
+            )
+        }
     }
 }
 
