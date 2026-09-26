@@ -425,6 +425,23 @@ class LiveCallService : Service() {
                     PendingIntent.FLAG_IMMUTABLE
             )
 
+        val hangUpIntent =
+            Intent(
+                this,
+                CallActionReceiver::class.java
+            ).setAction(
+                CallActionReceiver.ACTION_HANG_UP
+            )
+
+        val hangUpPending =
+            PendingIntent.getBroadcast(
+                this,
+                12,
+                hangUpIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or
+                    PendingIntent.FLAG_IMMUTABLE
+            )
+
         return Notification.Builder(
             this,
             CHANNEL_ID
@@ -435,6 +452,20 @@ class LiveCallService : Service() {
             .setContentTitle("HappyTalkie")
             .setContentText(text)
             .setContentIntent(pending)
+            .addAction(
+                Notification.Action.Builder(
+                    android.R.drawable.sym_call_missed,
+                    if (
+                        StateStore.outgoingCall(this) != null &&
+                        StateStore.activeCall(this) == null
+                    ) {
+                        "Cancel"
+                    } else {
+                        "End"
+                    },
+                    hangUpPending
+                ).build()
+            )
             .setOngoing(true)
             .setCategory(
                 Notification.CATEGORY_CALL
