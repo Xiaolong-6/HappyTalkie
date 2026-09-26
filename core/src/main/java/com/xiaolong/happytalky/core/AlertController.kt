@@ -137,7 +137,7 @@ object AlertController {
                     Notification.PRIORITY_HIGH
                 )
                 .setNumber(unread)
-                .setAutoCancel(true)
+                .setAutoCancel(false)
                 .build()
         )
     }
