@@ -128,7 +128,7 @@ fun WearHome(
 private fun RouteStatus(state: HappyTalkieUiState) {
     val routeColor =
         when (state.peerRoute) {
-            PeerRoute.NEARBY_BLUETOOTH -> Color(0xFF8CC0FF)
+            PeerRoute.NEARBY_DIRECT -> Color(0xFF8CC0FF)
             PeerRoute.REMOTE_WIFI -> Color(0xFF71D7FF)
             PeerRoute.REMOTE_CELLULAR -> Color(0xFF8EE0A8)
             PeerRoute.REMOTE_INTERNET -> Color(0xFFC0CCE0)
@@ -364,7 +364,7 @@ private fun TalkEdgeButton(
 
 private fun wearRouteIcon(route: PeerRoute): ImageVector =
     when (route) {
-        PeerRoute.NEARBY_BLUETOOTH -> Icons.Rounded.Bluetooth
+        PeerRoute.NEARBY_DIRECT -> Icons.Rounded.Bluetooth
         PeerRoute.REMOTE_WIFI -> Icons.Rounded.Wifi
         PeerRoute.REMOTE_CELLULAR -> Icons.Rounded.NetworkCell
         PeerRoute.REMOTE_INTERNET -> Icons.Rounded.Cloud
@@ -381,7 +381,7 @@ private fun wearRouteLabel(state: HappyTalkieUiState): String =
         state.peerConnection == PeerConnectionState.DISCONNECTED ->
             "Offline · TALK"
 
-        state.peerRoute == PeerRoute.NEARBY_BLUETOOTH ->
+        state.peerRoute == PeerRoute.NEARBY_DIRECT ->
             "Bluetooth"
 
         state.peerRoute == PeerRoute.REMOTE_WIFI ->
