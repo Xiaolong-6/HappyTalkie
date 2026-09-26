@@ -153,6 +153,7 @@ object LiveCallAudio {
                 runCatching { remoteInput.close() }
                 runCatching { remoteOutput.close() }
                 runCatching { channelClient.close(opened) }
+                restoreCommunicationAudio(manager)
                 return false
             }
 
@@ -310,6 +311,14 @@ object LiveCallAudio {
         communicationDeviceRequested = false
     }
 
+    private fun restoreCommunicationAudio(manager: AudioManager?) {
+        clearCommunicationAudio(manager)
+        previousAudioMode?.let { oldMode ->
+            runCatching { manager?.mode = oldMode }
+        }
+        previousAudioMode = null
+    }
+
     private fun communicationRoute(manager: AudioManager?): String {
         if (manager == null) return "none"
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -365,11 +374,7 @@ object LiveCallAudio {
         }
 
         val manager = context.getSystemService(AudioManager::class.java)
-        clearCommunicationAudio(manager)
-        previousAudioMode?.let { oldMode ->
-            runCatching { manager?.mode = oldMode }
-        }
-        previousAudioMode = null
+        restoreCommunicationAudio(manager)
 
         if (wasRunning) {
             EventBus.notifyStateChanged(context)
