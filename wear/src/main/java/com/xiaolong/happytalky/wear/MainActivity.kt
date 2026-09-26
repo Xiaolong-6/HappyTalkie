@@ -1131,7 +1131,7 @@ fun WearInbox(
                     PaddingValues(
                         start = 14.dp,
                         end = 14.dp,
-                        top = 10.dp,
+                        top = 18.dp,
                         bottom = 8.dp,
                     ),
                 horizontalAlignment =
@@ -1144,8 +1144,8 @@ fun WearInbox(
                 ) {
                     Row(
                         modifier = Modifier
-                            .width(146.dp)
-                            .height(28.dp),
+                            .width(126.dp)
+                            .height(24.dp),
                         verticalAlignment =
                             Alignment.CenterVertically,
                         horizontalArrangement =
@@ -1176,8 +1176,7 @@ fun WearInbox(
                                     if (
                                         unreadCount > 0
                                     ) {
-                                        "‹ Inbox · " +
-                                            unreadCount
+                                        "‹ Inbox"
                                     } else {
                                         "‹ Inbox"
                                     },
@@ -1211,8 +1210,8 @@ fun WearInbox(
 
                         Box(
                             modifier = Modifier
-                                .width(42.dp)
-                                .height(24.dp)
+                                .width(38.dp)
+                                .height(22.dp)
                                 .background(
                                     Color(0xFF111A29),
                                     RoundedCornerShape(
@@ -1250,9 +1249,9 @@ fun WearInbox(
                                     if (
                                         priorityCallsEnabled
                                     ) {
-                                        "P ON"
+                                        "ON"
                                     } else {
-                                        "P OFF"
+                                        "OFF"
                                     },
                                 style =
                                     MaterialTheme
