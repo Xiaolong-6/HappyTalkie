@@ -24,6 +24,10 @@ The metadata records the exact source commit. Phone and watch APKs from one rele
 
 GitHub Actions artifacts remain available as a secondary path.
 
+## Rename cutover
+
+HappyTalky 0.3.0 uses the new package `com.xiaolong.happytalky`. It intentionally does not upgrade the old `com.xiaolong.happytalkie` install. Remove the old phone/watch app after installing the renamed build so two launcher entries and two Data Layer endpoints cannot be confused.
+
 ## Install on the Android phone
 
 Download `HappyTalky-phone-debug.apk` on the phone and open it.
