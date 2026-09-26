@@ -44,6 +44,14 @@ The phone and watch advertise different static Wear OS capabilities:
 
 The preferred peer is a reachable nearby/direct capability node; otherwise HappyTalky uses one reachable remote capability node.
 
+Each endpoint also publishes persistent metadata at:
+
+`/happytalky/device-info/<stable-device-id>`
+
+The payload contains the endpoint role, manufacturer/model, app version, protocol version and supported feature capabilities. A stable app-scoped UUID identifies the endpoint across ordinary Data Layer reconnects. `Node.displayName` is retained only as a human-readable fallback while the persistent device-info item has not arrived.
+
+This lets presentation use labels such as `Watch · Pixel Watch 3` and lets later protocol features be gated by advertised capabilities instead of assuming both endpoints were upgraded simultaneously.
+
 ## CALL state machine
 
 Signaling uses transient `MessageClient` paths:
