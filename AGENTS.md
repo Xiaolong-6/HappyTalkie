@@ -21,6 +21,6 @@ gradle :core:testDebugUnitTest :mobile:assembleDebug :wear:assembleDebug
 
 ## Change policy
 
-For new protocol paths, keep them under `/happytalkie`.
+For new protocol paths, keep them under `/happytalky`.
 For voice DataItems, use unique paths so offline messages cannot overwrite one another.
 Any change to CALL/TALK state transitions should be tested on both roles because most behavior is intentionally shared in `core`.

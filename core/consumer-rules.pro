@@ -1,1 +1,1 @@
-# HappyTalkie core currently needs no consumer ProGuard rules.
+# HappyTalky core currently needs no consumer ProGuard rules.
