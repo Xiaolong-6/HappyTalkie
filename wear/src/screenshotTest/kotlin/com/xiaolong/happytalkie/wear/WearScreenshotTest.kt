@@ -8,10 +8,31 @@ import com.xiaolong.happytalkie.core.CallVisualState
 import com.xiaolong.happytalkie.core.HappyTalkieUiState
 import com.xiaolong.happytalkie.core.PeerConnectionState
 import com.xiaolong.happytalkie.core.PeerRoute
+import com.xiaolong.happytalkie.core.VoiceDirection
+import com.xiaolong.happytalkie.core.VoiceMessage
+import java.io.File
 
 private const val WATCH_DEVICE =
     "spec:width=192dp,height=192dp,dpi=320,isRound=true"
 private const val WATCH_BACKGROUND = 0xFF000000
+
+private val watchMessages =
+    listOf(
+        VoiceMessage(
+            id = "watch-in-1",
+            createdAt = 1_760_000_000_000L,
+            direction = VoiceDirection.INCOMING,
+            file = File("/tmp/watch-in-1.m4a"),
+            durationMs = 8_000L,
+        ),
+        VoiceMessage(
+            id = "watch-out-1",
+            createdAt = 1_760_000_060_000L,
+            direction = VoiceDirection.OUTGOING,
+            file = File("/tmp/watch-out-1.m4a"),
+            durationMs = 5_000L,
+        ),
+    )
 
 @PreviewTest
 @Preview(
@@ -31,6 +52,7 @@ fun WatchReadyScreenshot() {
                 peerName = "Phone",
                 peerConnection = PeerConnectionState.CONNECTED,
                 peerRoute = PeerRoute.NEARBY_DIRECT,
+                messages = watchMessages,
             ),
             onCall = {},
             onDecline = {},
@@ -187,6 +209,26 @@ fun WatchReconnectingScreenshot() {
             onTalkStart = {},
             onTalkFinish = {},
             onTalkCancel = {},
+            onPlay = {},
+        )
+    }
+}
+
+
+@PreviewTest
+@Preview(
+    name = "Watch TALK inbox",
+    device = WATCH_DEVICE,
+    showBackground = true,
+    backgroundColor = WATCH_BACKGROUND,
+)
+@Composable
+fun WatchTalkInboxScreenshot() {
+    MaterialTheme {
+        WearTalkInbox(
+            messages = watchMessages,
+            peerName = "Phone",
+            onBack = {},
             onPlay = {},
         )
     }
