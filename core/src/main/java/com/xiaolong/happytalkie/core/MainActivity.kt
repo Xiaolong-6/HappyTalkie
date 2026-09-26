@@ -30,6 +30,7 @@ data class HappyTalkieUiState(
     val recording: Boolean = false,
     val callEnabled: Boolean = true,
     val talkEnabled: Boolean = true,
+    val speakerOn: Boolean = false,
     val peerName: String = "Watch",
     val messages: List<VoiceMessage> = emptyList()
 )
@@ -192,6 +193,13 @@ abstract class HappyTalkieActivity : ComponentActivity() {
         AudioPlayer.play(this, message.file, deleteAfter = false)
     }
 
+    protected fun toggleSpeaker() {
+        if (StateStore.activeCall(this) == null) return
+        val next = !LiveCallAudio.isSpeakerEnabled(this)
+        LiveCallAudio.setSpeakerEnabled(this, next)
+        refreshUiState()
+    }
+
     protected fun refreshNow() {
         refreshUiState()
     }
@@ -298,6 +306,9 @@ abstract class HappyTalkieActivity : ComponentActivity() {
             callEnabled =
                 outgoing == null || active != null || incoming != null,
             talkEnabled = !hasAnyCallState(),
+            speakerOn =
+                active != null &&
+                    LiveCallAudio.isSpeakerEnabled(this),
             peerName = peer,
             messages = VoiceMessageStore.list(this, limit = 30)
         )
