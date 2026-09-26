@@ -6,66 +6,96 @@ import android.net.NetworkCapabilities
 import android.os.Handler
 import android.os.Looper
 import com.google.android.gms.wearable.Asset
+import com.google.android.gms.wearable.CapabilityClient
+import com.google.android.gms.wearable.Node
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 import java.util.concurrent.Executors
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
 
 class DataLayerTransport(context: Context) {
     private val appContext = context.applicationContext
-    private val nodeClient = Wearable.getNodeClient(appContext)
-    private val messageClient = Wearable.getMessageClient(appContext)
-    private val dataClient = Wearable.getDataClient(appContext)
-    private val mainHandler = Handler(Looper.getMainLooper())
-    private val io = Executors.newSingleThreadExecutor()
+    private val role = EndpointRole.fromContext(appContext)
+    private val capabilityClient =
+        Wearable.getCapabilityClient(appContext)
+    private val messageClient =
+        Wearable.getMessageClient(appContext)
+    private val dataClient =
+        Wearable.getDataClient(appContext)
+    private val mainHandler =
+        Handler(Looper.getMainLooper())
+    private val io =
+        Executors.newSingleThreadExecutor()
 
-    fun refreshPeerConnection(
-        callback: (PeerConnectionState, PeerRoute) -> Unit = { _, _ -> }
+    private val targetCapability: String
+        get() =
+            if (role == EndpointRole.PHONE) {
+                Protocol.CAPABILITY_WATCH
+            } else {
+                Protocol.CAPABILITY_PHONE
+            }
+
+    fun findReachablePeer(
+        callback: (Node?) -> Unit
     ) {
-        nodeClient.connectedNodes
-            .addOnSuccessListener { nodes ->
-                if (nodes.isEmpty()) {
-                    updateConnection(
-                        PeerConnectionState.DISCONNECTED,
-                        PeerRoute.OFFLINE
-                    )
-                    mainHandler.post {
-                        callback(
-                            PeerConnectionState.DISCONNECTED,
-                            PeerRoute.OFFLINE
-                        )
-                    }
-                    return@addOnSuccessListener
-                }
+        capabilityClient
+            .getCapability(
+                targetCapability,
+                CapabilityClient.FILTER_REACHABLE
+            )
+            .addOnSuccessListener { info ->
+                val node =
+                    info.nodes
+                        .firstOrNull { it.isNearby }
+                        ?: info.nodes
+                            .sortedBy { it.id }
+                            .firstOrNull()
 
-                val route =
-                    if (nodes.any { it.isNearby }) {
-                        PeerRoute.NEARBY_DIRECT
-                    } else {
-                        remoteRoute()
-                    }
-
-                updateConnection(
-                    PeerConnectionState.CONNECTED,
-                    route
-                )
                 mainHandler.post {
-                    callback(PeerConnectionState.CONNECTED, route)
+                    callback(node)
                 }
             }
             .addOnFailureListener {
+                mainHandler.post {
+                    callback(null)
+                }
+            }
+    }
+
+    fun refreshPeerConnection(
+        callback: (
+            PeerConnectionState,
+            PeerRoute
+        ) -> Unit = { _, _ -> }
+    ) {
+        findReachablePeer { node ->
+            if (node == null) {
                 updateConnection(
                     PeerConnectionState.DISCONNECTED,
                     PeerRoute.OFFLINE
                 )
-                mainHandler.post {
-                    callback(
-                        PeerConnectionState.DISCONNECTED,
-                        PeerRoute.OFFLINE
-                    )
-                }
+                callback(
+                    PeerConnectionState.DISCONNECTED,
+                    PeerRoute.OFFLINE
+                )
+                return@findReachablePeer
             }
+
+            val route =
+                if (node.isNearby) {
+                    PeerRoute.NEARBY_DIRECT
+                } else {
+                    remoteRoute()
+                }
+
+            updateConnection(
+                PeerConnectionState.CONNECTED,
+                route
+            )
+            callback(
+                PeerConnectionState.CONNECTED,
+                route
+            )
+        }
     }
 
     fun sendSignal(
@@ -73,72 +103,50 @@ class DataLayerTransport(context: Context) {
         callId: String,
         callback: (Boolean) -> Unit
     ) {
-        nodeClient.connectedNodes
-            .addOnSuccessListener { nodes ->
-                if (nodes.isEmpty()) {
-                    updateConnection(
-                        PeerConnectionState.DISCONNECTED,
-                        PeerRoute.OFFLINE
-                    )
-                    mainHandler.post { callback(false) }
-                    return@addOnSuccessListener
-                }
-
-                val route =
-                    if (nodes.any { it.isNearby }) {
-                        PeerRoute.NEARBY_DIRECT
-                    } else {
-                        remoteRoute()
-                    }
-
-                val remaining = AtomicInteger(nodes.size)
-                val anySuccess = AtomicBoolean(false)
-
-                nodes.forEach { node ->
-                    messageClient.sendMessage(
-                        node.id,
-                        path,
-                        callId.toByteArray(Charsets.UTF_8)
-                    ).addOnSuccessListener {
-                        anySuccess.set(true)
-                        if (remaining.decrementAndGet() == 0) {
-                            if (anySuccess.get()) {
-                                updateConnection(
-                                    PeerConnectionState.CONNECTED,
-                                    route
-                                )
-                            }
-                            mainHandler.post {
-                                callback(anySuccess.get())
-                            }
-                        }
-                    }.addOnFailureListener {
-                        if (remaining.decrementAndGet() == 0) {
-                            if (anySuccess.get()) {
-                                updateConnection(
-                                    PeerConnectionState.CONNECTED,
-                                    route
-                                )
-                            } else {
-                                updateConnection(
-                                    PeerConnectionState.DISCONNECTED,
-                                    PeerRoute.OFFLINE
-                                )
-                            }
-                            mainHandler.post {
-                                callback(anySuccess.get())
-                            }
-                        }
-                    }
-                }
-            }
-            .addOnFailureListener {
+        findReachablePeer { node ->
+            if (node == null) {
                 updateConnection(
                     PeerConnectionState.DISCONNECTED,
                     PeerRoute.OFFLINE
                 )
-                mainHandler.post { callback(false) }
+                callback(false)
+                return@findReachablePeer
             }
+
+            val route =
+                if (node.isNearby) {
+                    PeerRoute.NEARBY_DIRECT
+                } else {
+                    remoteRoute()
+                }
+
+            messageClient
+                .sendMessage(
+                    node.id,
+                    path,
+                    callId.toByteArray(Charsets.UTF_8)
+                )
+                .addOnSuccessListener {
+                    updateConnection(
+                        PeerConnectionState.CONNECTED,
+                        route
+                    )
+                    mainHandler.post {
+                        callback(true)
+                    }
+                }
+                .addOnFailureListener {
+                    refreshPeerConnection { state, _ ->
+                        mainHandler.post {
+                            callback(
+                                state ==
+                                    PeerConnectionState.CONNECTED &&
+                                    false
+                            )
+                        }
+                    }
+                }
+        }
     }
 
     fun queueVoice(
@@ -148,10 +156,14 @@ class DataLayerTransport(context: Context) {
     ) {
         io.execute {
             try {
-                val bytes = message.file.readBytes()
-                val mapRequest = PutDataMapRequest.create(
-                    Protocol.VOICE_PREFIX + message.id
-                )
+                val bytes =
+                    message.file.readBytes()
+                val mapRequest =
+                    PutDataMapRequest.create(
+                        Protocol.VOICE_PREFIX +
+                            message.id
+                    )
+
                 mapRequest.dataMap.putString(
                     Protocol.KEY_ID,
                     message.id
@@ -176,13 +188,19 @@ class DataLayerTransport(context: Context) {
                             .setUrgent()
                     )
                     .addOnSuccessListener {
-                        mainHandler.post { callback(true) }
+                        mainHandler.post {
+                            callback(true)
+                        }
                     }
                     .addOnFailureListener {
-                        mainHandler.post { callback(false) }
+                        mainHandler.post {
+                            callback(false)
+                        }
                     }
             } catch (_: Exception) {
-                mainHandler.post { callback(false) }
+                mainHandler.post {
+                    callback(false)
+                }
             }
         }
     }
@@ -193,8 +211,9 @@ class DataLayerTransport(context: Context) {
                 ConnectivityManager::class.java
             ) ?: return PeerRoute.REMOTE_INTERNET
 
-        val network = manager.activeNetwork
-            ?: return PeerRoute.REMOTE_INTERNET
+        val network =
+            manager.activeNetwork
+                ?: return PeerRoute.REMOTE_INTERNET
         val capabilities =
             manager.getNetworkCapabilities(network)
                 ?: return PeerRoute.REMOTE_INTERNET
@@ -202,13 +221,16 @@ class DataLayerTransport(context: Context) {
         return when {
             capabilities.hasTransport(
                 NetworkCapabilities.TRANSPORT_WIFI
-            ) -> PeerRoute.REMOTE_WIFI
+            ) ->
+                PeerRoute.REMOTE_WIFI
 
             capabilities.hasTransport(
                 NetworkCapabilities.TRANSPORT_CELLULAR
-            ) -> PeerRoute.REMOTE_CELLULAR
+            ) ->
+                PeerRoute.REMOTE_CELLULAR
 
-            else -> PeerRoute.REMOTE_INTERNET
+            else ->
+                PeerRoute.REMOTE_INTERNET
         }
     }
 
@@ -216,8 +238,16 @@ class DataLayerTransport(context: Context) {
         state: PeerConnectionState,
         route: PeerRoute
     ) {
-        StateStore.setPeerConnection(appContext, state)
-        StateStore.setPeerRoute(appContext, route)
-        EventBus.notifyStateChanged(appContext)
+        StateStore.setPeerConnection(
+            appContext,
+            state
+        )
+        StateStore.setPeerRoute(
+            appContext,
+            route
+        )
+        EventBus.notifyStateChanged(
+            appContext
+        )
     }
 }
