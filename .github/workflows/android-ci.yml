@@ -57,8 +57,7 @@ jobs:
             exit 1
           fi
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" --list --channel=3 | grep -Ei "cinnamon|android-37|build-tools;37" || true
-          exit 1
+          "$SDKMANAGER" --channel=3 "platforms;android-37.0" "build-tools;37.0.0"
 
       - name: Test and build
         shell: bash
