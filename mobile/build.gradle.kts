@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.xiaolong.happytalkie.mobile"
+    namespace = "com.xiaolong.happytalky.mobile"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.xiaolong.happytalkie"
+        applicationId = "com.xiaolong.happytalky"
         minSdk = 26
         targetSdk = 36
         versionCode = 2

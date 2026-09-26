@@ -18,12 +18,12 @@
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:label="HappyTalkie"
+        android:label="HappyTalky"
         android:supportsRtl="true"
-        android:theme="@style/Theme.HappyTalkie">
+        android:theme="@style/Theme.HappyTalky">
 
         <meta-data
-            android:name="happytalkie.role"
+            android:name="happytalky.role"
             android:value="phone" />
 
         <activity
@@ -36,12 +36,12 @@
         </activity>
 
         <service
-            android:name="com.xiaolong.happytalkie.core.LiveCallService"
+            android:name="com.xiaolong.happytalky.core.LiveCallService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
 
         <service
-            android:name="com.xiaolong.happytalkie.core.HappyTalkieListenerService"
+            android:name="com.xiaolong.happytalky.core.HappyTalkyListenerService"
             android:exported="true">
             <intent-filter>
                 <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
@@ -50,7 +50,7 @@
                 <data
                     android:scheme="wear"
                     android:host="*"
-                    android:pathPrefix="/happytalkie" />
+                    android:pathPrefix="/happytalky" />
             </intent-filter>
         </service>
     </application>
