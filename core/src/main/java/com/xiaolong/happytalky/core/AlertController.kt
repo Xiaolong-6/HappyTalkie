@@ -21,9 +21,9 @@ import android.os.VibratorManager
 
 object AlertController {
     private const val CALL_CHANNEL = "happytalky_calls_v3"
-    private const val VOICE_CHANNEL = "happytalky_voice_v2"
+    private const val MESSAGE_CHANNEL = "happytalky_messages_v1"
     private const val CALL_NOTIFICATION_ID = 1001
-    private const val VOICE_NOTIFICATION_ID = 1002
+    private const val MESSAGE_NOTIFICATION_ID = 1002
 
     private val handler = Handler(Looper.getMainLooper())
     private var ringtone: Ringtone? = null
@@ -87,26 +87,53 @@ object AlertController {
         manager?.cancel(CALL_NOTIFICATION_ID)
     }
 
-    fun postVoiceNotification(context: Context) {
-        refreshVoiceNotification(context)
+    fun postVoiceNotification(
+        context: Context
+    ) {
+        refreshMessageNotification(
+            context
+        )
     }
 
-    fun refreshVoiceNotification(context: Context) {
+    fun postTextNotification(
+        context: Context
+    ) {
+        refreshMessageNotification(
+            context
+        )
+    }
+
+    fun refreshVoiceNotification(
+        context: Context
+    ) {
+        refreshMessageNotification(
+            context
+        )
+    }
+
+    fun refreshMessageNotification(
+        context: Context
+    ) {
         ensureChannels(context)
 
         val manager =
             context.getSystemService(
                 NotificationManager::class.java
             ) ?: return
-
-        val unread =
+        val voiceUnread =
             VoiceMessageStore.unreadCount(
                 context
             )
+        val textUnread =
+            TextMessageStore.unreadCount(
+                context
+            )
+        val unread =
+            voiceUnread + textUnread
 
         if (unread <= 0) {
             manager.cancel(
-                VOICE_NOTIFICATION_ID
+                MESSAGE_NOTIFICATION_ID
             )
             return
         }
@@ -115,25 +142,42 @@ object AlertController {
             return
         }
 
-        manager.notify(
-            VOICE_NOTIFICATION_ID,
-            baseBuilder(
-                context,
-                VOICE_CHANNEL
-            )
-                .setContentTitle(
-                    if (unread == 1) {
+        val title =
+            when {
+                voiceUnread > 0 &&
+                    textUnread == 0 ->
+                    if (voiceUnread == 1) {
                         "New TALK"
                     } else {
-                        "$unread new TALK messages"
+                        "$voiceUnread new TALK messages"
                     }
-                )
-                .setContentText(
-                    if (unread == 1) {
-                        "1 unread voice message"
+
+                textUnread > 0 &&
+                    voiceUnread == 0 ->
+                    if (textUnread == 1) {
+                        "New text message"
                     } else {
-                        "$unread unread voice messages"
+                        "$textUnread new text messages"
                     }
+
+                else ->
+                    "$unread new messages"
+            }
+
+        manager.notify(
+            MESSAGE_NOTIFICATION_ID,
+            baseBuilder(
+                context,
+                MESSAGE_CHANNEL
+            )
+                .setContentTitle(title)
+                .setContentText(
+                    "$unread unread " +
+                        if (unread == 1) {
+                            "message"
+                        } else {
+                            "messages"
+                        }
                 )
                 .setContentIntent(
                     launcherPendingIntent(
@@ -311,14 +355,14 @@ object AlertController {
             manager.createNotificationChannel(channel)
         }
 
-        if (manager.getNotificationChannel(VOICE_CHANNEL) == null) {
+        if (manager.getNotificationChannel(MESSAGE_CHANNEL) == null) {
             val channel = NotificationChannel(
-                VOICE_CHANNEL,
-                "HappyTalky TALK messages",
+                MESSAGE_CHANNEL,
+                "HappyTalky messages",
                 NotificationManager.IMPORTANCE_HIGH
             )
             channel.description =
-                "New HappyTalky TALK messages"
+                "New HappyTalky TALK and text messages"
             channel.enableVibration(true)
             channel.vibrationPattern =
                 longArrayOf(
