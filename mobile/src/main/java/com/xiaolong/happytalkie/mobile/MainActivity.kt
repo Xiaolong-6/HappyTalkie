@@ -104,7 +104,7 @@ private val PhoneColors = darkColorScheme(
 )
 
 @Composable
-private fun HappyTalkiePhoneTheme(content: @Composable () -> Unit) {
+fun HappyTalkiePhoneTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = PhoneColors,
         typography = Typography(),
@@ -113,7 +113,7 @@ private fun HappyTalkiePhoneTheme(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun HappyTalkiePhoneScreen(
+fun HappyTalkiePhoneScreen(
     state: HappyTalkieUiState,
     onCall: () -> Unit,
     onTalkStart: () -> Unit,
