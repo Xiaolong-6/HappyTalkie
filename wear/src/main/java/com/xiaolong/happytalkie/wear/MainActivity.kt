@@ -404,7 +404,7 @@ private fun TalkEdgeButton(
         ) {
             if (recording) {
                 Text(
-                    text = "SEND",
+                    text = "RELEASE",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -525,13 +525,18 @@ private fun WearTalkMessage(
             Spacer(Modifier.size(7.dp))
             Column {
                 Text(
-                    text = "$sender TALK",
+                    text =
+                        if (message.durationMs > 0L) {
+                            "$sender · ${message.displayDuration()}"
+                        } else {
+                            "$sender · TALK"
+                        },
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                 )
                 Text(
-                    text = "${message.displayTime()} · tap to play",
+                    text = message.displayTime(),
                     style = MaterialTheme.typography.labelSmall,
                     color = Color(0xFF98A7BC),
                     maxLines = 1,
