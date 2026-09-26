@@ -356,15 +356,15 @@ private fun TalkInboxButton(
             .width(136.dp)
             .height(28.dp),
     ) {
-        Icon(
-            imageVector = Icons.Rounded.PlayArrow,
-            contentDescription = null,
-            modifier = Modifier.size(15.dp),
-        )
-        Spacer(Modifier.size(4.dp))
         Text(
-            text = "TALK inbox · $count",
+            text =
+                if (count > 0) {
+                    "Inbox · $count"
+                } else {
+                    "Inbox · 0"
+                },
             style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
             maxLines = 1,
         )
     }
@@ -436,7 +436,7 @@ private fun TalkEdgeButton(
         ) {
             if (recording) {
                 Text(
-                    text = "RELEASE",
+                    text = "SEND",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -478,10 +478,10 @@ fun WearTalkInbox(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
-                start = 16.dp,
-                end = 16.dp,
-                top = 18.dp,
-                bottom = 14.dp,
+                start = 18.dp,
+                end = 18.dp,
+                top = 14.dp,
+                bottom = 30.dp,
             ),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -489,7 +489,7 @@ fun WearTalkInbox(
             item {
                 TextButton(
                     onClick = onBack,
-                    modifier = Modifier.width(136.dp),
+                    modifier = Modifier.width(132.dp),
                 ) {
                     Text(
                         "‹ TALK inbox",
@@ -539,7 +539,7 @@ private fun WearTalkMessage(
 
     Card(
         onClick = { onPlay(message) },
-        modifier = Modifier.width(148.dp),
+        modifier = Modifier.width(138.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color(0xFF121D2E),
             contentColor = Color.White,
@@ -554,7 +554,7 @@ private fun WearTalkMessage(
                 modifier = Modifier.size(18.dp),
                 tint = Color(0xFF70C8FF),
             )
-            Spacer(Modifier.size(7.dp))
+            Spacer(Modifier.size(6.dp))
             Column {
                 Text(
                     text =
