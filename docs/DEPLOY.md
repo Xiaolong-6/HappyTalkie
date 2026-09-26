@@ -1,9 +1,9 @@
-# Deploy HappyTalkie
+# Deploy HappyTalky
 
-HappyTalkie installs as two APKs with the same application ID:
+HappyTalky installs as two APKs with the same application ID:
 
-- `HappyTalkie-phone-debug.apk` -> Android phone
-- `HappyTalkie-watch-debug.apk` -> Pixel Watch
+- `HappyTalky-phone-debug.apk` -> Android phone
+- `HappyTalky-watch-debug.apk` -> Pixel Watch
 
 Using the same application ID is intentional. Wear OS Data Layer also requires matching signatures.
 
@@ -16,31 +16,35 @@ Successful CI builds publish direct APK assets in a rolling prerelease:
 
 Each release contains:
 
-- `HappyTalkie-phone-debug.apk`
-- `HappyTalkie-watch-debug.apk`
+- `HappyTalky-phone-debug.apk`
+- `HappyTalky-watch-debug.apk`
 - `debug-dist.json`
 
 The metadata records the exact source commit. Phone and watch APKs from one release are built together and use the same CI debug signing identity.
 
 GitHub Actions artifacts remain available as a secondary path.
 
+## Rename cutover
+
+HappyTalky 0.3.0 uses the new package `com.xiaolong.happytalky`. It intentionally does not upgrade the old `com.xiaolong.happytalkie` install. Remove the old phone/watch app after installing the renamed build so two launcher entries and two Data Layer endpoints cannot be confused.
+
 ## Install on the Android phone
 
-Download `HappyTalkie-phone-debug.apk` on the phone and open it.
+Download `HappyTalky-phone-debug.apk` on the phone and open it.
 
 Android may ask you to allow that browser/file manager to install unknown apps. The system package installer must still confirm the installation.
 
 For ADB:
 
 ~~~text
-adb install -r HappyTalkie-phone-debug.apk
+adb install -r HappyTalky-phone-debug.apk
 ~~~
 
 If Android reports a signing mismatch from an older experimental build:
 
 ~~~text
-adb uninstall com.xiaolong.happytalkie
-adb install HappyTalkie-phone-debug.apk
+adb uninstall com.xiaolong.happytalky
+adb install HappyTalky-phone-debug.apk
 ~~~
 
 ## Install on Pixel Watch over Wireless debugging
@@ -62,14 +66,14 @@ Then use the separate debug connection port shown on the watch:
 
 ~~~text
 adb connect WATCH_IP:DEBUG_PORT
-adb -s WATCH_IP:DEBUG_PORT install -r HappyTalkie-watch-debug.apk
+adb -s WATCH_IP:DEBUG_PORT install -r HappyTalky-watch-debug.apk
 ~~~
 
 If the existing watch build has a different signature:
 
 ~~~text
-adb -s WATCH_IP:DEBUG_PORT uninstall com.xiaolong.happytalkie
-adb -s WATCH_IP:DEBUG_PORT install HappyTalkie-watch-debug.apk
+adb -s WATCH_IP:DEBUG_PORT uninstall com.xiaolong.happytalky
+adb -s WATCH_IP:DEBUG_PORT install HappyTalky-watch-debug.apk
 ~~~
 
 ### Phone-only debugging
@@ -81,13 +85,13 @@ The same Wear OS pairing flow applies:
 1. Watch -> **Wireless debugging -> Pair new device**.
 2. Pair from the phone ADB client using the pairing port/code.
 3. Connect to the watch's separate debug port.
-4. Install/update `HappyTalkie-watch-debug.apk`.
+4. Install/update `HappyTalky-watch-debug.apk`.
 
 An ordinary third-party Android app cannot silently sideload an arbitrary APK onto the watch. Wear OS still requires the platform's install authorization/confirmation path.
 
 ## First launch
 
-Open HappyTalkie once on both devices and grant:
+Open HappyTalky once on both devices and grant:
 
 - Microphone
 - Notifications
@@ -111,7 +115,7 @@ For incoming CALL, Android may also control whether full-screen call notificatio
 
 ### Incoming CALL while app is backgrounded
 
-1. Background HappyTalkie on the receiving device.
+1. Background HappyTalky on the receiving device.
 2. Start CALL from the peer.
 3. Verify a call-style notification appears.
 4. Verify Answer and Decline work.
@@ -201,7 +205,7 @@ CI renders Compose screenshot previews for both platforms before publishing debu
 
 The screenshot artifacts are:
 
-- `HappyTalkie-phone-ui-screenshots`
-- `HappyTalkie-watch-ui-screenshots`
+- `HappyTalky-phone-ui-screenshots`
+- `HappyTalky-watch-ui-screenshots`
 
 Use these to catch clipping, overlap, disabled-state errors, and small-round-screen regressions before installing on hardware.

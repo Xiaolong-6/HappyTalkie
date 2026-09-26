@@ -1,6 +1,6 @@
-# HappyTalkie
+# HappyTalky
 
-HappyTalkie is a deliberately simple Android + Wear OS companion app for a paired phone and Pixel Watch.
+HappyTalky is a deliberately simple Android + Wear OS companion app for a paired phone and Pixel Watch.
 
 It has two communication modes:
 
@@ -11,7 +11,7 @@ There is no text chat.
 
 ## Why two modes?
 
-CALL is for synchronous conversation. Signaling uses Wear OS Data Layer messages; after the receiver explicitly answers, HappyTalkie opens a bidirectional Data Layer channel and streams microphone audio in both directions.
+CALL is for synchronous conversation. Signaling uses Wear OS Data Layer messages; after the receiver explicitly answers, HappyTalky opens a bidirectional Data Layer channel and streams microphone audio in both directions.
 
 TALK is asynchronous and privacy-preserving:
 
@@ -22,13 +22,13 @@ TALK is asynchronous and privacy-preserving:
 
 ## Connectivity
 
-HappyTalkie exposes the route it can actually infer from Wear OS Data Layer and the local network:
+HappyTalky exposes the route it can actually infer from Wear OS Data Layer and the local network:
 
 - **Nearby · direct** — the paired peer is a nearby Data Layer node and can be reached directly. This is the preferred CALL route.
 - **Remote · Wi-Fi** — the peer is reachable through the remote Data Layer path while this device has Wi-Fi. CALL is allowed, with TALK as the more tolerant fallback.
 - **Remote · Cellular / Remote** — the peer is reachable remotely but the route is not suitable enough for this implementation's live ChannelClient audio. CALL is disabled and TALK is recommended.
 - **Offline** — CALL is disabled; TALK can still be recorded and queued for later synchronization.
-- **Reconnecting** — an active CALL keeps a short grace period while HappyTalkie tries to restore the live channel after a route change.
+- **Reconnecting** — an active CALL keeps a short grace period while HappyTalky tries to restore the live channel after a route change.
 
 The UI deliberately does not claim to know the remote peer's exact LTE/Wi-Fi leg when Wear OS does not expose it.
 
@@ -75,7 +75,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Package
 
-`com.xiaolong.happytalkie`
+`com.xiaolong.happytalky`
 
 ## License
 

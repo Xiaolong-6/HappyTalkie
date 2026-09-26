@@ -2,7 +2,7 @@
 
 ## Product contract
 
-HappyTalkie exposes only two primary communication actions:
+HappyTalky exposes only two primary communication actions:
 
 - **CALL** = synchronous live two-way voice
 - **TALK** = asynchronous persistent voice message
@@ -15,29 +15,29 @@ Text chat is intentionally out of scope.
 - `mobile`: Android phone Compose Material 3 activity and phone-specific interaction design.
 - `wear`: Wear Compose Material 3 activity and round-screen interaction design.
 
-Both application modules use application ID `com.xiaolong.happytalkie` and must be signed identically.
+Both application modules use application ID `com.xiaolong.happytalky` and must be signed identically.
 
 ## Companion discovery
 
 The phone and watch advertise different static Wear OS capabilities:
 
-- phone: `happytalkie_phone`
-- watch: `happytalkie_watch`
+- phone: `happytalky_phone`
+- watch: `happytalky_watch`
 
-`CapabilityClient.FILTER_REACHABLE` is used for CALL readiness and signaling. This matters because `NodeClient` can report Android nodes even when the HappyTalkie companion app is not installed or does not support the current protocol.
+`CapabilityClient.FILTER_REACHABLE` is used for CALL readiness and signaling. This matters because `NodeClient` can report Android nodes even when the HappyTalky companion app is not installed or does not support the current protocol.
 
-The preferred peer is a reachable nearby/direct capability node; otherwise HappyTalkie uses one reachable remote capability node.
+The preferred peer is a reachable nearby/direct capability node; otherwise HappyTalky uses one reachable remote capability node.
 
 ## CALL state machine
 
 Signaling uses transient `MessageClient` paths:
 
-- `/happytalkie/call/ring`
-- `/happytalkie/call/answer`
-- `/happytalkie/call/decline`
-- `/happytalkie/call/cancel`
-- `/happytalkie/call/busy`
-- `/happytalkie/call/end`
+- `/happytalky/call/ring`
+- `/happytalky/call/answer`
+- `/happytalky/call/decline`
+- `/happytalky/call/cancel`
+- `/happytalky/call/busy`
+- `/happytalky/call/end`
 
 The intended lifecycle is:
 
@@ -56,7 +56,7 @@ A live call never begins merely because a RING arrived. The receiving user must 
 
 After ANSWER, the initiator opens:
 
-`/happytalkie/call/audio/<call-id>`
+`/happytalky/call/audio/<call-id>`
 
 through `ChannelClient`.
 
@@ -82,7 +82,7 @@ A foreground service keeps ringing/live-call state alive in the background and e
 
 A transient channel or peer disconnect does not immediately destroy an active CALL.
 
-HappyTalkie:
+HappyTalky:
 
 1. marks the route `RECONNECTING`;
 2. preserves the active call ID;
@@ -132,11 +132,11 @@ Local copies are stored under the app-private `voice-history` directory.
 
 Transfer uses a persistent DataItem + Asset:
 
-`/happytalkie/voice/<uuid>`
+`/happytalky/voice/<uuid>`
 
 This makes TALK independent from CALL and lets a local write synchronize after a temporary disconnect.
 
-On receive, HappyTalkie:
+On receive, HappyTalky:
 
 1. saves its own local copy;
 2. removes the synchronized DataItem after ingestion;
@@ -148,7 +148,7 @@ The phone history supports tap-to-play, selective deletion, select-all, and clea
 
 ## UI contract
 
-Phone and Watch share `HappyTalkieUiState`, not presentation code.
+Phone and Watch share `HappyTalkyUiState`, not presentation code.
 
 ### Phone
 
@@ -163,7 +163,7 @@ Compose Material 3 follows a voice-messenger information architecture:
 - bottom action bar owns the two primary actions: CALL and press-and-hold TALK;
 - incoming CALL temporarily replaces the bottom actions with Decline / Answer;
 - live CALL replaces the right action with the Speaker toggle;
-- light/dark ColorSchemes follow the Android system theme while keeping the HappyTalkie brand blue stable.
+- light/dark ColorSchemes follow the Android system theme while keeping the HappyTalky brand blue stable.
 
 ### Wear
 

@@ -1,12 +1,12 @@
 # Debug distribution
 
-HappyTalkie CI publishes installable debug APKs as GitHub prereleases after a successful build.
+HappyTalky CI publishes installable debug APKs as GitHub prereleases after a successful build.
 
 ## Latest main build
 
 - Release tag: `debug-main`
-- Phone: `HappyTalkie-phone-debug.apk`
-- Watch: `HappyTalkie-watch-debug.apk`
+- Phone: `HappyTalky-phone-debug.apk`
+- Watch: `HappyTalky-watch-debug.apk`
 - Metadata: `debug-dist.json`
 
 ## Pull requests

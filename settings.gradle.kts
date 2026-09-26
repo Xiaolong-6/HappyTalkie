@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "HappyTalkie"
+rootProject.name = "HappyTalky"
 include(":core", ":mobile", ":wear")
