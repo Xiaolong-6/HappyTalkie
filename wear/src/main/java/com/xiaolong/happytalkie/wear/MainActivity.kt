@@ -557,18 +557,18 @@ private fun WearTalkMessage(
             Spacer(Modifier.size(6.dp))
             Column {
                 Text(
-                    text =
-                        if (message.durationMs > 0L) {
-                            "$sender · ${message.displayDuration()}"
-                        } else {
-                            "$sender · TALK"
-                        },
+                    text = sender,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                 )
                 Text(
-                    text = message.displayTime(),
+                    text =
+                        if (message.durationMs > 0L) {
+                            "${message.displayDuration()} · ${message.displayTime()}"
+                        } else {
+                            message.displayTime()
+                        },
                     style = MaterialTheme.typography.labelSmall,
                     color = Color(0xFF98A7BC),
                     maxLines = 1,
