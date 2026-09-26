@@ -11,7 +11,7 @@ enum class PeerConnectionState {
 
 enum class PeerRoute {
     UNKNOWN,
-    NEARBY_BLUETOOTH,
+    NEARBY_DIRECT,
     REMOTE_WIFI,
     REMOTE_CELLULAR,
     REMOTE_INTERNET,
