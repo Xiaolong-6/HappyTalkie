@@ -169,7 +169,7 @@ fun HappyTalkyPhoneScreen(
     onCall: () -> Unit,
     onDecline: () -> Unit,
     onSpeakerToggle: () -> Unit,
-    onPriorityCall: () -> Unit,
+    onPriorityCall: () -> Unit = {},
     onTalkStart: () -> Unit,
     onTalkFinish: () -> Unit,
     onTalkCancel: () -> Unit,
