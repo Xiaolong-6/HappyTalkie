@@ -75,7 +75,6 @@ import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.ButtonDefaults
 import androidx.wear.compose.material3.Card
 import androidx.wear.compose.material3.CardDefaults
-import androidx.wear.compose.material3.EdgeButton
 import androidx.wear.compose.material3.Icon
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.Text
@@ -583,67 +582,6 @@ private fun PrimaryCallAction(
         ),
         modifier = Modifier.size(66.dp),
     )
-}
-
-@Composable
-private fun IncomingActions(
-    onAnswer: () -> Unit,
-    onDecline: () -> Unit,
-) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Button(
-            onClick = onDecline,
-            label = {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.CallEnd,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Text(
-                        "No",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-            },
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFD9485E),
-                contentColor = Color.White,
-            ),
-            modifier = Modifier.size(58.dp),
-        )
-
-        Button(
-            onClick = onAnswer,
-            label = {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Call,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Text(
-                        "Yes",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-            },
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF1DAA6B),
-                contentColor = Color.White,
-            ),
-            modifier = Modifier.size(58.dp),
-        )
-    }
 }
 
 @Composable
