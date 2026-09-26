@@ -152,15 +152,18 @@ Phone and Watch share `HappyTalkieUiState`, not presentation code.
 
 ### Phone
 
-Compose Material 3 presents:
+Compose Material 3 follows a voice-messenger information architecture:
 
-- branded header;
-- concise reachability pill;
-- explicit route/recommendation card;
-- live CALL state and controls;
-- Speaker toggle while live;
-- large hold-to-record TALK affordance;
-- history with explicit playback and management.
+- compact conversation header with peer reachability and CALL/TALK availability;
+- chronological TALK timeline as the main screen content;
+- incoming TALK bubbles on the left and outgoing TALK bubbles on the right;
+- tap to play, with duration and timestamp shown in the bubble;
+- long-press any TALK to enter multi-selection; the temporary top bar provides select-all and delete;
+- current CALL state appears inside the conversation timeline instead of occupying a permanent dashboard card;
+- bottom action bar owns the two primary actions: CALL and press-and-hold TALK;
+- incoming CALL temporarily replaces the bottom actions with Decline / Answer;
+- live CALL replaces the right action with the Speaker toggle;
+- light/dark ColorSchemes follow the Android system theme while keeping the HappyTalkie brand blue stable.
 
 ### Wear
 
