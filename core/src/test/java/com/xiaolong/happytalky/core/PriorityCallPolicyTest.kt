@@ -1,5 +1,6 @@
 package com.xiaolong.happytalky.core
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -74,4 +75,34 @@ class PriorityCallPolicyTest {
             )
         )
     }
+    @Test
+    fun sameActiveCallIgnoresLatePriorityInsteadOfBusy() {
+        assertEquals(
+            PriorityRequestDisposition
+                .IGNORE_ALREADY_ACTIVE,
+            PriorityCallPolicy
+                .requestDisposition(
+                    requestedCallId = "call-1",
+                    incomingCallId = null,
+                    outgoingCallId = null,
+                    activeCallId = "call-1"
+                )
+        )
+    }
+
+    @Test
+    fun unrelatedActiveCallRejectsPriorityAsBusy() {
+        assertEquals(
+            PriorityRequestDisposition
+                .REJECT_BUSY,
+            PriorityCallPolicy
+                .requestDisposition(
+                    requestedCallId = "call-1",
+                    incomingCallId = null,
+                    outgoingCallId = null,
+                    activeCallId = "call-2"
+                )
+        )
+    }
+
 }
