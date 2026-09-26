@@ -424,7 +424,7 @@ abstract class HappyTalkieActivity : ComponentActivity() {
         val connection = StateStore.peerConnection(this)
         val route = StateStore.peerRoute(this)
 
-        if (!callRouteReady(connection, route)) {
+        if (!CallRoutePolicy.canStartCall(connection, route)) {
             StateStore.setStatus(
                 this,
                 when (route) {
@@ -653,7 +653,7 @@ abstract class HappyTalkieActivity : ComponentActivity() {
                 recording = recording,
                 callEnabled =
                     callInProgress ||
-                        callRouteReady(connection, route),
+                        CallRoutePolicy.canStartCall(connection, route),
                 talkEnabled =
                     !callInProgress,
                 speakerOn =
@@ -670,16 +670,6 @@ abstract class HappyTalkieActivity : ComponentActivity() {
                     )
             )
     }
-
-    private fun callRouteReady(
-        connection: PeerConnectionState,
-        route: PeerRoute
-    ): Boolean =
-        connection == PeerConnectionState.CONNECTED &&
-            (
-                route == PeerRoute.NEARBY_DIRECT ||
-                    route == PeerRoute.REMOTE_WIFI
-            )
 
     private fun hasAnyCallState(): Boolean =
         StateStore.incomingCall(this) != null ||
