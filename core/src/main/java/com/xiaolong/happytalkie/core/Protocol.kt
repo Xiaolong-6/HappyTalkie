@@ -17,6 +17,8 @@ object Protocol {
     const val KEY_AUDIO = "audio"
 
     const val META_ROLE = "happytalkie.role"
+    const val CAPABILITY_PHONE = "happytalkie_phone"
+    const val CAPABILITY_WATCH = "happytalkie_watch"
     const val ACTION_STATE_CHANGED = "com.xiaolong.happytalkie.STATE_CHANGED"
 
     const val CALL_TIMEOUT_MS = 20_000L
