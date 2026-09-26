@@ -9,6 +9,10 @@ import com.xiaolong.happytalky.core.CallHistoryEntry
 import com.xiaolong.happytalky.core.CallOutcome
 import com.xiaolong.happytalky.core.CallMode
 import com.xiaolong.happytalky.core.CallVisualState
+import com.xiaolong.happytalky.core.ConversationDirection
+import com.xiaolong.happytalky.core.ConversationItem
+import com.xiaolong.happytalky.core.ConversationItemType
+import com.xiaolong.happytalky.core.DeliveryState
 import com.xiaolong.happytalky.core.HappyTalkyUiState
 import com.xiaolong.happytalky.core.PeerConnectionState
 import com.xiaolong.happytalky.core.PeerRoute
@@ -35,6 +39,46 @@ private val watchCallHistory =
             occurredAt = 1_760_000_240_000L,
             direction = CallDirection.OUTGOING,
             outcome = CallOutcome.COMPLETED,
+            durationMs = 74_000L,
+        ),
+    )
+
+
+private val watchConversation =
+    listOf(
+        ConversationItem(
+            id = "watch-text-in",
+            type = ConversationItemType.TEXT,
+            direction = ConversationDirection.INCOMING,
+            createdAt = 1_760_000_150_000L,
+            deliveryState = DeliveryState.DELIVERED,
+            text = "Dinner is ready ❤️",
+        ),
+        ConversationItem(
+            id = "watch-in-1",
+            type = ConversationItemType.VOICE,
+            direction = ConversationDirection.INCOMING,
+            createdAt = 1_760_000_000_000L,
+            deliveryState = DeliveryState.DELIVERED,
+            audioFileName = "watch-in-1.m4a",
+            durationMs = 8_000L,
+        ),
+        ConversationItem(
+            id = "watch-text-out",
+            type = ConversationItemType.TEXT,
+            direction = ConversationDirection.OUTGOING,
+            createdAt = 1_760_000_210_000L,
+            deliveryState = DeliveryState.QUEUED,
+            text = "Coming! 👍",
+        ),
+        ConversationItem(
+            id = "call-2",
+            type = ConversationItemType.CALL,
+            direction = ConversationDirection.OUTGOING,
+            createdAt = 1_760_000_240_000L,
+            deliveryState = DeliveryState.READ,
+            callId = "call-id-2",
+            callOutcome = CallOutcome.COMPLETED.name,
             durationMs = 74_000L,
         ),
     )
@@ -75,6 +119,7 @@ fun WatchReadyScreenshot() {
                 peerName = "Phone",
                 peerConnection = PeerConnectionState.CONNECTED,
                 peerRoute = PeerRoute.NEARBY_DIRECT,
+                textEnabled = true,
                 messages = watchMessages,
                 unreadVoiceCount = 1,
                 callHistory = watchCallHistory,
@@ -284,8 +329,10 @@ fun WatchTalkInboxScreenshot() {
         WearTalkInbox(
             messages = watchMessages,
             callHistory = watchCallHistory,
-            unreadCount = 1,
+            timeline = watchConversation,
+            unreadCount = 2,
             peerName = "Phone",
+            textEnabled = true,
             priorityCallsEnabled = true,
             onBack = {},
             onPlay = {},
@@ -293,6 +340,31 @@ fun WatchTalkInboxScreenshot() {
     }
 }
 
+
+
+@PreviewTest
+@Preview(
+    name = "Watch mixed inbox",
+    device = WATCH_DEVICE,
+    showBackground = true,
+    backgroundColor = WATCH_BACKGROUND,
+)
+@Composable
+fun WatchMixedInboxScreenshot() {
+    MaterialTheme {
+        WearTalkInbox(
+            messages = watchMessages,
+            callHistory = watchCallHistory,
+            timeline = watchConversation,
+            unreadCount = 2,
+            peerName = "Phone · Pixel 10 Pro",
+            textEnabled = true,
+            priorityCallsEnabled = true,
+            onBack = {},
+            onPlay = {},
+        )
+    }
+}
 
 @PreviewTest
 @Preview(
