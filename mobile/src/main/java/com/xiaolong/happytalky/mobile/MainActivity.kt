@@ -1,4 +1,4 @@
-package com.xiaolong.happytalkie.mobile
+package com.xiaolong.happytalky.mobile
 
 import android.os.Bundle
 import androidx.activity.compose.setContent
@@ -78,22 +78,22 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.xiaolong.happytalkie.core.CallVisualState
-import com.xiaolong.happytalkie.core.HappyTalkieActivity
-import com.xiaolong.happytalkie.core.HappyTalkieUiState
-import com.xiaolong.happytalkie.core.PeerConnectionState
-import com.xiaolong.happytalkie.core.PeerRoute
-import com.xiaolong.happytalkie.core.VoiceDirection
-import com.xiaolong.happytalkie.core.VoiceMessage
+import com.xiaolong.happytalky.core.CallVisualState
+import com.xiaolong.happytalky.core.HappyTalkyActivity
+import com.xiaolong.happytalky.core.HappyTalkyUiState
+import com.xiaolong.happytalky.core.PeerConnectionState
+import com.xiaolong.happytalky.core.PeerRoute
+import com.xiaolong.happytalky.core.VoiceDirection
+import com.xiaolong.happytalky.core.VoiceMessage
 
-class MainActivity : HappyTalkieActivity() {
+class MainActivity : HappyTalkyActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
         setContent {
-            HappyTalkiePhoneTheme {
-                HappyTalkiePhoneScreen(
+            HappyTalkyPhoneTheme {
+                HappyTalkyPhoneScreen(
                     state = uiState,
                     onCall = ::handleCallAction,
                     onDecline = ::declineIncomingCall,
@@ -145,7 +145,7 @@ private val PhoneDarkColors = darkColorScheme(
 )
 
 @Composable
-fun HappyTalkiePhoneTheme(
+fun HappyTalkyPhoneTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
@@ -162,8 +162,8 @@ fun HappyTalkiePhoneTheme(
 }
 
 @Composable
-fun HappyTalkiePhoneScreen(
-    state: HappyTalkieUiState,
+fun HappyTalkyPhoneScreen(
+    state: HappyTalkyUiState,
     onCall: () -> Unit,
     onDecline: () -> Unit,
     onSpeakerToggle: () -> Unit,
@@ -303,7 +303,7 @@ fun HappyTalkiePhoneScreen(
 
 @Composable
 private fun ConversationHeader(
-    state: HappyTalkieUiState
+    state: HappyTalkyUiState
 ) {
     Surface(
         color =
@@ -330,10 +330,10 @@ private fun ConversationHeader(
             ) {
                 Image(
                     painter = painterResource(
-                        com.xiaolong.happytalkie.core.R.drawable.ic_happytalkie_brand
+                        com.xiaolong.happytalky.core.R.drawable.ic_happytalky_brand
                     ),
                     contentDescription =
-                        "HappyTalkie",
+                        "HappyTalky",
                     modifier =
                         Modifier.fillMaxSize(),
                 )
@@ -480,7 +480,7 @@ private fun SelectionHeader(
 private fun ConversationTimeline(
     messages: List<VoiceMessage>,
     peerName: String,
-    state: HappyTalkieUiState,
+    state: HappyTalkyUiState,
     selectedIds: Set<String>,
     listState:
         androidx.compose.foundation.lazy.LazyListState,
@@ -861,7 +861,7 @@ private fun bubbleTextColor(
 
 @Composable
 private fun ActiveCallEvent(
-    state: HappyTalkieUiState
+    state: HappyTalkyUiState
 ) {
     Row(
         modifier =
@@ -924,7 +924,7 @@ private fun ActiveCallEvent(
 
 @Composable
 private fun ConversationActions(
-    state: HappyTalkieUiState,
+    state: HappyTalkyUiState,
     onCall: () -> Unit,
     onDecline: () -> Unit,
     onSpeakerToggle: () -> Unit,
@@ -1179,7 +1179,7 @@ private fun ActionButton(
 
 @Composable
 private fun HoldTalkAction(
-    state: HappyTalkieUiState,
+    state: HappyTalkyUiState,
     onStart: () -> Unit,
     onFinish: () -> Unit,
     onCancel: () -> Unit,
@@ -1309,7 +1309,7 @@ private fun toggleSelection(
 
 @Composable
 private fun routeStatusColor(
-    state: HappyTalkieUiState
+    state: HappyTalkyUiState
 ): Color =
     when {
         state.callState ==
@@ -1337,7 +1337,7 @@ private fun routeStatusColor(
     }
 
 private fun headerStatusText(
-    state: HappyTalkieUiState
+    state: HappyTalkyUiState
 ): String {
     val route =
         when (state.peerRoute) {
@@ -1383,7 +1383,7 @@ private fun headerStatusText(
 }
 
 private fun callActionLabel(
-    state: HappyTalkieUiState
+    state: HappyTalkyUiState
 ): String =
     when (
         state.callState
@@ -1406,7 +1406,7 @@ private fun callActionLabel(
     }
 
 private fun currentCallText(
-    state: HappyTalkieUiState
+    state: HappyTalkyUiState
 ): String =
     when (
         state.callState
@@ -1431,7 +1431,7 @@ private fun currentCallText(
     }
 
 private fun currentCallIcon(
-    state: HappyTalkieUiState
+    state: HappyTalkyUiState
 ): ImageVector =
     if (
         state.callState ==
@@ -1450,7 +1450,7 @@ private fun currentCallIcon(
 
 @Composable
 private fun callStateColor(
-    state: HappyTalkieUiState
+    state: HappyTalkyUiState
 ): Color =
     when (
         state.callState
@@ -1479,12 +1479,12 @@ private fun callStateColor(
 )
 @Composable
 private fun PhoneMessengerPreview() {
-    HappyTalkiePhoneTheme(
+    HappyTalkyPhoneTheme(
         darkTheme = false
     ) {
-        HappyTalkiePhoneScreen(
+        HappyTalkyPhoneScreen(
             state =
-                HappyTalkieUiState(
+                HappyTalkyUiState(
                     callEnabled = true,
                     peerConnection =
                         PeerConnectionState

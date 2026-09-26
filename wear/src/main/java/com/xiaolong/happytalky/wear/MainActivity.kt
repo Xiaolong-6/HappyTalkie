@@ -1,4 +1,4 @@
-package com.xiaolong.happytalkie.wear
+package com.xiaolong.happytalky.wear
 
 import android.content.Intent
 import android.os.Bundle
@@ -57,16 +57,16 @@ import androidx.wear.compose.material3.Icon
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.Text
 import androidx.wear.compose.material3.TextButton
-import com.xiaolong.happytalkie.core.CallVisualState
-import com.xiaolong.happytalkie.core.HappyTalkieActivity
-import com.xiaolong.happytalkie.core.HappyTalkieUiState
-import com.xiaolong.happytalkie.core.PeerConnectionState
-import com.xiaolong.happytalkie.core.PeerRoute
-import com.xiaolong.happytalkie.core.Protocol
-import com.xiaolong.happytalkie.core.VoiceDirection
-import com.xiaolong.happytalkie.core.VoiceMessage
+import com.xiaolong.happytalky.core.CallVisualState
+import com.xiaolong.happytalky.core.HappyTalkyActivity
+import com.xiaolong.happytalky.core.HappyTalkyUiState
+import com.xiaolong.happytalky.core.PeerConnectionState
+import com.xiaolong.happytalky.core.PeerRoute
+import com.xiaolong.happytalky.core.Protocol
+import com.xiaolong.happytalky.core.VoiceDirection
+import com.xiaolong.happytalky.core.VoiceMessage
 
-class MainActivity : HappyTalkieActivity() {
+class MainActivity : HappyTalkyActivity() {
     private var openInboxRequested by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -108,7 +108,7 @@ class MainActivity : HappyTalkieActivity() {
 
 @Composable
 fun WearHome(
-    state: HappyTalkieUiState,
+    state: HappyTalkyUiState,
     onCall: () -> Unit,
     onDecline: () -> Unit,
     onTalkStart: () -> Unit,
@@ -187,7 +187,7 @@ fun WearHome(
 }
 
 @Composable
-private fun RouteStatus(state: HappyTalkieUiState) {
+private fun RouteStatus(state: HappyTalkyUiState) {
     val routeColor =
         when (state.peerRoute) {
             PeerRoute.NEARBY_DIRECT -> Color(0xFF8CC0FF)
@@ -224,7 +224,7 @@ private fun RouteStatus(state: HappyTalkieUiState) {
 
 @Composable
 private fun PrimaryCallAction(
-    state: HappyTalkieUiState,
+    state: HappyTalkyUiState,
     onCall: () -> Unit,
 ) {
     val container =
@@ -372,7 +372,7 @@ private fun TalkInboxButton(
 
 @Composable
 private fun TalkEdgeButton(
-    state: HappyTalkieUiState,
+    state: HappyTalkyUiState,
     onStart: () -> Unit,
     onFinish: () -> Unit,
     onCancel: () -> Unit,
@@ -589,7 +589,7 @@ private fun wearRouteIcon(route: PeerRoute): ImageVector =
         PeerRoute.UNKNOWN -> Icons.Rounded.Cloud
     }
 
-private fun wearRouteLabel(state: HappyTalkieUiState): String =
+private fun wearRouteLabel(state: HappyTalkyUiState): String =
     when {
         state.callState == CallVisualState.RECONNECTING ->
             "Reconnecting"
@@ -613,7 +613,7 @@ private fun wearRouteLabel(state: HappyTalkieUiState): String =
             "Checking"
     }
 
-private fun wearCallLabel(state: HappyTalkieUiState): String =
+private fun wearCallLabel(state: HappyTalkyUiState): String =
     when (state.callState) {
         CallVisualState.LIVE -> "END"
         CallVisualState.INCOMING -> "ANSWER"

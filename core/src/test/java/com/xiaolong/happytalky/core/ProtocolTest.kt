@@ -1,11 +1,11 @@
-package com.xiaolong.happytalkie.core
+package com.xiaolong.happytalky.core
 
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ProtocolTest {
     @Test
-    fun allDataLayerPathsStayInsideHappyTalkieNamespace() {
+    fun allDataLayerPathsStayInsideHappyTalkyNamespace() {
         assertTrue(Protocol.CALL_RING.startsWith(Protocol.BASE))
         assertTrue(Protocol.CALL_ANSWER.startsWith(Protocol.BASE))
         assertTrue(Protocol.CALL_DECLINE.startsWith(Protocol.BASE))

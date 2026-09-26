@@ -1,4 +1,4 @@
-package com.xiaolong.happytalkie.core
+package com.xiaolong.happytalky.core
 
 import java.io.File
 import org.junit.Assert.assertEquals

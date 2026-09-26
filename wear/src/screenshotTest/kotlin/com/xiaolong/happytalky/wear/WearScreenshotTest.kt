@@ -1,15 +1,15 @@
-package com.xiaolong.happytalkie.wear
+package com.xiaolong.happytalky.wear
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.wear.compose.material3.MaterialTheme
 import com.android.tools.screenshot.PreviewTest
-import com.xiaolong.happytalkie.core.CallVisualState
-import com.xiaolong.happytalkie.core.HappyTalkieUiState
-import com.xiaolong.happytalkie.core.PeerConnectionState
-import com.xiaolong.happytalkie.core.PeerRoute
-import com.xiaolong.happytalkie.core.VoiceDirection
-import com.xiaolong.happytalkie.core.VoiceMessage
+import com.xiaolong.happytalky.core.CallVisualState
+import com.xiaolong.happytalky.core.HappyTalkyUiState
+import com.xiaolong.happytalky.core.PeerConnectionState
+import com.xiaolong.happytalky.core.PeerRoute
+import com.xiaolong.happytalky.core.VoiceDirection
+import com.xiaolong.happytalky.core.VoiceMessage
 import java.io.File
 
 private const val WATCH_DEVICE =
@@ -45,7 +45,7 @@ private val watchMessages =
 fun WatchReadyScreenshot() {
     MaterialTheme {
         WearHome(
-            state = HappyTalkieUiState(
+            state = HappyTalkyUiState(
                 status = "Ready",
                 callState = CallVisualState.READY,
                 callEnabled = true,
@@ -75,7 +75,7 @@ fun WatchReadyScreenshot() {
 fun WatchIncomingScreenshot() {
     MaterialTheme {
         WearHome(
-            state = HappyTalkieUiState(
+            state = HappyTalkyUiState(
                 status = "Phone is calling",
                 callState = CallVisualState.INCOMING,
                 peerName = "Phone",
@@ -103,7 +103,7 @@ fun WatchIncomingScreenshot() {
 fun WatchRecordingScreenshot() {
     MaterialTheme {
         WearHome(
-            state = HappyTalkieUiState(
+            state = HappyTalkyUiState(
                 status = "Recording TALK…",
                 callState = CallVisualState.READY,
                 recording = true,
@@ -134,7 +134,7 @@ fun WatchRecordingScreenshot() {
 fun WatchOfflineScreenshot() {
     MaterialTheme {
         WearHome(
-            state = HappyTalkieUiState(
+            state = HappyTalkyUiState(
                 status = "Phone offline · TALK recommended",
                 callState = CallVisualState.READY,
                 callEnabled = false,
@@ -164,7 +164,7 @@ fun WatchOfflineScreenshot() {
 fun WatchLiveScreenshot() {
     MaterialTheme {
         WearHome(
-            state = HappyTalkieUiState(
+            state = HappyTalkyUiState(
                 status = "Live with Phone",
                 callState = CallVisualState.LIVE,
                 callEnabled = true,
@@ -195,7 +195,7 @@ fun WatchLiveScreenshot() {
 fun WatchReconnectingScreenshot() {
     MaterialTheme {
         WearHome(
-            state = HappyTalkieUiState(
+            state = HappyTalkyUiState(
                 status = "Reconnecting…",
                 callState = CallVisualState.RECONNECTING,
                 callEnabled = true,

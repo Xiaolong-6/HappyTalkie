@@ -1,14 +1,14 @@
-package com.xiaolong.happytalkie.mobile
+package com.xiaolong.happytalky.mobile
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.tools.screenshot.PreviewTest
-import com.xiaolong.happytalkie.core.CallVisualState
-import com.xiaolong.happytalkie.core.HappyTalkieUiState
-import com.xiaolong.happytalkie.core.PeerConnectionState
-import com.xiaolong.happytalkie.core.PeerRoute
-import com.xiaolong.happytalkie.core.VoiceDirection
-import com.xiaolong.happytalkie.core.VoiceMessage
+import com.xiaolong.happytalky.core.CallVisualState
+import com.xiaolong.happytalky.core.HappyTalkyUiState
+import com.xiaolong.happytalky.core.PeerConnectionState
+import com.xiaolong.happytalky.core.PeerRoute
+import com.xiaolong.happytalky.core.VoiceDirection
+import com.xiaolong.happytalky.core.VoiceMessage
 import java.io.File
 
 private val sampleMessages =
@@ -39,7 +39,7 @@ private val sampleMessages =
 private fun readyState(
     messages: List<VoiceMessage> = sampleMessages,
 ) =
-    HappyTalkieUiState(
+    HappyTalkyUiState(
         status = "Ready",
         callState = CallVisualState.READY,
         callEnabled = true,
@@ -52,13 +52,13 @@ private fun readyState(
 
 @Composable
 private fun PhoneShot(
-    state: HappyTalkieUiState,
+    state: HappyTalkyUiState,
     dark: Boolean,
 ) {
-    HappyTalkiePhoneTheme(
+    HappyTalkyPhoneTheme(
         darkTheme = dark
     ) {
-        HappyTalkiePhoneScreen(
+        HappyTalkyPhoneScreen(
             state = state,
             onCall = {},
             onDecline = {},
