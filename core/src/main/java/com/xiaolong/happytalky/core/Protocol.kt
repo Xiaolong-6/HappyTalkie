@@ -1,7 +1,7 @@
-package com.xiaolong.happytalkie.core
+package com.xiaolong.happytalky.core
 
 object Protocol {
-    const val BASE = "/happytalkie"
+    const val BASE = "/happytalky"
     const val CALL_RING = "$BASE/call/ring"
     const val CALL_ANSWER = "$BASE/call/answer"
     const val CALL_DECLINE = "$BASE/call/decline"
@@ -16,11 +16,11 @@ object Protocol {
     const val KEY_CREATED_AT = "createdAt"
     const val KEY_AUDIO = "audio"
 
-    const val META_ROLE = "happytalkie.role"
-    const val CAPABILITY_PHONE = "happytalkie_phone"
-    const val CAPABILITY_WATCH = "happytalkie_watch"
-    const val ACTION_STATE_CHANGED = "com.xiaolong.happytalkie.STATE_CHANGED"
-    const val EXTRA_OPEN_TALK_INBOX = "happytalkie.open_talk_inbox"
+    const val META_ROLE = "happytalky.role"
+    const val CAPABILITY_PHONE = "happytalky_phone"
+    const val CAPABILITY_WATCH = "happytalky_watch"
+    const val ACTION_STATE_CHANGED = "com.xiaolong.happytalky.STATE_CHANGED"
+    const val EXTRA_OPEN_TALK_INBOX = "happytalky.open_talk_inbox"
 
     const val CALL_TIMEOUT_MS = 20_000L
     const val RECONNECT_GRACE_MS = 15_000L

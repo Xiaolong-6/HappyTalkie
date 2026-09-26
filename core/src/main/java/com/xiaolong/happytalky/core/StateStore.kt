@@ -1,4 +1,4 @@
-package com.xiaolong.happytalkie.core
+package com.xiaolong.happytalky.core
 
 import android.content.Context
 
@@ -20,7 +20,7 @@ enum class PeerRoute {
 }
 
 object StateStore {
-    private const val PREFS = "happytalkie_state"
+    private const val PREFS = "happytalky_state"
     private const val KEY_STATUS = "status"
     private const val KEY_INCOMING = "incoming_call"
     private const val KEY_OUTGOING = "outgoing_call"

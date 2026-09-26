@@ -1,4 +1,4 @@
-package com.xiaolong.happytalkie.core
+package com.xiaolong.happytalky.core
 
 import android.util.Log
 import com.google.android.gms.tasks.Tasks
@@ -11,7 +11,7 @@ import com.google.android.gms.wearable.Node
 import com.google.android.gms.wearable.Wearable
 import com.google.android.gms.wearable.WearableListenerService
 
-class HappyTalkieListenerService : WearableListenerService() {
+class HappyTalkyListenerService : WearableListenerService() {
 
     override fun onMessageReceived(messageEvent: MessageEvent) {
         val callId = messageEvent.data.toString(Charsets.UTF_8)
@@ -49,7 +49,7 @@ class HappyTalkieListenerService : WearableListenerService() {
 
     override fun onPeerDisconnected(peer: Node) {
         // NodeClient reports every Android node on the Wear network, not
-        // only the HappyTalkie companion. Re-check the advertised
+        // only the HappyTalky companion. Re-check the advertised
         // capability before changing product state.
         DataLayerTransport(this)
             .refreshPeerConnection { state, _ ->
@@ -277,6 +277,6 @@ class HappyTalkieListenerService : WearableListenerService() {
     }
 
     companion object {
-        private const val TAG = "HappyTalkieListener"
+        private const val TAG = "HappyTalkyListener"
     }
 }

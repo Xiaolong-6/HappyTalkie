@@ -1,4 +1,4 @@
-package com.xiaolong.happytalkie.core
+package com.xiaolong.happytalky.core
 
 import android.Manifest
 import android.content.BroadcastReceiver
@@ -29,7 +29,7 @@ enum class CallVisualState {
     LIVE
 }
 
-data class HappyTalkieUiState(
+data class HappyTalkyUiState(
     val status: String = "Checking connection…",
     val callState: CallVisualState = CallVisualState.READY,
     val recording: Boolean = false,
@@ -42,13 +42,13 @@ data class HappyTalkieUiState(
     val messages: List<VoiceMessage> = emptyList()
 )
 
-abstract class HappyTalkieActivity : ComponentActivity() {
+abstract class HappyTalkyActivity : ComponentActivity() {
     private lateinit var role: EndpointRole
     private lateinit var transport: DataLayerTransport
     private lateinit var recorder: AudioRecorder
     private lateinit var connectivityManager: ConnectivityManager
 
-    protected var uiState by mutableStateOf(HappyTalkieUiState())
+    protected var uiState by mutableStateOf(HappyTalkyUiState())
         private set
 
     private val handler = Handler(Looper.getMainLooper())
@@ -647,7 +647,7 @@ abstract class HappyTalkieActivity : ComponentActivity() {
                 active != null
 
         uiState =
-            HappyTalkieUiState(
+            HappyTalkyUiState(
                 status = status,
                 callState = visualState,
                 recording = recording,

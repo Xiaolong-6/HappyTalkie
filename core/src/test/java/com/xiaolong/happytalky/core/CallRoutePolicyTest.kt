@@ -1,4 +1,4 @@
-package com.xiaolong.happytalkie.core
+package com.xiaolong.happytalky.core
 
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

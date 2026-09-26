@@ -1,4 +1,4 @@
-package com.xiaolong.happytalkie.core
+package com.xiaolong.happytalky.core
 
 import android.content.Context
 import android.content.pm.PackageManager
@@ -22,7 +22,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
 object LiveCallAudio {
-    private const val TAG = "HappyTalkieLiveAudio"
+    private const val TAG = "HappyTalkyLiveAudio"
 
     private val executor = Executors.newCachedThreadPool()
     private val running = AtomicBoolean(false)

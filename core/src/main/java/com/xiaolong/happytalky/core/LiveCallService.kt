@@ -1,4 +1,4 @@
-package com.xiaolong.happytalkie.core
+package com.xiaolong.happytalky.core
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -392,11 +392,11 @@ class LiveCallService : Service() {
             manager.createNotificationChannel(
                 NotificationChannel(
                     CHANNEL_ID,
-                    "HappyTalkie live calls",
+                    "HappyTalky live calls",
                     NotificationManager.IMPORTANCE_LOW
                 ).apply {
                     description =
-                        "Keeps an active HappyTalkie call connected"
+                        "Keeps an active HappyTalky call connected"
                     setSound(null, null)
                 }
             )
@@ -449,7 +449,7 @@ class LiveCallService : Service() {
             .setSmallIcon(
                 android.R.drawable.sym_call_incoming
             )
-            .setContentTitle("HappyTalkie")
+            .setContentTitle("HappyTalky")
             .setContentText(text)
             .setContentIntent(pending)
             .addAction(
@@ -475,7 +475,7 @@ class LiveCallService : Service() {
 
     companion object {
         private const val CHANNEL_ID =
-            "happytalkie_live_call_v1"
+            "happytalky_live_call_v1"
         private const val NOTIFICATION_ID = 1201
 
         fun start(context: Context) {
