@@ -990,7 +990,7 @@ abstract class HappyTalkyActivity : ComponentActivity() {
                 messages =
                     VoiceMessageStore.list(
                         this,
-                        limit = 30
+                        limit = 60
                     ),
                 unreadVoiceCount =
                     VoiceMessageStore.unreadCount(
@@ -999,7 +999,7 @@ abstract class HappyTalkyActivity : ComponentActivity() {
                 callHistory =
                     CallHistoryStore.list(
                         this,
-                        limit = 30
+                        limit = 60
                     ),
                 timeline =
                     ConversationStore.timeline(
