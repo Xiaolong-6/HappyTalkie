@@ -28,44 +28,72 @@ class HappyTalkieListenerService : WearableListenerService() {
     }
 
     override fun onPeerConnected(peer: Node) {
-        DataLayerTransport(this).refreshPeerConnection()
+        DataLayerTransport(this)
+            .refreshPeerConnection { state, _ ->
+                if (
+                    state == PeerConnectionState.CONNECTED &&
+                    StateStore.activeCall(this) != null &&
+                    !LiveCallAudio.isRunning()
+                ) {
+                    StateStore.setStatus(
+                        this,
+                        "Reconnecting live audio…"
+                    )
+                    StateStore.beginReconnectWindow(this)
+                    LiveCallService.start(this)
+                }
 
-        if (StateStore.activeCall(this) != null) {
-            StateStore.setStatus(this, "Reconnecting live audio…")
-            StateStore.beginReconnectWindow(this)
-            LiveCallService.start(this)
-        }
-
-        EventBus.notifyStateChanged(this)
+                EventBus.notifyStateChanged(this)
+            }
     }
 
     override fun onPeerDisconnected(peer: Node) {
-        if (StateStore.activeCall(this) != null) {
-            StateStore.setPeerConnection(
-                this,
-                PeerConnectionState.RECONNECTING
-            )
-            StateStore.setPeerRoute(
-                this,
-                PeerRoute.RECONNECTING
-            )
-            StateStore.setStatus(this, "Reconnecting…")
-            StateStore.beginReconnectWindow(this)
-            LiveCallAudio.stop(this, closeChannel = false)
-            LiveCallService.start(this)
-        } else {
-            StateStore.setPeerConnection(
-                this,
-                PeerConnectionState.DISCONNECTED
-            )
-            StateStore.setPeerRoute(
-                this,
-                PeerRoute.OFFLINE
-            )
-            StateStore.setStatus(this, "Peer offline · TALK recommended")
-        }
+        // NodeClient reports every Android node on the Wear network, not
+        // only the HappyTalkie companion. Re-check the advertised
+        // capability before changing product state.
+        DataLayerTransport(this)
+            .refreshPeerConnection { state, _ ->
+                if (state == PeerConnectionState.CONNECTED) {
+                    EventBus.notifyStateChanged(this)
+                    return@refreshPeerConnection
+                }
 
-        EventBus.notifyStateChanged(this)
+                if (StateStore.activeCall(this) != null) {
+                    StateStore.setPeerConnection(
+                        this,
+                        PeerConnectionState.RECONNECTING
+                    )
+                    StateStore.setPeerRoute(
+                        this,
+                        PeerRoute.RECONNECTING
+                    )
+                    StateStore.setStatus(
+                        this,
+                        "Reconnecting…"
+                    )
+                    StateStore.beginReconnectWindow(this)
+                    LiveCallAudio.stop(
+                        this,
+                        closeChannel = false
+                    )
+                    LiveCallService.start(this)
+                } else {
+                    StateStore.setPeerConnection(
+                        this,
+                        PeerConnectionState.DISCONNECTED
+                    )
+                    StateStore.setPeerRoute(
+                        this,
+                        PeerRoute.OFFLINE
+                    )
+                    StateStore.setStatus(
+                        this,
+                        "Peer offline · TALK recommended"
+                    )
+                }
+
+                EventBus.notifyStateChanged(this)
+            }
     }
 
     override fun onChannelOpened(channel: ChannelClient.Channel) {
