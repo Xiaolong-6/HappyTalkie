@@ -401,8 +401,17 @@ private fun routeRecommendation(state: HappyTalkieUiState): String =
         state.peerRoute == PeerRoute.NEARBY_DIRECT ->
             "Direct phone/watch link · best route for CALL"
 
-        state.peerConnection == PeerConnectionState.CONNECTED ->
-            "CALL available · TALK is safer on an unstable link"
+        state.peerRoute == PeerRoute.REMOTE_WIFI ->
+            "CALL available over Wi‑Fi · TALK is more tolerant of dropouts"
+
+        state.peerRoute == PeerRoute.REMOTE_CELLULAR ->
+            "TALK recommended · live CALL waits for a direct/Wi‑Fi route"
+
+        state.peerRoute == PeerRoute.REMOTE_INTERNET ->
+            "TALK recommended until the remote route is known"
+
+        state.peerRoute == PeerRoute.RECONNECTING ->
+            "Re-establishing the communication route"
 
         else ->
             "Checking whether CALL is available"
