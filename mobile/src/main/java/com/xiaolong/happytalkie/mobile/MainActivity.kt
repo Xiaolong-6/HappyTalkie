@@ -111,7 +111,8 @@ class MainActivity : HappyTalkieActivity() {
 }
 
 private val BrandBlue = Color(0xFF1976F3)
-private val BrandBlueDark = Color(0xFF80B5FF)
+private val CallRed = Color(0xFFE5485D)
+private val CallGreen = Color(0xFF1FA66C)
 
 private val PhoneLightColors = lightColorScheme(
     primary = BrandBlue,
@@ -129,8 +130,8 @@ private val PhoneLightColors = lightColorScheme(
 )
 
 private val PhoneDarkColors = darkColorScheme(
-    primary = BrandBlueDark,
-    onPrimary = Color(0xFF00315F),
+    primary = BrandBlue,
+    onPrimary = Color.White,
     primaryContainer = Color(0xFF164A86),
     onPrimaryContainer = Color(0xFFD7E6FF),
     background = Color(0xFF0A0B0E),
@@ -964,9 +965,7 @@ private fun ConversationActions(
                                 .CallEnd,
                         enabled = true,
                         container =
-                            MaterialTheme
-                                .colorScheme
-                                .error,
+                            CallRed,
                         onClick =
                             onDecline,
                         modifier =
@@ -982,7 +981,7 @@ private fun ConversationActions(
                                 .Call,
                         enabled = true,
                         container =
-                            Color(0xFF1FA66C),
+                            CallGreen,
                         onClick =
                             onCall,
                         modifier =
@@ -1000,9 +999,7 @@ private fun ConversationActions(
                                 .CallEnd,
                         enabled = true,
                         container =
-                            MaterialTheme
-                                .colorScheme
-                                .error,
+                            CallRed,
                         onClick =
                             onCall,
                         modifier =
@@ -1201,9 +1198,7 @@ private fun HoldTalkAction(
                     .surfaceVariant
 
             recording ->
-                MaterialTheme
-                    .colorScheme
-                    .error
+                CallRed
 
             else ->
                 MaterialTheme
