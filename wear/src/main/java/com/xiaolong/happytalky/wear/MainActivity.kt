@@ -186,10 +186,13 @@ fun WearHome(
     onTalkFinish: () -> Unit,
     onTalkCancel: () -> Unit,
     onPlay: (VoiceMessage) -> Unit,
+    onDelete: (Set<String>) -> Unit = {},
     openInbox: Boolean = false,
     onInboxOpened: () -> Unit = {},
 ) {
-    var showInbox by remember { mutableStateOf(false) }
+    var showInbox by remember {
+        mutableStateOf(false)
+    }
 
     LaunchedEffect(openInbox) {
         if (openInbox) {
@@ -198,63 +201,280 @@ fun WearHome(
         }
     }
 
-    if (showInbox) {
-        WearTalkInbox(
-            messages = state.messages,
+    if (
+        state.callState ==
+            CallVisualState.INCOMING
+    ) {
+        WearIncomingCallScreen(
             peerName = state.peerName,
-            onBack = { showInbox = false },
-            onPlay = onPlay,
+            onAnswer = onCall,
+            onDecline = onDecline,
         )
         return
     }
+
+    if (showInbox) {
+        WearTalkInbox(
+            messages = state.messages,
+            callHistory = state.callHistory,
+            unreadCount =
+                state.unreadVoiceCount,
+            peerName = state.peerName,
+            onBack = {
+                showInbox = false
+            },
+            onPlay = onPlay,
+            onDelete = onDelete,
+        )
+        return
+    }
+
+    WearHomePage(
+        state = state,
+        onCall = onCall,
+        onTalkStart = onTalkStart,
+        onTalkFinish = onTalkFinish,
+        onTalkCancel = onTalkCancel,
+        onOpenInbox = {
+            showInbox = true
+        },
+    )
+}
+
+@Composable
+private fun WearHomePage(
+    state: HappyTalkyUiState,
+    onCall: () -> Unit,
+    onTalkStart: () -> Unit,
+    onTalkFinish: () -> Unit,
+    onTalkCancel: () -> Unit,
+    onOpenInbox: () -> Unit,
+) {
+    var horizontalDrag by remember {
+        mutableFloatStateOf(0f)
+    }
+    val thresholdPx =
+        with(LocalDensity.current) {
+            42.dp.toPx()
+        }
 
     AppScaffold(
         containerColor = Color.Black,
         contentColor = Color.White,
     ) {
         Box(
-            modifier = Modifier.fillMaxSize()
+            modifier =
+                Modifier.fillMaxSize()
         ) {
             Column(
                 modifier = Modifier
-                    .align(Alignment.TopCenter)
+                    .align(
+                        Alignment.TopCenter
+                    )
                     .width(154.dp)
-                    .padding(top = 18.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(5.dp),
+                    .padding(top = 18.dp)
+                    .pointerInput(Unit) {
+                        detectHorizontalDragGestures(
+                            onDragStart = {
+                                horizontalDrag =
+                                    0f
+                            },
+                            onHorizontalDrag = {
+                                    change,
+                                    amount ->
+                                change.consume()
+                                horizontalDrag +=
+                                    amount
+                            },
+                            onDragEnd = {
+                                if (
+                                    horizontalDrag <
+                                        -thresholdPx
+                                ) {
+                                    onOpenInbox()
+                                }
+                                horizontalDrag = 0f
+                            },
+                            onDragCancel = {
+                                horizontalDrag = 0f
+                            }
+                        )
+                    },
+                horizontalAlignment =
+                    Alignment.CenterHorizontally,
+                verticalArrangement =
+                    Arrangement.spacedBy(
+                        5.dp
+                    ),
             ) {
                 RouteStatus(state)
 
-                if (state.callState == CallVisualState.INCOMING) {
-                    IncomingActions(
-                        onAnswer = onCall,
-                        onDecline = onDecline,
-                    )
-                } else {
-                    PrimaryCallAction(
-                        state = state,
-                        onCall = onCall,
-                    )
-                }
+                PrimaryCallAction(
+                    state = state,
+                    onCall = onCall,
+                )
 
                 TalkInboxButton(
-                    count = state.messages.size,
-                    onClick = { showInbox = true },
+                    unread =
+                        state.unreadVoiceCount,
+                    onClick =
+                        onOpenInbox,
                 )
+
+                state.callHistory
+                    .firstOrNull()
+                    ?.let {
+                        LastCallSummary(it)
+                    }
             }
 
-            TalkEdgeButton(
+            TalkHoldButton(
                 state = state,
                 onStart = onTalkStart,
                 onFinish = onTalkFinish,
                 onCancel = onTalkCancel,
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
+                    .align(
+                        Alignment.BottomCenter
+                    )
                     .width(142.dp)
-                    .padding(bottom = 4.dp),
+                    .padding(bottom = 6.dp),
             )
         }
     }
+}
+
+@Composable
+private fun WearIncomingCallScreen(
+    peerName: String,
+    onAnswer: () -> Unit,
+    onDecline: () -> Unit,
+) {
+    AppScaffold(
+        containerColor = Color.Black,
+        contentColor = Color.White,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(
+                    horizontal = 18.dp,
+                    vertical = 18.dp,
+                ),
+            horizontalAlignment =
+                Alignment.CenterHorizontally,
+            verticalArrangement =
+                Arrangement.SpaceBetween,
+        ) {
+            Column(
+                horizontalAlignment =
+                    Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = "INCOMING CALL",
+                    style =
+                        MaterialTheme
+                            .typography
+                            .labelMedium,
+                    color =
+                        Color(0xFF8CC0FF),
+                    fontWeight =
+                        FontWeight.Bold,
+                )
+                Spacer(
+                    Modifier.height(6.dp)
+                )
+                Text(
+                    text = peerName,
+                    style =
+                        MaterialTheme
+                            .typography
+                            .titleLarge,
+                    fontWeight =
+                        FontWeight.Bold,
+                    textAlign =
+                        TextAlign.Center,
+                )
+            }
+
+            Icon(
+                imageVector =
+                    Icons.Rounded.Call,
+                contentDescription = null,
+                modifier =
+                    Modifier.size(42.dp),
+                tint =
+                    Color(0xFF76DCA5),
+            )
+
+            Row(
+                horizontalArrangement =
+                    Arrangement.spacedBy(
+                        14.dp
+                    ),
+            ) {
+                CallCircleButton(
+                    text = "NO",
+                    icon =
+                        Icons.Rounded
+                            .CallEnd,
+                    color =
+                        Color(0xFFD9485E),
+                    onClick = onDecline,
+                )
+
+                CallCircleButton(
+                    text = "YES",
+                    icon =
+                        Icons.Rounded.Call,
+                    color =
+                        Color(0xFF1DAA6B),
+                    onClick = onAnswer,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CallCircleButton(
+    text: String,
+    icon: ImageVector,
+    color: Color,
+    onClick: () -> Unit,
+) {
+    Button(
+        onClick = onClick,
+        label = {
+            Column(
+                horizontalAlignment =
+                    Alignment.CenterHorizontally,
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier =
+                        Modifier.size(19.dp),
+                )
+                Text(
+                    text = text,
+                    style =
+                        MaterialTheme
+                            .typography
+                            .labelSmall,
+                    fontWeight =
+                        FontWeight.Bold,
+                )
+            }
+        },
+        colors =
+            ButtonDefaults.buttonColors(
+                containerColor = color,
+                contentColor = Color.White,
+            ),
+        modifier =
+            Modifier.size(62.dp),
+    )
 }
 
 @Composable
