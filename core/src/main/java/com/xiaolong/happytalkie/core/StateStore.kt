@@ -2,6 +2,23 @@ package com.xiaolong.happytalkie.core
 
 import android.content.Context
 
+enum class PeerConnectionState {
+    UNKNOWN,
+    CONNECTED,
+    DISCONNECTED,
+    RECONNECTING
+}
+
+enum class PeerRoute {
+    UNKNOWN,
+    NEARBY_DIRECT,
+    REMOTE_WIFI,
+    REMOTE_CELLULAR,
+    REMOTE_INTERNET,
+    OFFLINE,
+    RECONNECTING
+}
+
 object StateStore {
     private const val PREFS = "happytalkie_state"
     private const val KEY_STATUS = "status"
@@ -9,6 +26,9 @@ object StateStore {
     private const val KEY_OUTGOING = "outgoing_call"
     private const val KEY_ACTIVE = "active_call"
     private const val KEY_CALL_INITIATOR = "call_initiator"
+    private const val KEY_PEER_CONNECTION = "peer_connection"
+    private const val KEY_PEER_ROUTE = "peer_route"
+    private const val KEY_RECONNECT_UNTIL = "reconnect_until"
 
     private fun prefs(context: Context) =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -48,12 +68,58 @@ object StateStore {
         prefs(context).edit().putBoolean(KEY_CALL_INITIATOR, value).apply()
     }
 
+    fun peerConnection(context: Context): PeerConnectionState {
+        val raw = prefs(context).getString(KEY_PEER_CONNECTION, null)
+        return runCatching {
+            if (raw == null) PeerConnectionState.UNKNOWN
+            else PeerConnectionState.valueOf(raw)
+        }.getOrDefault(PeerConnectionState.UNKNOWN)
+    }
+
+    fun setPeerConnection(context: Context, state: PeerConnectionState) {
+        prefs(context).edit()
+            .putString(KEY_PEER_CONNECTION, state.name)
+            .apply()
+    }
+
+    fun peerRoute(context: Context): PeerRoute {
+        val raw = prefs(context).getString(KEY_PEER_ROUTE, null)
+        return runCatching {
+            if (raw == null) PeerRoute.UNKNOWN
+            else PeerRoute.valueOf(raw)
+        }.getOrDefault(PeerRoute.UNKNOWN)
+    }
+
+    fun setPeerRoute(context: Context, route: PeerRoute) {
+        prefs(context).edit()
+            .putString(KEY_PEER_ROUTE, route.name)
+            .apply()
+    }
+
+    fun reconnectUntil(context: Context): Long =
+        prefs(context).getLong(KEY_RECONNECT_UNTIL, 0L)
+
+    fun beginReconnectWindow(context: Context) {
+        val existing = reconnectUntil(context)
+        val now = System.currentTimeMillis()
+        if (existing > now) return
+
+        prefs(context).edit()
+            .putLong(KEY_RECONNECT_UNTIL, now + Protocol.RECONNECT_GRACE_MS)
+            .apply()
+    }
+
+    fun clearReconnectWindow(context: Context) {
+        prefs(context).edit().remove(KEY_RECONNECT_UNTIL).apply()
+    }
+
     fun clearCallState(context: Context) {
         prefs(context).edit()
             .remove(KEY_INCOMING)
             .remove(KEY_OUTGOING)
             .remove(KEY_ACTIVE)
             .remove(KEY_CALL_INITIATOR)
+            .remove(KEY_RECONNECT_UNTIL)
             .apply()
     }
 

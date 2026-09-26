@@ -2,40 +2,48 @@
 
 HappyTalkie installs as two APKs with the same application ID:
 
-- `mobile-debug.apk` -> Android phone
-- `wear-debug.apk` -> Pixel Watch
+- `HappyTalkie-phone-debug.apk` -> Android phone
+- `HappyTalkie-watch-debug.apk` -> Pixel Watch
 
-The devices are different, so using the same application ID is intentional. Wear OS Data Layer also requires their signatures to match.
+Using the same application ID is intentional. Wear OS Data Layer also requires matching signatures.
 
-## Fastest path: GitHub Actions APKs
+## Fastest path: rolling debug release
 
-1. Open the repository on GitHub.
-2. Open **Actions -> Android CI**.
-3. Open the latest successful run.
-4. Download both artifacts:
-   - **HappyTalkie-mobile-debug**
-   - **HappyTalkie-wear-debug**
-5. Extract the ZIP files.
+Successful CI builds publish direct APK assets in a rolling prerelease:
 
-The CI workflow caches its Android debug keystore. Always install phone and watch APKs produced by the same repository build lineage.
+- PR builds: `debug-pr-<PR number>`
+- main: `debug-main`
+
+Each release contains:
+
+- `HappyTalkie-phone-debug.apk`
+- `HappyTalkie-watch-debug.apk`
+- `debug-dist.json`
+
+The metadata records the exact source commit. Phone and watch APKs from one release are built together and use the same CI debug signing identity.
+
+GitHub Actions artifacts remain available as a secondary path.
 
 ## Install on the Android phone
 
-Enable **Developer options** and **USB debugging** on the phone, connect it to the computer, then:
+Download `HappyTalkie-phone-debug.apk` on the phone and open it.
+
+Android may ask you to allow that browser/file manager to install unknown apps. The system package installer must still confirm the installation.
+
+For ADB:
 
 ~~~text
-adb devices
-adb install -r mobile-debug.apk
+adb install -r HappyTalkie-phone-debug.apk
 ~~~
 
-If Android reports a signing mismatch from an earlier experimental build, uninstall the old HappyTalkie first, then reinstall:
+If Android reports a signing mismatch from an older experimental build:
 
 ~~~text
 adb uninstall com.xiaolong.happytalkie
-adb install mobile-debug.apk
+adb install HappyTalkie-phone-debug.apk
 ~~~
 
-## Install on Pixel Watch over Wi-Fi
+## Install on Pixel Watch over Wireless debugging
 
 On the Pixel Watch:
 
@@ -44,28 +52,38 @@ On the Pixel Watch:
 3. Enable **Wireless debugging**.
 4. Choose **Pair new device** and note the pairing IP/port and code.
 
-On the computer:
+Pair:
 
 ~~~text
 adb pair WATCH_IP:PAIR_PORT
 ~~~
 
-Enter the pairing code shown on the watch.
-
-Then use the debug IP/port shown in Wireless debugging:
+Then use the separate debug connection port shown on the watch:
 
 ~~~text
 adb connect WATCH_IP:DEBUG_PORT
-adb devices
-adb -s WATCH_IP:DEBUG_PORT install -r wear-debug.apk
+adb -s WATCH_IP:DEBUG_PORT install -r HappyTalkie-watch-debug.apk
 ~~~
 
-If a previous HappyTalkie build has a different signature:
+If the existing watch build has a different signature:
 
 ~~~text
 adb -s WATCH_IP:DEBUG_PORT uninstall com.xiaolong.happytalkie
-adb -s WATCH_IP:DEBUG_PORT install wear-debug.apk
+adb -s WATCH_IP:DEBUG_PORT install HappyTalkie-watch-debug.apk
 ~~~
+
+### Phone-only debugging
+
+A phone can act as the ADB client if it has an Android ADB client installed.
+
+The same Wear OS pairing flow applies:
+
+1. Watch -> **Wireless debugging -> Pair new device**.
+2. Pair from the phone ADB client using the pairing port/code.
+3. Connect to the watch's separate debug port.
+4. Install/update `HappyTalkie-watch-debug.apk`.
+
+An ordinary third-party Android app cannot silently sideload an arbitrary APK onto the watch. Wear OS still requires the platform's install authorization/confirmation path.
 
 ## First launch
 
@@ -74,74 +92,97 @@ Open HappyTalkie once on both devices and grant:
 - Microphone
 - Notifications
 
-The UI intentionally contains only two primary controls:
+For incoming CALL, Android may also control whether full-screen call notifications are permitted. If full-screen presentation is unavailable, the high-priority call notification still exposes Answer/Decline.
 
-- **CALL**
-- **TALK**
+## Behavior to verify
 
-## Behavior
+### Nearby CALL
 
-### CALL
+1. Keep phone and watch paired and nearby.
+2. Confirm the UI reports **Nearby · direct**.
+3. Tap **CALL**.
+4. Verify the receiving device rings and shows Answer/Decline.
+5. Verify the caller can **CANCEL** before answer.
+6. Answer.
+7. Verify live two-way audio.
+8. On phone, toggle **Speaker** on/off.
+9. Verify either side can **END**.
+10. Verify AEC/NS behavior by speaking with both devices in the same room.
 
-Phone -> Watch and Watch -> Phone use the same flow:
+### Incoming CALL while app is backgrounded
 
-1. Tap **CALL**.
-2. The peer rings/vibrates.
-3. On the receiving device, open HappyTalkie and tap **ANSWER**.
-4. HappyTalkie opens live two-way audio automatically.
-5. Speak normally; no TALK button is required.
-6. Tap **END** to hang up.
+1. Background HappyTalkie on the receiving device.
+2. Start CALL from the peer.
+3. Verify a call-style notification appears.
+4. Verify Answer and Decline work.
+5. If the OS allows full-screen call intents, verify the incoming UI appears over the lock screen.
+6. Ignore one call and verify it times out rather than ringing forever.
 
-If the peer cannot be reached, CALL ends cleanly.
+### Route change / reconnect
 
-### TALK
+1. Start a live CALL on the preferred nearby route.
+2. Change network conditions so the route briefly disappears.
+3. Verify UI changes to **Reconnecting**.
+4. Restore a valid route inside the grace period.
+5. Verify live audio returns without creating a new call.
+6. Repeat while keeping the route unavailable; verify the call eventually ends and TALK is recommended.
 
-TALK is independent of CALL:
+### Remote Wi-Fi
 
-1. Press and hold **TALK**.
+When the peer is remotely reachable and the local active route is Wi-Fi:
+
+- UI reports **Remote · Wi-Fi**;
+- CALL is available;
+- TALK remains the safer fallback for an unstable link.
+
+### Cellular / uncertain remote route
+
+For a remote peer while the local active route is cellular, or when the remote route cannot be classified strongly enough:
+
+- CALL is disabled for new sessions;
+- TALK remains available;
+- UI recommends TALK.
+
+This is intentional: the current live implementation uses a continuous Data Layer `ChannelClient`, while TALK uses persistent DataItem/Asset synchronization.
+
+### TALK privacy and history
+
+1. Hold **TALK**.
 2. Speak.
-3. Release **TALK**.
-4. The voice message appears in the conversation history.
-5. Tap any saved message to replay it.
+3. Release.
+4. On the receiving device, verify a notification appears.
+5. Verify the audio **does not auto-play**.
+6. Tap the saved message to play it.
+7. On phone, long-press a TALK bubble to enter multi-selection.
+8. Select one or more messages and delete them from the temporary selection bar.
+9. Select all messages and verify the bulk delete path clears the history.
+10. On Watch, open **Inbox** and verify saved TALK messages can be explicitly played there.
 
-TALK messages remain saved on both ends after delivery.
+### Offline TALK
 
-## Test the Wi-Fi-only Pixel Watch case
-
-First verify nearby Bluetooth operation.
-
-Then test the actual remote scenario:
-
-1. Make sure the Pixel Watch is connected to a saved Wi-Fi network.
-2. Make sure the phone has Internet access.
-3. Break the direct Bluetooth path by moving out of range or temporarily disabling Bluetooth.
-4. Wake the watch and wait for Wi-Fi to be active.
-5. Tap **CALL** on the phone.
-6. Confirm that the watch rings.
-7. After ANSWER, speak in both directions and verify live audio.
-8. End the call, then test TALK messages independently in both directions.
-
-CALL uses a continuous Data Layer channel, while TALK uses persistent DataItems/Assets. Wi-Fi/cloud-path latency will depend on the actual Wear OS connection state.
-
-## Offline test
-
-1. Disconnect the watch from both phone Bluetooth and Wi-Fi.
-2. Tap **CALL** on the phone: it should fail cleanly rather than hanging indefinitely.
-3. Hold **TALK**, record a message, and release.
-4. Reconnect the watch to Wi-Fi.
-5. Confirm that the voice message arrives and plays.
+1. Make the peer unavailable.
+2. Verify CALL is disabled.
+3. Record a TALK.
+4. Verify it is saved/queued rather than discarded.
+5. Restore connectivity.
+6. Verify the Data Layer synchronizes the TALK.
 
 ## Build locally
 
-Requirements:
+Current build baseline:
 
-- Android Studio with Android SDK 36
+- Android Gradle Plugin 9.1.1
+- Gradle 9.3.1
+- compile SDK 37.0
+- target SDK 36
 - JDK 17
-- Gradle 8.13 if building from the command line without a wrapper
+- Compose BOM 2026.09.00
+- phone Material 3
+- Wear Compose Material 3 1.7.0
 
-From Android Studio, open the repository root and build both `mobile` and `wear` debug variants. Local debug builds use your persistent `~/.android/debug.keystore`, so both modules retain matching signatures across rebuilds.
+The CI installs the Android 37 preview platform package explicitly while targetSdk remains 36.
 
-Command-line build with Gradle 8.13:
+Build:
 
 ~~~text
 gradle :core:testDebugUnitTest :mobile:assembleDebug :wear:assembleDebug
@@ -154,11 +195,13 @@ mobile/build/outputs/apk/debug/mobile-debug.apk
 wear/build/outputs/apk/debug/wear-debug.apk
 ~~~
 
-## Current limitation
+## Visual regression
 
-A Wi-Fi-only Pixel Watch cannot receive anything when it has:
+CI renders Compose screenshot previews for both platforms before publishing debug APKs.
 
-- no Bluetooth connection to the paired phone, and
-- no usable Wi-Fi connection.
+The screenshot artifacts are:
 
-HappyTalkie cannot change that hardware constraint. TALK messages are designed to survive it by synchronizing after connectivity returns.
+- `HappyTalkie-phone-ui-screenshots`
+- `HappyTalkie-watch-ui-screenshots`
+
+Use these to catch clipping, overlap, disabled-state errors, and small-round-screen regressions before installing on hardware.

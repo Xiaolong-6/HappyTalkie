@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: android-ci-${{ github.ref }}
@@ -16,7 +16,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
@@ -42,12 +42,12 @@ jobs:
             keytool -genkeypair -noprompt               -keystore ~/.android/debug.keystore               -storepass android               -alias androiddebugkey               -keypass android               -dname "CN=Android Debug,O=Android,C=US"               -keyalg RSA               -keysize 2048               -validity 10000
           fi
 
-      - name: Set up Gradle 8.13
+      - name: Set up Gradle 9.3.1
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "8.13"
+          gradle-version: "9.3.1"
 
-      - name: Install Android 36 SDK
+      - name: Install Android 37 SDK
         shell: bash
         run: |
           SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
@@ -57,11 +57,29 @@ jobs:
             exit 1
           fi
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" "platforms;android-36" "build-tools;35.0.0"
+          "$SDKMANAGER" --channel=3 "platforms;android-37.0" "build-tools;37.0.0"
 
       - name: Test and build
         shell: bash
         run: gradle --no-daemon :core:testDebugUnitTest :mobile:assembleDebug :wear:assembleDebug
+
+      - name: Render UI screenshot baselines
+        shell: bash
+        run: gradle --no-daemon :mobile:updateDebugScreenshotTest :wear:updateDebugScreenshotTest
+
+      - name: Upload phone UI screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: HappyTalkie-phone-ui-screenshots
+          path: mobile/src/screenshotTestDebug/reference
+          if-no-files-found: error
+
+      - name: Upload watch UI screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: HappyTalkie-watch-ui-screenshots
+          path: wear/src/screenshotTestDebug/reference
+          if-no-files-found: error
 
       - name: Upload phone APK
         uses: actions/upload-artifact@v4
@@ -76,3 +94,43 @@ jobs:
           name: HappyTalkie-wear-debug
           path: wear/build/outputs/apk/debug/wear-debug.apk
           if-no-files-found: error
+
+      - name: Prepare debug dist metadata
+        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            TAG="debug-pr-${{ github.event.pull_request.number }}"
+          else
+            TAG="debug-main"
+          fi
+
+          cat > debug-dist.json <<EOF
+          {
+            "tag": "$TAG",
+            "commit": "${{ github.sha }}",
+            "phone": "HappyTalkie-phone-debug.apk",
+            "watch": "HappyTalkie-watch-debug.apk",
+            "builtAt": "${{ github.event.repository.updated_at }}"
+          }
+          EOF
+          echo "DIST_TAG=$TAG" >> "$GITHUB_ENV"
+
+      - name: Publish latest debug APK dist
+        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view "$DIST_TAG" >/dev/null 2>&1; then
+            gh release create "$DIST_TAG" \
+              --prerelease \
+              --title "HappyTalkie $DIST_TAG" \
+              --notes "Automatically updated debug build. Phone and Wear APKs are built from the same commit."
+          fi
+
+          gh release upload "$DIST_TAG" \
+            "mobile/build/outputs/apk/debug/mobile-debug.apk#HappyTalkie-phone-debug.apk" \
+            "wear/build/outputs/apk/debug/wear-debug.apk#HappyTalkie-watch-debug.apk" \
+            "debug-dist.json#debug-dist.json" \
+            --clobber

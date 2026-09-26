@@ -1,6 +1,7 @@
 package com.xiaolong.happytalkie.core
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.AudioDeviceInfo
 import android.media.AudioFormat
@@ -22,6 +23,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 object LiveCallAudio {
     private const val TAG = "HappyTalkieLiveAudio"
+
     private val executor = Executors.newCachedThreadPool()
     private val running = AtomicBoolean(false)
     private val starting = AtomicBoolean(false)
@@ -35,9 +37,87 @@ object LiveCallAudio {
     @Volatile private var noiseSuppressor: NoiseSuppressor? = null
     @Volatile private var previousAudioMode: Int? = null
     @Volatile private var communicationDeviceRequested = false
+    @Volatile private var speakerEnabled = false
 
     fun isRunning(): Boolean = running.get()
     fun isStarting(): Boolean = starting.get()
+
+    fun isSpeakerEnabled(context: Context): Boolean {
+        val manager =
+            context.getSystemService(AudioManager::class.java)
+                ?: return speakerEnabled
+
+        speakerEnabled =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                manager.communicationDevice?.type ==
+                    AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+            } else {
+                @Suppress("DEPRECATION")
+                manager.isSpeakerphoneOn
+            }
+
+        return speakerEnabled
+    }
+
+    fun setSpeakerEnabled(
+        context: Context,
+        enabled: Boolean
+    ): Boolean {
+        if (
+            context.packageManager.hasSystemFeature(
+                PackageManager.FEATURE_WATCH
+            )
+        ) {
+            return false
+        }
+
+        val manager =
+            context.getSystemService(AudioManager::class.java)
+                ?: return false
+
+        val applied =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (enabled) {
+                    val speaker =
+                        manager.availableCommunicationDevices
+                            .firstOrNull {
+                                it.type ==
+                                    AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+                            }
+
+                    if (speaker != null) {
+                        runCatching {
+                            manager.setCommunicationDevice(speaker)
+                        }.getOrDefault(false)
+                    } else {
+                        false
+                    }
+                } else {
+                    runCatching {
+                        manager.clearCommunicationDevice()
+                        true
+                    }.getOrDefault(false)
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                runCatching {
+                    manager.isSpeakerphoneOn = enabled
+                    true
+                }.getOrDefault(false)
+            }
+
+        if (applied) {
+            speakerEnabled = enabled
+            communicationDeviceRequested = enabled
+            Log.i(
+                TAG,
+                "speaker=$enabled route=${communicationRoute(manager)}"
+            )
+            EventBus.notifyStateChanged(context)
+        }
+
+        return applied
+    }
 
     fun startOutgoing(
         context: Context,
@@ -48,19 +128,19 @@ object LiveCallAudio {
             callback(running.get())
             return
         }
+
         starting.set(true)
 
         val appContext = context.applicationContext
-        val nodeClient = Wearable.getNodeClient(appContext)
-        val channelClient = Wearable.getChannelClient(appContext)
+        val channelClient =
+            Wearable.getChannelClient(appContext)
 
-        nodeClient.connectedNodes
-            .addOnSuccessListener { nodes ->
-                val node = nodes.firstOrNull()
+        DataLayerTransport(appContext)
+            .findReachablePeer { node ->
                 if (node == null) {
                     starting.set(false)
                     callback(false)
-                    return@addOnSuccessListener
+                    return@findReachablePeer
                 }
 
                 channelClient.openChannel(
@@ -68,7 +148,8 @@ object LiveCallAudio {
                     Protocol.CALL_AUDIO_PREFIX + callId
                 ).addOnSuccessListener { opened ->
                     executor.execute {
-                        val attached = attach(appContext, opened)
+                        val attached =
+                            attach(appContext, opened)
                         starting.set(false)
                         callback(attached)
                     }
@@ -77,14 +158,16 @@ object LiveCallAudio {
                     callback(false)
                 }
             }
-            .addOnFailureListener {
-                starting.set(false)
-                callback(false)
-            }
     }
 
-    fun attachIncoming(context: Context, incoming: ChannelClient.Channel) {
-        if (!incoming.path.startsWith(Protocol.CALL_AUDIO_PREFIX)) return
+    fun attachIncoming(
+        context: Context,
+        incoming: ChannelClient.Channel
+    ) {
+        if (!incoming.path.startsWith(Protocol.CALL_AUDIO_PREFIX)) {
+            return
+        }
+
         if (running.get() || starting.get()) {
             Wearable.getChannelClient(context).close(incoming)
             return
@@ -92,61 +175,90 @@ object LiveCallAudio {
 
         starting.set(true)
         executor.execute {
-            attach(context.applicationContext, incoming)
+            val attached =
+                attach(context.applicationContext, incoming)
             starting.set(false)
+
+            if (!attached) {
+                markReconnecting(context.applicationContext)
+            }
         }
     }
 
-    private fun attach(context: Context, opened: ChannelClient.Channel): Boolean {
+    private fun attach(
+        context: Context,
+        opened: ChannelClient.Channel
+    ): Boolean {
         return try {
-            val channelClient = Wearable.getChannelClient(context)
-            val remoteInput = Tasks.await(channelClient.getInputStream(opened))
-            val remoteOutput = Tasks.await(channelClient.getOutputStream(opened))
+            val channelClient =
+                Wearable.getChannelClient(context)
+            val remoteInput =
+                Tasks.await(channelClient.getInputStream(opened))
+            val remoteOutput =
+                Tasks.await(channelClient.getOutputStream(opened))
 
-            val manager = context.getSystemService(AudioManager::class.java)
-            configureCommunicationAudio(manager)
+            val manager =
+                context.getSystemService(AudioManager::class.java)
+
+            configureCommunicationAudio(context, manager)
 
             val sampleRate = Protocol.AUDIO_SAMPLE_RATE
-            val recordMin = AudioRecord.getMinBufferSize(
-                sampleRate,
-                AudioFormat.CHANNEL_IN_MONO,
-                AudioFormat.ENCODING_PCM_16BIT
-            )
-            val playMin = AudioTrack.getMinBufferSize(
-                sampleRate,
-                AudioFormat.CHANNEL_OUT_MONO,
-                AudioFormat.ENCODING_PCM_16BIT
-            )
-            val bufferSize = maxOf(2048, recordMin, playMin)
+            val recordMin =
+                AudioRecord.getMinBufferSize(
+                    sampleRate,
+                    AudioFormat.CHANNEL_IN_MONO,
+                    AudioFormat.ENCODING_PCM_16BIT
+                )
+            val playMin =
+                AudioTrack.getMinBufferSize(
+                    sampleRate,
+                    AudioFormat.CHANNEL_OUT_MONO,
+                    AudioFormat.ENCODING_PCM_16BIT
+                )
+            val bufferSize =
+                maxOf(2048, recordMin, playMin)
 
-            val audioRecord = AudioRecord(
-                MediaRecorder.AudioSource.VOICE_COMMUNICATION,
-                sampleRate,
-                AudioFormat.CHANNEL_IN_MONO,
-                AudioFormat.ENCODING_PCM_16BIT,
-                bufferSize
-            )
-            val audioTrack = AudioTrack.Builder()
-                .setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                        .build()
+            val audioRecord =
+                AudioRecord(
+                    MediaRecorder.AudioSource.VOICE_COMMUNICATION,
+                    sampleRate,
+                    AudioFormat.CHANNEL_IN_MONO,
+                    AudioFormat.ENCODING_PCM_16BIT,
+                    bufferSize
                 )
-                .setAudioFormat(
-                    AudioFormat.Builder()
-                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                        .setSampleRate(sampleRate)
-                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                        .build()
-                )
-                .setBufferSizeInBytes(bufferSize * 2)
-                .setTransferMode(AudioTrack.MODE_STREAM)
-                .build()
+
+            val audioTrack =
+                AudioTrack.Builder()
+                    .setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(
+                                AudioAttributes.USAGE_VOICE_COMMUNICATION
+                            )
+                            .setContentType(
+                                AudioAttributes.CONTENT_TYPE_SPEECH
+                            )
+                            .build()
+                    )
+                    .setAudioFormat(
+                        AudioFormat.Builder()
+                            .setEncoding(
+                                AudioFormat.ENCODING_PCM_16BIT
+                            )
+                            .setSampleRate(sampleRate)
+                            .setChannelMask(
+                                AudioFormat.CHANNEL_OUT_MONO
+                            )
+                            .build()
+                    )
+                    .setBufferSizeInBytes(bufferSize * 2)
+                    .setTransferMode(AudioTrack.MODE_STREAM)
+                    .build()
 
             if (
-                audioRecord.state != AudioRecord.STATE_INITIALIZED ||
-                audioTrack.state != AudioTrack.STATE_INITIALIZED
+                audioRecord.state !=
+                    AudioRecord.STATE_INITIALIZED ||
+                audioTrack.state !=
+                    AudioTrack.STATE_INITIALIZED
             ) {
                 runCatching { audioRecord.release() }
                 runCatching { audioTrack.release() }
@@ -157,25 +269,45 @@ object LiveCallAudio {
                 return false
             }
 
-            val aecAvailable = AcousticEchoCanceler.isAvailable()
+            val aecAvailable =
+                AcousticEchoCanceler.isAvailable()
             val echo =
-                if (aecAvailable)
+                if (aecAvailable) {
                     runCatching {
-                        AcousticEchoCanceler.create(audioRecord.audioSessionId)
+                        AcousticEchoCanceler.create(
+                            audioRecord.audioSessionId
+                        )
                     }.getOrNull()
-                else null
-            val nsAvailable = NoiseSuppressor.isAvailable()
-            val noise =
-                if (nsAvailable)
-                    runCatching {
-                        NoiseSuppressor.create(audioRecord.audioSessionId)
-                    }.getOrNull()
-                else null
+                } else {
+                    null
+                }
 
-            if (echo != null && !echo.enabled && echo.hasControl()) {
+            val nsAvailable =
+                NoiseSuppressor.isAvailable()
+            val noise =
+                if (nsAvailable) {
+                    runCatching {
+                        NoiseSuppressor.create(
+                            audioRecord.audioSessionId
+                        )
+                    }.getOrNull()
+                } else {
+                    null
+                }
+
+            if (
+                echo != null &&
+                !echo.enabled &&
+                echo.hasControl()
+            ) {
                 runCatching { echo.enabled = true }
             }
-            if (noise != null && !noise.enabled && noise.hasControl()) {
+
+            if (
+                noise != null &&
+                !noise.enabled &&
+                noise.hasControl()
+            ) {
                 runCatching { noise.enabled = true }
             }
 
@@ -206,13 +338,43 @@ object LiveCallAudio {
             audioTrack.play()
             audioRecord.startRecording()
 
+            StateStore.clearReconnectWindow(context)
+            StateStore.setPeerConnection(
+                context,
+                PeerConnectionState.CONNECTED
+            )
+            if (
+                StateStore.peerRoute(context) ==
+                    PeerRoute.RECONNECTING
+            ) {
+                StateStore.setPeerRoute(
+                    context,
+                    PeerRoute.REMOTE_INTERNET
+                )
+            }
             StateStore.setStatus(context, "Live call")
             EventBus.notifyStateChanged(context)
 
-            executor.execute { captureLoop(context, audioRecord, remoteOutput, bufferSize) }
-            executor.execute { playbackLoop(context, remoteInput, audioTrack, bufferSize) }
+            executor.execute {
+                captureLoop(
+                    context,
+                    audioRecord,
+                    remoteOutput,
+                    bufferSize
+                )
+            }
+            executor.execute {
+                playbackLoop(
+                    context,
+                    remoteInput,
+                    audioTrack,
+                    bufferSize
+                )
+            }
+
             true
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to attach live audio", e)
             stop(context)
             false
         }
@@ -225,9 +387,16 @@ object LiveCallAudio {
         bufferSize: Int
     ) {
         val buffer = ByteArray(bufferSize)
+
         try {
             while (running.get()) {
-                val read = audioRecord.read(buffer, 0, buffer.size)
+                val read =
+                    audioRecord.read(
+                        buffer,
+                        0,
+                        buffer.size
+                    )
+
                 if (read > 0) {
                     stream.write(buffer, 0, read)
                     stream.flush()
@@ -236,10 +405,10 @@ object LiveCallAudio {
                 }
             }
         } catch (_: Exception) {
-            // The peer may have disconnected.
+            // Peer or route may have changed.
         } finally {
             if (running.get()) {
-                disconnected(context)
+                markReconnecting(context)
             }
         }
     }
@@ -251,88 +420,162 @@ object LiveCallAudio {
         bufferSize: Int
     ) {
         val buffer = ByteArray(bufferSize)
+
         try {
             while (running.get()) {
                 val read = stream.read(buffer)
                 if (read < 0) break
-                if (read > 0) audioTrack.write(buffer, 0, read)
+
+                if (read > 0) {
+                    audioTrack.write(
+                        buffer,
+                        0,
+                        read
+                    )
+                }
             }
         } catch (_: Exception) {
-            // The peer may have disconnected.
+            // Peer or route may have changed.
         } finally {
             if (running.get()) {
-                disconnected(context)
+                markReconnecting(context)
             }
         }
     }
 
-    private fun disconnected(context: Context) {
-        stop(context, closeChannel = false)
-        StateStore.clearCallState(context)
-        StateStore.setStatus(context, "Call disconnected")
-        EventBus.notifyStateChanged(context)
-        LiveCallService.stop(context)
-    }
-
-    private fun configureCommunicationAudio(manager: AudioManager?) {
+    private fun configureCommunicationAudio(
+        context: Context,
+        manager: AudioManager?
+    ) {
         if (manager == null) return
 
         previousAudioMode = manager.mode
         manager.mode = AudioManager.MODE_IN_COMMUNICATION
         communicationDeviceRequested = false
 
+        val isWatch =
+            context.packageManager.hasSystemFeature(
+                PackageManager.FEATURE_WATCH
+            )
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val speaker =
-                manager.availableCommunicationDevices.firstOrNull {
-                    it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+            if (isWatch) {
+                val speaker =
+                    manager.availableCommunicationDevices
+                        .firstOrNull {
+                            it.type ==
+                                AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+                        }
+
+                if (speaker != null) {
+                    communicationDeviceRequested =
+                        runCatching {
+                            manager.setCommunicationDevice(speaker)
+                        }.getOrDefault(false)
                 }
-            if (speaker != null) {
-                communicationDeviceRequested =
-                    runCatching { manager.setCommunicationDevice(speaker) }
-                        .getOrDefault(false)
+            } else {
+                runCatching {
+                    manager.clearCommunicationDevice()
+                }
+                speakerEnabled = false
             }
         } else {
             @Suppress("DEPRECATION")
-            runCatching { manager.isSpeakerphoneOn = true }
+            runCatching {
+                manager.isSpeakerphoneOn = isWatch
+            }
+            communicationDeviceRequested = isWatch
+            speakerEnabled = false
         }
     }
 
-    private fun clearCommunicationAudio(manager: AudioManager?) {
+    private fun clearCommunicationAudio(
+        manager: AudioManager?
+    ) {
         if (manager == null) return
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (communicationDeviceRequested) {
-                runCatching { manager.clearCommunicationDevice() }
+                runCatching {
+                    manager.clearCommunicationDevice()
+                }
             }
         } else {
             @Suppress("DEPRECATION")
-            runCatching { manager.isSpeakerphoneOn = false }
+            runCatching {
+                manager.isSpeakerphoneOn = false
+            }
         }
+
         communicationDeviceRequested = false
+        speakerEnabled = false
     }
 
-    private fun restoreCommunicationAudio(manager: AudioManager?) {
+    private fun restoreCommunicationAudio(
+        manager: AudioManager?
+    ) {
         clearCommunicationAudio(manager)
+
         previousAudioMode?.let { oldMode ->
-            runCatching { manager?.mode = oldMode }
+            runCatching {
+                manager?.mode = oldMode
+            }
         }
+
         previousAudioMode = null
     }
 
-    private fun communicationRoute(manager: AudioManager?): String {
+    private fun communicationRoute(
+        manager: AudioManager?
+    ): String {
         if (manager == null) return "none"
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            manager.communicationDevice?.let { device ->
-                "${device.type}:${device.productName}"
-            } ?: "default"
+
+        return if (
+            Build.VERSION.SDK_INT >=
+                Build.VERSION_CODES.S
+        ) {
+            manager.communicationDevice
+                ?.let { device ->
+                    "${device.type}:${device.productName}"
+                }
+                ?: "default"
         } else {
             @Suppress("DEPRECATION")
-            if (manager.isSpeakerphoneOn) "legacy-speaker" else "legacy-default"
+            if (manager.isSpeakerphoneOn) {
+                "legacy-speaker"
+            } else {
+                "legacy-default"
+            }
         }
     }
 
-    fun stop(context: Context, closeChannel: Boolean = true) {
-        val wasRunning = running.getAndSet(false)
+    private fun markReconnecting(context: Context) {
+        stop(context, closeChannel = false)
+
+        if (StateStore.activeCall(context) == null) {
+            return
+        }
+
+        StateStore.beginReconnectWindow(context)
+        StateStore.setPeerConnection(
+            context,
+            PeerConnectionState.RECONNECTING
+        )
+        StateStore.setPeerRoute(
+            context,
+            PeerRoute.RECONNECTING
+        )
+        StateStore.setStatus(context, "Reconnecting…")
+        EventBus.notifyStateChanged(context)
+        LiveCallService.start(context)
+    }
+
+    fun stop(
+        context: Context,
+        closeChannel: Boolean = true
+    ) {
+        val wasRunning =
+            running.getAndSet(false)
         starting.set(false)
 
         val localRecorder: AudioRecord?
@@ -361,19 +604,30 @@ object LiveCallAudio {
         runCatching { localOutput?.close() }
         runCatching { echoCanceler?.release() }
         runCatching { noiseSuppressor?.release() }
+
         echoCanceler = null
         noiseSuppressor = null
+
         runCatching { localRecorder?.release() }
         runCatching { localPlayer?.release() }
 
-        if (closeChannel && localChannel != null) {
+        if (
+            closeChannel &&
+            localChannel != null
+        ) {
             runCatching {
-                Wearable.getChannelClient(context.applicationContext)
+                Wearable
+                    .getChannelClient(
+                        context.applicationContext
+                    )
                     .close(localChannel)
             }
         }
 
-        val manager = context.getSystemService(AudioManager::class.java)
+        val manager =
+            context.getSystemService(
+                AudioManager::class.java
+            )
         restoreCommunicationAudio(manager)
 
         if (wasRunning) {

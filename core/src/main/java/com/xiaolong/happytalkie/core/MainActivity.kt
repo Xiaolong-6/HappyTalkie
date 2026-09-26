@@ -1,78 +1,149 @@
 package com.xiaolong.happytalkie.core
 
 import android.Manifest
-import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.graphics.Color
-import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.view.Gravity
-import android.view.MotionEvent
-import android.view.View
-import android.view.ViewGroup
-import android.widget.Button
-import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
+import android.view.WindowManager
+import androidx.activity.ComponentActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import java.util.UUID
 
-class MainActivity : Activity() {
+enum class CallVisualState {
+    READY,
+    INCOMING,
+    OUTGOING,
+    CONNECTING,
+    RECONNECTING,
+    LIVE
+}
+
+data class HappyTalkieUiState(
+    val status: String = "Checking connection…",
+    val callState: CallVisualState = CallVisualState.READY,
+    val recording: Boolean = false,
+    val callEnabled: Boolean = false,
+    val talkEnabled: Boolean = true,
+    val speakerOn: Boolean = false,
+    val peerName: String = "Watch",
+    val peerConnection: PeerConnectionState = PeerConnectionState.UNKNOWN,
+    val peerRoute: PeerRoute = PeerRoute.UNKNOWN,
+    val messages: List<VoiceMessage> = emptyList()
+)
+
+abstract class HappyTalkieActivity : ComponentActivity() {
     private lateinit var role: EndpointRole
     private lateinit var transport: DataLayerTransport
     private lateinit var recorder: AudioRecorder
+    private lateinit var connectivityManager: ConnectivityManager
 
-    private lateinit var statusView: TextView
-    private lateinit var callButton: Button
-    private lateinit var talkButton: Button
-    private lateinit var conversationList: LinearLayout
+    protected var uiState by mutableStateOf(HappyTalkieUiState())
+        private set
 
     private val handler = Handler(Looper.getMainLooper())
     private var recording = false
     private var receiverRegistered = false
+    private var networkCallbackRegistered = false
     private var recordingTimeout: Runnable? = null
     private var callTimeout: Runnable? = null
-    private var isWatch = false
 
-    private val stateReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            refreshUi()
+    private val stateReceiver =
+        object : BroadcastReceiver() {
+            override fun onReceive(
+                context: Context?,
+                intent: Intent?
+            ) {
+                refreshUiState()
+            }
         }
-    }
+
+    private val networkCallback =
+        object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                refreshPeerRoute()
+            }
+
+            override fun onLost(network: Network) {
+                refreshPeerRoute()
+            }
+
+            override fun onCapabilitiesChanged(
+                network: Network,
+                networkCapabilities: NetworkCapabilities
+            ) {
+                refreshPeerRoute()
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         role = EndpointRole.fromContext(this)
         transport = DataLayerTransport(this)
         recorder = AudioRecorder(this)
-        isWatch = packageManager.hasSystemFeature(PackageManager.FEATURE_WATCH)
+        connectivityManager =
+            getSystemService(ConnectivityManager::class.java)
 
-        buildUi()
         requestNeededPermissions()
-        refreshUi()
+        updateIncomingPresentation()
+        refreshUiState()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        updateIncomingPresentation()
+        refreshUiState()
     }
 
     override fun onStart() {
         super.onStart()
+
         if (!receiverRegistered) {
-            val filter = IntentFilter(Protocol.ACTION_STATE_CHANGED)
+            val filter =
+                IntentFilter(
+                    Protocol.ACTION_STATE_CHANGED
+                )
+
             if (Build.VERSION.SDK_INT >= 33) {
-                registerReceiver(stateReceiver, filter, RECEIVER_NOT_EXPORTED)
+                registerReceiver(
+                    stateReceiver,
+                    filter,
+                    RECEIVER_NOT_EXPORTED
+                )
             } else {
                 @Suppress("DEPRECATION")
-                registerReceiver(stateReceiver, filter)
+                registerReceiver(
+                    stateReceiver,
+                    filter
+                )
             }
+
             receiverRegistered = true
         }
-        refreshUi()
+
+        if (!networkCallbackRegistered) {
+            runCatching {
+                connectivityManager.registerDefaultNetworkCallback(
+                    networkCallback
+                )
+                networkCallbackRegistered = true
+            }
+        }
+
+        refreshPeerRoute()
+        refreshUiState()
     }
 
     override fun onStop() {
@@ -80,6 +151,16 @@ class MainActivity : Activity() {
             unregisterReceiver(stateReceiver)
             receiverRegistered = false
         }
+
+        if (networkCallbackRegistered) {
+            runCatching {
+                connectivityManager.unregisterNetworkCallback(
+                    networkCallback
+                )
+            }
+            networkCallbackRegistered = false
+        }
+
         super.onStop()
     }
 
@@ -88,192 +169,280 @@ class MainActivity : Activity() {
         callTimeout?.let(handler::removeCallbacks)
         recordingTimeout = null
         callTimeout = null
-        if (recording) recorder.cancel()
+
+        if (recording) {
+            recorder.cancel()
+        }
+
         super.onDestroy()
     }
 
-    private fun buildUi() {
-        val scroll = ScrollView(this).apply {
-            isFillViewport = true
-            setBackgroundColor(BACKGROUND)
-            overScrollMode = View.OVER_SCROLL_NEVER
-        }
-
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(
-                dp(if (isWatch) 12 else 24),
-                dp(if (isWatch) 10 else 26),
-                dp(if (isWatch) 12 else 24),
-                dp(if (isWatch) 18 else 30)
-            )
-        }
-
-        val brand = ImageView(this).apply {
-            setImageResource(com.xiaolong.happytalkie.core.R.drawable.ic_happytalkie_brand)
-            scaleType = ImageView.ScaleType.FIT_CENTER
-            contentDescription = "HappyTalkie"
-        }
-
-        val title = TextView(this).apply {
-            text = "HappyTalkie"
-            setTextColor(Color.WHITE)
-            textSize = if (isWatch) 18f else 28f
-            setTypeface(Typeface.DEFAULT, Typeface.BOLD)
-            gravity = Gravity.CENTER
-        }
-
-        statusView = TextView(this).apply {
-            setTextColor(TEXT_SECONDARY)
-            textSize = if (isWatch) 12f else 15f
-            gravity = Gravity.CENTER
-            setPadding(dp(12), dp(7), dp(12), dp(7))
-            background = rounded(SURFACE, if (isWatch) 18 else 22)
-        }
-
-        callButton = Button(this).apply {
-            textSize = if (isWatch) 18f else 27f
-            setTextColor(Color.WHITE)
-            setTypeface(Typeface.DEFAULT, Typeface.BOLD)
-            setAllCaps(false)
-            stateListAnimator = null
-            elevation = dp(if (isWatch) 2 else 5).toFloat()
-            backgroundTintList = null
-            setOnClickListener { handleCallButton() }
-        }
-
-        talkButton = Button(this).apply {
-            textSize = if (isWatch) 16f else 20f
-            setTextColor(Color.WHITE)
-            setTypeface(Typeface.DEFAULT, Typeface.BOLD)
-            setAllCaps(false)
-            stateListAnimator = null
-            elevation = 0f
-            backgroundTintList = null
-            background = rounded(SURFACE_RAISED, 22)
-            setOnTouchListener { _, event ->
-                if (!isEnabled) return@setOnTouchListener true
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN -> {
-                        beginRecording()
-                        true
-                    }
-                    MotionEvent.ACTION_UP -> {
-                        finishRecording()
-                        true
-                    }
-                    MotionEvent.ACTION_CANCEL -> {
-                        cancelRecording()
-                        true
-                    }
-                    else -> true
-                }
-            }
-        }
-
-        val historyTitle = TextView(this).apply {
-            text = if (isWatch) "VOICE MESSAGES" else "Voice messages"
-            setTextColor(TEXT_SECONDARY)
-            textSize = if (isWatch) 10f else 14f
-            setTypeface(Typeface.DEFAULT, Typeface.BOLD)
-            gravity = Gravity.START
-        }
-
-        conversationList = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-        }
-
-        content.addView(
-            brand,
-            LinearLayout.LayoutParams(
-                dp(if (isWatch) 52 else 76),
-                dp(if (isWatch) 52 else 76)
-            )
-        )
-
-        content.addView(
-            title,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                topMargin = dp(if (isWatch) 2 else 4)
-            }
-        )
-
-        content.addView(
-            statusView,
-            LinearLayout.LayoutParams(
-                if (isWatch) ViewGroup.LayoutParams.MATCH_PARENT else dp(300),
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                topMargin = dp(if (isWatch) 7 else 12)
-            }
-        )
-
-        content.addView(
-            callButton,
-            LinearLayout.LayoutParams(
-                dp(if (isWatch) 122 else 188),
-                dp(if (isWatch) 122 else 188)
-            ).apply {
-                topMargin = dp(if (isWatch) 12 else 24)
-            }
-        )
-
-        content.addView(
-            talkButton,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(if (isWatch) 52 else 64)
-            ).apply {
-                topMargin = dp(if (isWatch) 8 else 16)
-            }
-        )
-
-        content.addView(
-            historyTitle,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                topMargin = dp(if (isWatch) 15 else 26)
-                bottomMargin = dp(7)
-            }
-        )
-
-        content.addView(
-            conversationList,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        )
-
-        scroll.addView(
-            content,
-            ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        )
-
-        setContentView(scroll)
-    }
-
-    private fun handleCallButton() {
+    protected fun handleCallAction() {
         val incoming = StateStore.incomingCall(this)
+        val outgoing = StateStore.outgoingCall(this)
         val active = StateStore.activeCall(this)
 
         when {
             incoming != null -> answerCall(incoming)
             active != null -> endCall(active)
-            StateStore.outgoingCall(this) == null -> startCall()
+            outgoing != null -> cancelOutgoingCall(outgoing)
+            else -> startCall()
+        }
+    }
+
+    protected fun declineIncomingCall() {
+        val callId =
+            StateStore.incomingCall(this)
+                ?: return
+
+        StateStore.clearCallState(this)
+        StateStore.setStatus(this, "Call declined")
+        AlertController.stop(this)
+        EventBus.notifyStateChanged(this)
+        refreshUiState()
+
+        transport.sendSignal(
+            Protocol.CALL_DECLINE,
+            callId
+        ) { }
+    }
+
+    protected fun beginTalk() {
+        if (recording || hasAnyCallState()) return
+
+        if (
+            checkSelfPermission(
+                Manifest.permission.RECORD_AUDIO
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(
+                arrayOf(
+                    Manifest.permission.RECORD_AUDIO
+                ),
+                REQUEST_PERMISSIONS
+            )
+            StateStore.setStatus(
+                this,
+                "Microphone permission required"
+            )
+            refreshUiState()
+            return
+        }
+
+        if (recorder.start()) {
+            recording = true
+            StateStore.setStatus(this, "Recording TALK…")
+            refreshUiState()
+
+            recordingTimeout?.let(handler::removeCallbacks)
+            recordingTimeout =
+                Runnable {
+                    recordingTimeout = null
+                    if (recording) finishTalk()
+                }.also {
+                    handler.postDelayed(
+                        it,
+                        Protocol.MAX_RECORDING_MS.toLong()
+                    )
+                }
+        } else {
+            StateStore.setStatus(
+                this,
+                "Could not start microphone"
+            )
+            refreshUiState()
+        }
+    }
+
+    protected fun finishTalk() {
+        if (!recording) return
+
+        recording = false
+        recordingTimeout?.let(handler::removeCallbacks)
+        recordingTimeout = null
+
+        val temp = recorder.stop()
+        if (temp == null) {
+            StateStore.setStatus(
+                this,
+                "Recording was too short"
+            )
+            refreshUiState()
+            return
+        }
+
+        val saved =
+            try {
+                VoiceMessageStore.saveOutgoing(
+                    this,
+                    temp
+                )
+            } catch (_: Exception) {
+                temp.delete()
+                StateStore.setStatus(
+                    this,
+                    "Could not save voice message"
+                )
+                refreshUiState()
+                return
+            }
+
+        StateStore.setStatus(
+            this,
+            if (
+                StateStore.peerConnection(this) ==
+                    PeerConnectionState.CONNECTED
+            ) {
+                "Sending TALK…"
+            } else {
+                "Saving TALK for delivery…"
+            }
+        )
+        refreshUiState()
+
+        transport.queueVoice(
+            saved,
+            role
+        ) { queued ->
+            StateStore.setStatus(
+                this,
+                if (queued) {
+                    if (
+                        StateStore.peerConnection(this) ==
+                            PeerConnectionState.CONNECTED
+                    ) {
+                        "TALK queued for delivery"
+                    } else {
+                        "TALK saved · will send when connected"
+                    }
+                } else {
+                    "Saved locally · retry later"
+                }
+            )
+            refreshUiState()
+        }
+    }
+
+    protected fun cancelTalk() {
+        if (!recording) return
+
+        recording = false
+        recordingTimeout?.let(handler::removeCallbacks)
+        recordingTimeout = null
+        recorder.cancel()
+        StateStore.setStatus(this, "Recording cancelled")
+        refreshUiState()
+    }
+
+    protected fun playMessage(
+        message: VoiceMessage
+    ) {
+        AudioPlayer.play(
+            this,
+            message.file,
+            deleteAfter = false
+        )
+    }
+
+    protected fun deleteMessages(
+        ids: Set<String>
+    ) {
+        AudioPlayer.stop()
+        val deleted =
+            VoiceMessageStore.delete(
+                this,
+                ids
+            )
+
+        if (deleted > 0) {
+            StateStore.setStatus(
+                this,
+                "$deleted TALK message" +
+                    if (deleted == 1) {
+                        " deleted"
+                    } else {
+                        "s deleted"
+                    }
+            )
+        }
+
+        refreshUiState()
+    }
+
+    protected fun clearMessages() {
+        AudioPlayer.stop()
+        val deleted =
+            VoiceMessageStore.clear(this)
+
+        StateStore.setStatus(
+            this,
+            if (deleted > 0) {
+                "TALK history cleared"
+            } else {
+                "No TALK history to clear"
+            }
+        )
+        refreshUiState()
+    }
+
+    protected fun toggleSpeaker() {
+        if (
+            StateStore.activeCall(this) == null ||
+            !LiveCallAudio.isRunning()
+        ) {
+            return
+        }
+
+        val next =
+            !LiveCallAudio.isSpeakerEnabled(this)
+
+        LiveCallAudio.setSpeakerEnabled(
+            this,
+            next
+        )
+        refreshUiState()
+    }
+
+    protected fun refreshNow() {
+        refreshPeerRoute()
+        refreshUiState()
+    }
+
+    private fun refreshPeerRoute() {
+        if (!::transport.isInitialized) return
+
+        handler.post {
+            transport.refreshPeerConnection {
+                    _,
+                    _ ->
+                refreshUiState()
+            }
         }
     }
 
     private fun startCall() {
+        val connection = StateStore.peerConnection(this)
+        val route = StateStore.peerRoute(this)
+
+        if (!CallRoutePolicy.canStartCall(connection, route)) {
+            StateStore.setStatus(
+                this,
+                when (route) {
+                    PeerRoute.REMOTE_CELLULAR ->
+                        "Cellular route · TALK recommended"
+                    PeerRoute.REMOTE_INTERNET ->
+                        "Remote route uncertain · TALK recommended"
+                    PeerRoute.RECONNECTING ->
+                        "Reconnecting · try CALL when ready"
+                    else ->
+                        "${peerName()} is offline · TALK recommended"
+                }
+            )
+            refreshPeerRoute()
+            refreshUiState()
+            return
+        }
+
         val callId = UUID.randomUUID().toString()
         val peer = peerName()
 
@@ -281,277 +450,231 @@ class MainActivity : Activity() {
         StateStore.setOutgoingCall(this, callId)
         StateStore.setStatus(this, "Calling $peer…")
         LiveCallService.start(this)
-        refreshUi()
+        refreshUiState()
 
-        transport.sendSignal(Protocol.CALL_RING, callId) { sent ->
-            if (StateStore.outgoingCall(this) != callId) return@sendSignal
-
-            if (!sent) {
-                StateStore.clearCallState(this)
-                StateStore.setStatus(this, "$peer is offline · leave a TALK")
-                LiveCallService.stop(this)
-                refreshUi()
+        transport.sendSignal(
+            Protocol.CALL_RING,
+            callId
+        ) { sent ->
+            if (
+                StateStore.outgoingCall(this) !=
+                    callId
+            ) {
                 return@sendSignal
             }
 
-            StateStore.setStatus(this, "Ringing $peer…")
-            refreshUi()
+            if (!sent) {
+                StateStore.clearCallState(this)
+                StateStore.setStatus(
+                    this,
+                    "$peer is offline · TALK recommended"
+                )
+                LiveCallService.stop(this)
+                refreshUiState()
+                return@sendSignal
+            }
+
+            StateStore.setStatus(
+                this,
+                "Ringing $peer…"
+            )
+            refreshUiState()
 
             callTimeout?.let(handler::removeCallbacks)
-            callTimeout = Runnable {
-                if (
-                    StateStore.outgoingCall(this) == callId &&
-                    StateStore.activeCall(this) == null
-                ) {
-                    StateStore.clearCallState(this)
-                    StateStore.setStatus(this, "No answer · leave a TALK")
-                    LiveCallService.stop(this)
-                    refreshUi()
+            callTimeout =
+                Runnable {
+                    if (
+                        StateStore.outgoingCall(this) ==
+                            callId &&
+                        StateStore.activeCall(this) ==
+                            null
+                    ) {
+                        StateStore.clearCallState(this)
+                        StateStore.setStatus(
+                            this,
+                            "No answer · TALK recommended"
+                        )
+                        LiveCallService.stop(this)
+                        refreshUiState()
+
+                        transport.sendSignal(
+                            Protocol.CALL_CANCEL,
+                            callId
+                        ) { }
+                    }
+
+                    callTimeout = null
+                }.also {
+                    handler.postDelayed(
+                        it,
+                        Protocol.CALL_TIMEOUT_MS
+                    )
                 }
-                callTimeout = null
-            }.also {
-                handler.postDelayed(it, Protocol.CALL_TIMEOUT_MS)
-            }
         }
+    }
+
+    private fun cancelOutgoingCall(
+        callId: String
+    ) {
+        callTimeout?.let(handler::removeCallbacks)
+        callTimeout = null
+
+        StateStore.clearCallState(this)
+        StateStore.setStatus(this, "Call cancelled")
+        LiveCallService.stop(this)
+        refreshUiState()
+
+        transport.sendSignal(
+            Protocol.CALL_CANCEL,
+            callId
+        ) { }
     }
 
     private fun answerCall(callId: String) {
         AlertController.stop(this)
+
         StateStore.setIncomingCall(this, null)
         StateStore.setCallInitiator(this, false)
         StateStore.setActiveCall(this, callId)
-        StateStore.setStatus(this, "Connecting live audio…")
+        StateStore.clearReconnectWindow(this)
+        StateStore.setStatus(
+            this,
+            "Connecting live audio…"
+        )
+
         LiveCallService.start(this)
         EventBus.notifyStateChanged(this)
-        refreshUi()
+        refreshUiState()
 
-        transport.sendSignal(Protocol.CALL_ANSWER, callId) { sent ->
-            if (!sent && StateStore.activeCall(this) == callId) {
+        transport.sendSignal(
+            Protocol.CALL_ANSWER,
+            callId
+        ) { sent ->
+            if (
+                !sent &&
+                StateStore.activeCall(this) ==
+                    callId
+            ) {
                 StateStore.clearCallState(this)
-                StateStore.setStatus(this, peerName() + " is unreachable")
+                StateStore.setStatus(
+                    this,
+                    peerName() + " is unreachable"
+                )
                 LiveCallService.stop(this)
-                refreshUi()
+                refreshUiState()
             }
         }
     }
 
     private fun endCall(callId: String) {
+        callTimeout?.let(handler::removeCallbacks)
+        callTimeout = null
+
         StateStore.clearCallState(this)
         StateStore.setStatus(this, "Call ended")
         AlertController.stop(this)
         LiveCallAudio.stop(this)
         LiveCallService.stop(this)
-        refreshUi()
-        transport.sendSignal(Protocol.CALL_END, callId) { }
+        refreshUiState()
+
+        transport.sendSignal(
+            Protocol.CALL_END,
+            callId
+        ) { }
     }
 
-    private fun beginRecording() {
-        if (recording || hasAnyCallState()) return
-
-        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) !=
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            requestPermissions(
-                arrayOf(Manifest.permission.RECORD_AUDIO),
-                REQUEST_PERMISSIONS
-            )
-            StateStore.setStatus(this, "Microphone permission required")
-            refreshUi()
-            return
-        }
-
-        if (recorder.start()) {
-            recording = true
-            StateStore.setStatus(this, "Recording TALK…")
-            refreshUi()
-
-            recordingTimeout?.let(handler::removeCallbacks)
-            recordingTimeout = Runnable {
-                recordingTimeout = null
-                if (recording) finishRecording()
-            }.also {
-                handler.postDelayed(it, Protocol.MAX_RECORDING_MS.toLong())
-            }
-        } else {
-            StateStore.setStatus(this, "Could not start microphone")
-            refreshUi()
-        }
-    }
-
-    private fun finishRecording() {
-        if (!recording) return
-        recording = false
-        recordingTimeout?.let(handler::removeCallbacks)
-        recordingTimeout = null
-
-        val temp = recorder.stop()
-        if (temp == null) {
-            StateStore.setStatus(this, "Recording was too short")
-            refreshUi()
-            return
-        }
-
-        val saved = try {
-            VoiceMessageStore.saveOutgoing(this, temp)
-        } catch (_: Exception) {
-            temp.delete()
-            StateStore.setStatus(this, "Could not save voice message")
-            refreshUi()
-            return
-        }
-
-        StateStore.setStatus(this, "Sending TALK…")
-        refreshUi()
-
-        transport.queueVoice(saved, role) { queued ->
-            StateStore.setStatus(
-                this,
-                if (queued) "TALK queued for delivery"
-                else "Saved locally · delivery failed"
-            )
-            refreshUi()
-        }
-    }
-
-    private fun cancelRecording() {
-        if (!recording) return
-        recording = false
-        recordingTimeout?.let(handler::removeCallbacks)
-        recordingTimeout = null
-        recorder.cancel()
-        StateStore.setStatus(this, "Recording cancelled")
-        refreshUi()
-    }
-
-    private fun refreshUi() {
-        if (!::statusView.isInitialized) return
-
+    private fun refreshUiState() {
         val incoming = StateStore.incomingCall(this)
+        updateIncomingPresentation(incoming != null)
         val outgoing = StateStore.outgoingCall(this)
         val active = StateStore.activeCall(this)
+        val connection = StateStore.peerConnection(this)
+        val route = StateStore.peerRoute(this)
         val live = LiveCallAudio.isRunning()
+        val peer = peerName()
 
-        statusView.text = when {
-            active != null && live -> "●  LIVE AUDIO"
-            active != null -> "Connecting live audio…"
-            incoming != null -> "Incoming call"
-            outgoing != null -> "Calling " + peerName() + "…"
-            else -> StateStore.status(this)
-        }
-        statusView.setTextColor(
-            if (active != null && live) LIVE_COLOR else TEXT_SECONDARY
-        )
+        val visualState =
+            when {
+                active != null && live ->
+                    CallVisualState.LIVE
 
-        when {
-            incoming != null -> styleCallButton("☎  ANSWER", ANSWER_COLOR)
-            active != null -> styleCallButton("■  END", END_COLOR)
-            outgoing != null -> styleCallButton("☎  CALLING", CALLING_COLOR)
-            else -> styleCallButton("☎  CALL", CALL_COLOR)
-        }
+                active != null &&
+                    (
+                        connection ==
+                            PeerConnectionState.RECONNECTING ||
+                            route ==
+                                PeerRoute.RECONNECTING
+                    ) ->
+                    CallVisualState.RECONNECTING
 
-        callButton.isEnabled = outgoing == null || active != null || incoming != null
-        callButton.alpha = if (callButton.isEnabled) 1f else 0.72f
+                active != null ->
+                    CallVisualState.CONNECTING
 
-        val busy = hasAnyCallState()
-        talkButton.isEnabled = !busy
-        talkButton.alpha = if (busy) 0.42f else 1f
-        talkButton.text = when {
-            active != null -> "◉  LIVE AUDIO"
-            outgoing != null || incoming != null -> "TALK available after call"
-            recording -> "●  RELEASE TO SEND"
-            else -> "●  HOLD TO TALK"
-        }
+                incoming != null ->
+                    CallVisualState.INCOMING
 
-        renderConversation()
-    }
+                outgoing != null ->
+                    CallVisualState.OUTGOING
 
-    private fun renderConversation() {
-        conversationList.removeAllViews()
-        val messages = VoiceMessageStore
-            .list(this, if (isWatch) 8 else 30)
-            .reversed()
-
-        if (messages.isEmpty()) {
-            val empty = TextView(this).apply {
-                text = "No voice messages yet"
-                setTextColor(TEXT_MUTED)
-                textSize = if (isWatch) 11f else 14f
-                gravity = Gravity.CENTER
-                setPadding(dp(8), dp(14), dp(8), dp(14))
+                else ->
+                    CallVisualState.READY
             }
-            conversationList.addView(
-                empty,
-                LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
-            )
-            return
-        }
 
-        messages.forEach { message ->
-            conversationList.addView(messageBubble(message))
-        }
-    }
+        val status =
+            when (visualState) {
+                CallVisualState.LIVE ->
+                    "Live with $peer"
 
-    private fun messageBubble(message: VoiceMessage): View {
-        val outgoing = message.direction == VoiceDirection.OUTGOING
+                CallVisualState.RECONNECTING ->
+                    "Reconnecting…"
 
-        val wrapper = LinearLayout(this).apply {
-            gravity = if (outgoing) Gravity.END else Gravity.START
-            orientation = LinearLayout.VERTICAL
-        }
+                CallVisualState.CONNECTING ->
+                    "Connecting live audio…"
 
-        val bubble = TextView(this).apply {
-            text = buildString {
-                append("▶  ")
-                append(if (outgoing) "Me" else peerName())
-                append("  ·  ")
-                append(message.displayTime())
+                CallVisualState.INCOMING ->
+                    "$peer is calling"
+
+                CallVisualState.OUTGOING ->
+                    "Calling $peer…"
+
+                CallVisualState.READY ->
+                    StateStore.status(this)
             }
-            setTextColor(Color.WHITE)
-            textSize = if (isWatch) 12f else 15f
-            setTypeface(Typeface.DEFAULT, Typeface.BOLD)
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(
-                dp(if (isWatch) 10 else 14),
-                dp(if (isWatch) 9 else 12),
-                dp(if (isWatch) 10 else 14),
-                dp(if (isWatch) 9 else 12)
-            )
-            background = rounded(
-                if (outgoing) MESSAGE_OUT else MESSAGE_IN,
-                if (isWatch) 18 else 20
-            )
-            setOnClickListener {
-                AudioPlayer.play(this@MainActivity, message.file, deleteAfter = false)
-            }
-        }
 
-        wrapper.addView(
-            bubble,
-            LinearLayout.LayoutParams(
-                if (isWatch) ViewGroup.LayoutParams.MATCH_PARENT else dp(270),
-                ViewGroup.LayoutParams.WRAP_CONTENT
+        val callInProgress =
+            incoming != null ||
+                outgoing != null ||
+                active != null
+
+        uiState =
+            HappyTalkieUiState(
+                status = status,
+                callState = visualState,
+                recording = recording,
+                callEnabled =
+                    callInProgress ||
+                        (
+                            !recording &&
+                                CallRoutePolicy.canStartCall(
+                                    connection,
+                                    route
+                                )
+                            ),
+                talkEnabled =
+                    !callInProgress,
+                speakerOn =
+                    active != null &&
+                        live &&
+                        LiveCallAudio.isSpeakerEnabled(this),
+                peerName = peer,
+                peerConnection = connection,
+                peerRoute = route,
+                messages =
+                    VoiceMessageStore.list(
+                        this,
+                        limit = 30
+                    )
             )
-        )
-
-        wrapper.layoutParams = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        ).apply {
-            bottomMargin = dp(if (isWatch) 6 else 9)
-        }
-        return wrapper
-    }
-
-    private fun styleCallButton(label: String, color: Int) {
-        callButton.text = label
-        callButton.background = GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            setColor(color)
-            setStroke(dp(1), lighten(color))
-        }
     }
 
     private fun hasAnyCallState(): Boolean =
@@ -559,66 +682,68 @@ class MainActivity : Activity() {
             StateStore.outgoingCall(this) != null ||
             StateStore.activeCall(this) != null
 
-    private fun requestNeededPermissions() {
-        val missing = mutableListOf<String>()
+    private fun updateIncomingPresentation(
+        incoming: Boolean =
+            StateStore.incomingCall(this) != null
+    ) {
+        if (Build.VERSION.SDK_INT >= 27) {
+            setShowWhenLocked(incoming)
+            setTurnScreenOn(incoming)
+        } else {
+            @Suppress("DEPRECATION")
+            if (incoming) {
+                window.addFlags(
+                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                        WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+                )
+            } else {
+                window.clearFlags(
+                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                        WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+                )
+            }
+        }
+    }
 
-        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) !=
-            PackageManager.PERMISSION_GRANTED
+    private fun requestNeededPermissions() {
+        val missing =
+            mutableListOf<String>()
+
+        if (
+            checkSelfPermission(
+                Manifest.permission.RECORD_AUDIO
+            ) != PackageManager.PERMISSION_GRANTED
         ) {
-            missing += Manifest.permission.RECORD_AUDIO
+            missing +=
+                Manifest.permission.RECORD_AUDIO
         }
 
         if (
             Build.VERSION.SDK_INT >= 33 &&
-            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
-            PackageManager.PERMISSION_GRANTED
+            checkSelfPermission(
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
         ) {
-            missing += Manifest.permission.POST_NOTIFICATIONS
+            missing +=
+                Manifest.permission.POST_NOTIFICATIONS
         }
 
         if (missing.isNotEmpty()) {
-            requestPermissions(missing.toTypedArray(), REQUEST_PERMISSIONS)
+            requestPermissions(
+                missing.toTypedArray(),
+                REQUEST_PERMISSIONS
+            )
         }
     }
 
     private fun peerName(): String =
-        if (role == EndpointRole.PHONE) "Watch" else "Phone"
-
-    private fun rounded(color: Int, radiusDp: Int): GradientDrawable =
-        GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = dp(radiusDp).toFloat()
-            setColor(color)
+        if (role == EndpointRole.PHONE) {
+            "Watch"
+        } else {
+            "Phone"
         }
-
-    private fun lighten(color: Int): Int {
-        val factor = 1.16f
-        return Color.rgb(
-            (Color.red(color) * factor).toInt().coerceAtMost(255),
-            (Color.green(color) * factor).toInt().coerceAtMost(255),
-            (Color.blue(color) * factor).toInt().coerceAtMost(255)
-        )
-    }
-
-    private fun dp(value: Int): Int =
-        (value * resources.displayMetrics.density).toInt()
 
     companion object {
         private const val REQUEST_PERMISSIONS = 42
-
-        private val BACKGROUND = Color.rgb(12, 15, 20)
-        private val SURFACE = Color.rgb(27, 32, 40)
-        private val SURFACE_RAISED = Color.rgb(38, 44, 54)
-        private val TEXT_SECONDARY = Color.rgb(184, 193, 207)
-        private val TEXT_MUTED = Color.rgb(123, 133, 149)
-
-        private val CALL_COLOR = Color.rgb(53, 105, 255)
-        private val CALLING_COLOR = Color.rgb(66, 83, 125)
-        private val ANSWER_COLOR = Color.rgb(35, 168, 100)
-        private val END_COLOR = Color.rgb(222, 67, 76)
-        private val LIVE_COLOR = Color.rgb(101, 226, 158)
-
-        private val MESSAGE_OUT = Color.rgb(47, 91, 190)
-        private val MESSAGE_IN = Color.rgb(43, 49, 60)
     }
 }
