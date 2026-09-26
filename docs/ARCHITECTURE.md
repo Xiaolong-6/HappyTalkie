@@ -64,6 +64,7 @@ Signaling uses transient `MessageClient` paths:
 - `/happytalky/call/cancel`
 - `/happytalky/call/busy`
 - `/happytalky/call/end`
+- `/happytalky/call/disconnected`
 - `/happytalky/call/priority`
 
 ### Priority CALL
@@ -90,7 +91,7 @@ READY
 OUTGOING_RINGING -> CANCELLED | DECLINED | BUSY | TIMEOUT
 INCOMING_RINGING -> ANSWERED | DECLINED | CANCELLED | MISSED
 LIVE -> RECONNECTING -> LIVE
-LIVE/RECONNECTING -> ENDED
+LIVE/RECONNECTING -> ENDED | DISCONNECTED
 ~~~
 
 A live call never begins merely because a RING arrived. The receiving user must answer.
@@ -117,7 +118,7 @@ Audio parameters:
 
 Phone starts on the system-selected communication route. Speaker is an explicit user toggle. Wear requests its built-in communication speaker when available. Priority CALL uses the same audio path after answer; it changes escalation/answer policy, not transport or microphone behavior.
 
-A foreground service keeps ringing/live-call state alive in the background and exposes Cancel/End from the ongoing notification.
+A foreground service keeps outgoing/live-call state alive in the background and exposes Cancel/End from the ongoing notification. On Wear OS, active/outgoing calls are also published as an `OngoingActivity` so the watch face/launcher can provide a one-tap return path.
 
 ## Reconnection
 
@@ -129,7 +130,8 @@ HappyTalky:
 2. preserves the active call ID;
 3. gives the route a short reconnect grace period;
 4. retries the outgoing live channel from the original call initiator;
-5. ends the call and recommends TALK only after the grace period expires.
+5. ends the call and recommends TALK only after the grace period expires;
+6. signals `/happytalky/call/disconnected` so both endpoints persist `DISCONNECTED` rather than allowing the remote side to misclassify an abnormal drop as `COMPLETED`.
 
 This is intended for ordinary Bluetooth/Wi-Fi handovers and brief network interruptions, not indefinite background calling.
 
@@ -151,13 +153,13 @@ The app does not infer the remote peer's exact last-mile transport from local ne
 Incoming CALL uses:
 
 - ringtone and vibration;
-- an importance-high CATEGORY_CALL notification;
+- an importance-high `CATEGORY_CALL` notification;
 - Answer and Decline notification actions;
-- full-screen intent / lock-screen activity presentation when Android permits it;
-- a dedicated full-screen Answer / Decline screen on Wear;
+- phone-only full-screen intent / lock-screen activity presentation where Android permits it;
+- a dedicated Answer / Decline screen whenever the Wear activity is already foregrounded;
 - the same Answer/Decline actions in the foreground Compose UI.
 
-On Android 14+ the Wear app checks whether full-screen-intent access is available and sends the user once to the system permission page when it is not. The Watch activity is also allowed to wake and show over the lock screen.
+Wear OS does not support `setFullScreenIntent()` or the `USE_FULL_SCREEN_INTENT` permission, so the Wear build does not request that permission or attempt that notification path. Background incoming calls remain actionable from the high-priority notification; after answer, the live-call foreground service publishes an `OngoingActivity` return path. Priority auto-answer still requires the Watch activity to be resumed/visible and never starts microphone capture silently from background.
 
 If the user does nothing, the ring times out rather than remaining active indefinitely. Final CALL outcomes are persisted locally, including completed duration, declined, missed/no-answer, cancelled, busy, failed, and disconnected cases.
 
@@ -239,7 +241,7 @@ Wear Material 3 presents a shorter wrist-first loop:
 - swipe left from the home screen to enter the unified Inbox;
 - Inbox supports touch scrolling and the watch rotary/crown;
 - unread incoming TALK is counted and bold/highlighted in chronological history, and loses emphasis after playback completes;
-- TEXT, TALK and CALL rows are interleaved by timestamp; TALK rows can be swiped left to reveal Delete;
+- TEXT, TALK and CALL rows are interleaved by timestamp; TALK rows can be swiped left to reveal Delete, followed by a short `TALK deleted ✓` confirmation;
 - persisted CALL events are interleaved with TEXT/TALK by timestamp, while the latest CALL is still summarized on the home screen;
 - Inbox exposes the explicit **Priority calls** opt-in; enabling it republishes Watch device-info immediately;
 - priority incoming presentation is visually labelled before the resumed foreground UI performs auto-answer;
