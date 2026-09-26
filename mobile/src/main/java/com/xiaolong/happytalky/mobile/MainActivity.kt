@@ -98,6 +98,7 @@ import com.xiaolong.happytalky.core.HappyTalkyUiState
 import com.xiaolong.happytalky.core.PeerConnectionState
 import com.xiaolong.happytalky.core.PeerRoute
 import com.xiaolong.happytalky.core.Protocol
+import com.xiaolong.happytalky.core.TextMessageStore
 import com.xiaolong.happytalky.core.VoiceDirection
 import com.xiaolong.happytalky.core.VoiceMessage
 
@@ -1525,8 +1526,8 @@ private fun PhoneTextComposer(
         value = draft,
         onValueChange = {
             draft =
-                it.take(
-                    Protocol.MAX_TEXT_LENGTH
+                TextMessageStore.limit(
+                    it
                 )
         },
         enabled = enabled,
