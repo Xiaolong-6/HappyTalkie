@@ -72,6 +72,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.wear.compose.material3.AppScaffold
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.ButtonDefaults
@@ -1128,7 +1129,7 @@ fun WearInbox(
                         start = 14.dp,
                         end = 14.dp,
                         top = 12.dp,
-                        bottom = 62.dp,
+                        bottom = 72.dp,
                     ),
                 horizontalAlignment =
                     Alignment.CenterHorizontally,
@@ -1263,7 +1264,7 @@ fun WearInbox(
                         Alignment.BottomCenter
                     )
                     .padding(
-                        bottom = 24.dp
+                        bottom = 28.dp
                     ),
             )
         }
@@ -1282,44 +1283,79 @@ private fun WearTextMessage(
         item.text
             ?: return
 
-    Card(
-        onClick = {},
-        modifier =
-            Modifier.width(146.dp),
-        colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    if (outgoing) {
-                        Color(0xFF173B63)
-                    } else {
-                        Color(0xFF121D2E)
-                    },
-                contentColor =
-                    Color.White,
+    Box(
+        modifier = Modifier
+            .width(140.dp)
+            .height(54.dp)
+            .background(
+                if (outgoing) {
+                    Color(0xFF173B63)
+                } else {
+                    Color(0xFF121D2E)
+                },
+                RoundedCornerShape(18.dp)
+            )
+            .padding(
+                horizontal = 9.dp,
+                vertical = 6.dp,
             ),
     ) {
-        Column {
-            Text(
-                text =
-                    if (outgoing) {
-                        "Me"
-                    } else {
-                        peerName
-                    },
-                style =
-                    MaterialTheme
-                        .typography
-                        .labelSmall,
-                color =
-                    if (outgoing) {
-                        Color(0xFF8CC0FF)
-                    } else {
-                        Color(0xFF98A7BC)
-                    },
-                fontWeight =
-                    FontWeight.SemiBold,
-                maxLines = 1,
-            )
+        Column(
+            modifier =
+                Modifier.fillMaxSize(),
+        ) {
+            Row(
+                modifier =
+                    Modifier.fillMaxWidth(),
+                horizontalArrangement =
+                    Arrangement.SpaceBetween,
+                verticalAlignment =
+                    Alignment.CenterVertically,
+            ) {
+                Text(
+                    text =
+                        if (outgoing) {
+                            "Me"
+                        } else {
+                            peerName
+                        },
+                    style =
+                        MaterialTheme
+                            .typography
+                            .labelSmall,
+                    color =
+                        if (outgoing) {
+                            Color(0xFF8CC0FF)
+                        } else {
+                            Color(0xFF98A7BC)
+                        },
+                    fontWeight =
+                        FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow =
+                        TextOverflow.Ellipsis,
+                    modifier =
+                        Modifier.weight(1f),
+                )
+
+                Spacer(
+                    Modifier.width(5.dp)
+                )
+
+                Text(
+                    text =
+                        wearMessageTime(
+                            item.createdAt
+                        ),
+                    style =
+                        MaterialTheme
+                            .typography
+                            .labelSmall,
+                    color =
+                        Color(0xFF7F8DA2),
+                    maxLines = 1,
+                )
+            }
 
             Text(
                 text = text,
@@ -1328,23 +1364,9 @@ private fun WearTextMessage(
                         .typography
                         .labelMedium,
                 color = Color.White,
-                maxLines = 3,
+                maxLines = 2,
                 overflow =
                     TextOverflow.Ellipsis,
-            )
-
-            Text(
-                text =
-                    wearMessageTime(
-                        item.createdAt
-                    ),
-                style =
-                    MaterialTheme
-                        .typography
-                        .labelSmall,
-                color =
-                    Color(0xFF98A7BC),
-                maxLines = 1,
             )
         }
     }
@@ -1422,33 +1444,49 @@ private fun WearTextComposer(
     onCompose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(
-        onClick = {
-            if (enabled) {
-                onCompose()
-            }
-        },
+    val container =
+        if (enabled) {
+            Color(0xFF173B63)
+        } else {
+            Color(0xFF111A29)
+        }
+
+    Box(
         modifier = modifier
-            .width(142.dp)
-            .height(30.dp),
-        colors =
-            CardDefaults.cardColors(
-                containerColor =
+            .zIndex(3f)
+            .width(126.dp)
+            .height(32.dp)
+            .background(
+                container,
+                RoundedCornerShape(18.dp)
+            )
+            .semantics {
+                role = Role.Button
+                contentDescription =
                     if (enabled) {
-                        Color(0xFF173B63)
+                        "Compose message"
                     } else {
-                        Color(0xFF111A29)
-                    },
-                contentColor =
-                    Color.White,
+                        "Text unavailable"
+                    }
+            }
+            .pointerInput(enabled) {
+                detectTapGestures(
+                    onTap = {
+                        if (enabled) {
+                            onCompose()
+                        }
+                    }
+                )
+            }
+            .padding(
+                horizontal = 11.dp
             ),
+        contentAlignment =
+            Alignment.Center,
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(
-                    horizontal = 11.dp
-                ),
+            modifier =
+                Modifier.fillMaxWidth(),
             verticalAlignment =
                 Alignment.CenterVertically,
             horizontalArrangement =
@@ -1472,6 +1510,8 @@ private fun WearTextComposer(
                         Color(0xFF75849A)
                     },
                 maxLines = 1,
+                overflow =
+                    TextOverflow.Ellipsis,
             )
 
             Text(
