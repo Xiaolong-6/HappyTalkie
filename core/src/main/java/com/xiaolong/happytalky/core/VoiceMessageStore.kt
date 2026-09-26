@@ -19,8 +19,14 @@ data class VoiceMessage(
     val createdAt: Long,
     val direction: VoiceDirection,
     val file: File,
-    val durationMs: Long = 0L
+    val durationMs: Long = 0L,
+    val readAt: Long? = null
 ) {
+    val isRead: Boolean
+        get() =
+            direction == VoiceDirection.OUTGOING ||
+                readAt != null
+
     fun displayTime(): String =
         SimpleDateFormat(
             "HH:mm",
@@ -42,6 +48,7 @@ data class VoiceMessage(
 
 object VoiceMessageStore {
     private const val DIRECTORY = "voice-history"
+    private const val READ_PREFS = "happytalky_voice_read_state"
 
     fun saveOutgoing(
         context: Context,
@@ -70,7 +77,8 @@ object VoiceMessageStore {
             createdAt = createdAt,
             direction = VoiceDirection.OUTGOING,
             file = target,
-            durationMs = durationMs(target)
+            durationMs = durationMs(target),
+            readAt = createdAt
         )
     }
 
@@ -102,6 +110,7 @@ object VoiceMessageStore {
             target.outputStream().use { output ->
                 input.copyTo(output)
             }
+            clearReadState(context, id)
         }
 
         return VoiceMessage(
@@ -109,7 +118,8 @@ object VoiceMessageStore {
             createdAt = safeCreatedAt,
             direction = VoiceDirection.INCOMING,
             file = target,
-            durationMs = durationMs(target)
+            durationMs = durationMs(target),
+            readAt = readAt(context, id)
         )
     }
 
@@ -120,9 +130,39 @@ object VoiceMessageStore {
         directory(context)
             .listFiles()
             .orEmpty()
-            .mapNotNull(::parse)
+            .mapNotNull {
+                parse(
+                    context,
+                    it
+                )
+            }
             .sortedByDescending { it.createdAt }
             .take(limit)
+
+    fun unreadCount(context: Context): Int =
+        directory(context)
+            .listFiles()
+            .orEmpty()
+            .mapNotNull(::parseName)
+            .count {
+                it.direction ==
+                    VoiceDirection.INCOMING &&
+                    readAt(
+                        context,
+                        it.id
+                    ) == null
+            }
+
+    fun markRead(
+        context: Context,
+        id: String,
+        at: Long = System.currentTimeMillis()
+    ) {
+        readPrefs(context)
+            .edit()
+            .putLong(id, at)
+            .apply()
+    }
 
     fun delete(
         context: Context,
@@ -135,11 +175,20 @@ object VoiceMessageStore {
         directory(context)
             .listFiles()
             .orEmpty()
-            .mapNotNull(::parse)
+            .mapNotNull {
+                parse(
+                    context,
+                    it
+                )
+            }
             .filter { it.id in ids }
             .forEach { message ->
                 if (message.file.delete()) {
                     deleted += 1
+                    clearReadState(
+                        context,
+                        message.id
+                    )
                 }
             }
 
@@ -162,6 +211,11 @@ object VoiceMessageStore {
                     deleted += 1
                 }
             }
+
+        readPrefs(context)
+            .edit()
+            .clear()
+            .apply()
 
         return deleted
     }
@@ -198,9 +252,50 @@ object VoiceMessageStore {
             mkdirs()
         }
 
-    private fun parse(
+    private fun readPrefs(
+        context: Context
+    ) =
+        context.getSharedPreferences(
+            READ_PREFS,
+            Context.MODE_PRIVATE
+        )
+
+    private fun readAt(
+        context: Context,
+        id: String
+    ): Long? {
+        val value =
+            readPrefs(context)
+                .getLong(
+                    id,
+                    0L
+                )
+
+        return value
+            .takeIf {
+                it > 0L
+            }
+    }
+
+    private fun clearReadState(
+        context: Context,
+        id: String
+    ) {
+        readPrefs(context)
+            .edit()
+            .remove(id)
+            .apply()
+    }
+
+    private data class ParsedName(
+        val createdAt: Long,
+        val direction: VoiceDirection,
+        val id: String
+    )
+
+    private fun parseName(
         file: File
-    ): VoiceMessage? {
+    ): ParsedName? {
         if (
             !file.isFile ||
             file.extension.lowercase() !=
@@ -261,12 +356,39 @@ object VoiceMessageStore {
             return null
         }
 
-        return VoiceMessage(
-            id = id,
+        return ParsedName(
             createdAt = createdAt,
             direction = direction,
+            id = id
+        )
+    }
+
+    private fun parse(
+        context: Context,
+        file: File
+    ): VoiceMessage? {
+        val parsed =
+            parseName(file)
+                ?: return null
+
+        return VoiceMessage(
+            id = parsed.id,
+            createdAt = parsed.createdAt,
+            direction = parsed.direction,
             file = file,
-            durationMs = durationMs(file)
+            durationMs = durationMs(file),
+            readAt =
+                if (
+                    parsed.direction ==
+                        VoiceDirection.OUTGOING
+                ) {
+                    parsed.createdAt
+                } else {
+                    readAt(
+                        context,
+                        parsed.id
+                    )
+                }
         )
     }
 

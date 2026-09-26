@@ -57,7 +57,7 @@ Phone and Watch share product state and communication logic, but not page layout
 - **Phone:** Jetpack Compose Material 3
 - **Wear:** Wear Compose Material 3, designed independently for a small round screen
 
-Wear prioritizes one short loop: **route/status → CALL → TALK**. History management stays on the phone.
+Wear prioritizes **route/status → CALL → TALK**, with a left-swipe Inbox for unread TALK, explicit playback/delete, crown scrolling, and recent CALL history. Incoming calls use a dedicated full-screen wrist UI when the OS permits it.
 
 Compose screenshot previews are rendered in CI so phone and 192 dp round-watch layouts can be visually reviewed before shipping APKs.
 

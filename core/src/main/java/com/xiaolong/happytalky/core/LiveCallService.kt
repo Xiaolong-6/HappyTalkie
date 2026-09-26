@@ -283,6 +283,21 @@ class LiveCallService : Service() {
         cancelRetry()
         LiveCallAudio.stop(this)
 
+        CallHistoryStore.append(
+            this,
+            callId,
+            if (StateStore.callInitiator(this)) {
+                CallDirection.OUTGOING
+            } else {
+                CallDirection.INCOMING
+            },
+            CallOutcome.DISCONNECTED,
+            startedAt =
+                StateStore.activeStartedAt(
+                    this
+                )
+        )
+
         StateStore.clearCallState(this)
         StateStore.setPeerConnection(
             this,
@@ -321,6 +336,12 @@ class LiveCallService : Service() {
                     return@Runnable
                 }
 
+                CallHistoryStore.append(
+                    this,
+                    callId,
+                    CallDirection.OUTGOING,
+                    CallOutcome.NO_ANSWER
+                )
                 StateStore.clearCallState(this)
                 StateStore.setStatus(
                     this,

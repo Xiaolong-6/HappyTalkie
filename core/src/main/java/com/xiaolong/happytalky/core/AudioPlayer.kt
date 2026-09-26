@@ -9,7 +9,12 @@ object AudioPlayer {
     private var player: MediaPlayer? = null
 
     @Synchronized
-    fun play(context: Context, file: File, deleteAfter: Boolean = false) {
+    fun play(
+        context: Context,
+        file: File,
+        deleteAfter: Boolean = false,
+        onCompleted: () -> Unit = {}
+    ) {
         stop()
         val mediaPlayer = MediaPlayer()
         player = mediaPlayer
@@ -17,32 +22,60 @@ object AudioPlayer {
         try {
             mediaPlayer.setAudioAttributes(
                 AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .setUsage(
+                        AudioAttributes.USAGE_MEDIA
+                    )
+                    .setContentType(
+                        AudioAttributes.CONTENT_TYPE_SPEECH
+                    )
                     .build()
             )
-            mediaPlayer.setDataSource(file.absolutePath)
+            mediaPlayer.setDataSource(
+                file.absolutePath
+            )
             mediaPlayer.setOnCompletionListener {
                 synchronized(this) {
-                    runCatching { it.release() }
-                    if (player === it) player = null
-                    if (deleteAfter) file.delete()
+                    runCatching {
+                        it.release()
+                    }
+                    if (player === it) {
+                        player = null
+                    }
+                    if (deleteAfter) {
+                        file.delete()
+                    }
                 }
+                onCompleted()
             }
-            mediaPlayer.setOnErrorListener { mp, _, _ ->
+            mediaPlayer.setOnErrorListener {
+                    mp,
+                    _,
+                    _ ->
                 synchronized(this) {
-                    runCatching { mp.release() }
-                    if (player === mp) player = null
-                    if (deleteAfter) file.delete()
+                    runCatching {
+                        mp.release()
+                    }
+                    if (player === mp) {
+                        player = null
+                    }
+                    if (deleteAfter) {
+                        file.delete()
+                    }
                 }
                 true
             }
             mediaPlayer.prepare()
             mediaPlayer.start()
         } catch (_: Exception) {
-            runCatching { mediaPlayer.release() }
-            if (player === mediaPlayer) player = null
-            if (deleteAfter) file.delete()
+            runCatching {
+                mediaPlayer.release()
+            }
+            if (player === mediaPlayer) {
+                player = null
+            }
+            if (deleteAfter) {
+                file.delete()
+            }
         }
     }
 
@@ -50,7 +83,11 @@ object AudioPlayer {
     fun stop() {
         val current = player ?: return
         player = null
-        runCatching { current.stop() }
-        runCatching { current.release() }
+        runCatching {
+            current.stop()
+        }
+        runCatching {
+            current.release()
+        }
     }
 }

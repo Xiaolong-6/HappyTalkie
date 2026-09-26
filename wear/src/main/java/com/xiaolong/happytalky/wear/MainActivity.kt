@@ -1,9 +1,18 @@
 package com.xiaolong.happytalky.wear
 
+import android.app.NotificationManager
+import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,16 +22,21 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.CallEnd
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.CloudOff
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.NetworkCell
@@ -31,14 +45,20 @@ import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.rotary.onRotaryScrollEvent
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -46,17 +66,20 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material3.AppScaffold
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.ButtonDefaults
 import androidx.wear.compose.material3.Card
 import androidx.wear.compose.material3.CardDefaults
-import androidx.wear.compose.material3.EdgeButton
 import androidx.wear.compose.material3.Icon
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.Text
 import androidx.wear.compose.material3.TextButton
+import com.xiaolong.happytalky.core.CallDirection
+import com.xiaolong.happytalky.core.CallHistoryEntry
+import com.xiaolong.happytalky.core.CallOutcome
 import com.xiaolong.happytalky.core.CallVisualState
 import com.xiaolong.happytalky.core.HappyTalkyActivity
 import com.xiaolong.happytalky.core.HappyTalkyUiState
@@ -65,6 +88,8 @@ import com.xiaolong.happytalky.core.PeerRoute
 import com.xiaolong.happytalky.core.Protocol
 import com.xiaolong.happytalky.core.VoiceDirection
 import com.xiaolong.happytalky.core.VoiceMessage
+import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 class MainActivity : HappyTalkyActivity() {
     private var openInboxRequested by mutableStateOf(false)
@@ -77,6 +102,8 @@ class MainActivity : HappyTalkyActivity() {
                 false
             ) == true
 
+        requestFullScreenCallAccessOnce()
+
         setContent {
             MaterialTheme {
                 WearHome(
@@ -87,6 +114,7 @@ class MainActivity : HappyTalkyActivity() {
                     onTalkFinish = ::finishTalk,
                     onTalkCancel = ::cancelTalk,
                     onPlay = ::playMessage,
+                    onDelete = ::deleteMessages,
                     openInbox = openInboxRequested,
                     onInboxOpened = {
                         openInboxRequested = false
@@ -104,6 +132,57 @@ class MainActivity : HappyTalkyActivity() {
                 false
             )
     }
+
+    private fun requestFullScreenCallAccessOnce() {
+        if (Build.VERSION.SDK_INT < 34) {
+            return
+        }
+
+        val manager =
+            getSystemService(
+                NotificationManager::class.java
+            )
+
+        if (
+            manager?.canUseFullScreenIntent() ==
+                true
+        ) {
+            return
+        }
+
+        val prefs =
+            getSharedPreferences(
+                "happytalky_wear_setup",
+                Context.MODE_PRIVATE
+            )
+
+        if (
+            prefs.getBoolean(
+                "asked_full_screen_call",
+                false
+            )
+        ) {
+            return
+        }
+
+        prefs.edit()
+            .putBoolean(
+                "asked_full_screen_call",
+                true
+            )
+            .apply()
+
+        runCatching {
+            startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                    Uri.parse(
+                        "package:$packageName"
+                    )
+                )
+            )
+        }
+    }
 }
 
 @Composable
@@ -115,10 +194,13 @@ fun WearHome(
     onTalkFinish: () -> Unit,
     onTalkCancel: () -> Unit,
     onPlay: (VoiceMessage) -> Unit,
+    onDelete: (Set<String>) -> Unit = {},
     openInbox: Boolean = false,
     onInboxOpened: () -> Unit = {},
 ) {
-    var showInbox by remember { mutableStateOf(false) }
+    var showInbox by remember {
+        mutableStateOf(false)
+    }
 
     LaunchedEffect(openInbox) {
         if (openInbox) {
@@ -127,63 +209,275 @@ fun WearHome(
         }
     }
 
-    if (showInbox) {
-        WearTalkInbox(
-            messages = state.messages,
+    if (
+        state.callState ==
+            CallVisualState.INCOMING
+    ) {
+        WearIncomingCallScreen(
             peerName = state.peerName,
-            onBack = { showInbox = false },
-            onPlay = onPlay,
+            onAnswer = onCall,
+            onDecline = onDecline,
         )
         return
     }
+
+    if (showInbox) {
+        WearTalkInbox(
+            messages = state.messages,
+            callHistory = state.callHistory,
+            unreadCount =
+                state.unreadVoiceCount,
+            peerName = state.peerName,
+            onBack = {
+                showInbox = false
+            },
+            onPlay = onPlay,
+            onDelete = onDelete,
+        )
+        return
+    }
+
+    WearHomePage(
+        state = state,
+        onCall = onCall,
+        onTalkStart = onTalkStart,
+        onTalkFinish = onTalkFinish,
+        onTalkCancel = onTalkCancel,
+        onOpenInbox = {
+            showInbox = true
+        },
+    )
+}
+
+@Composable
+private fun WearHomePage(
+    state: HappyTalkyUiState,
+    onCall: () -> Unit,
+    onTalkStart: () -> Unit,
+    onTalkFinish: () -> Unit,
+    onTalkCancel: () -> Unit,
+    onOpenInbox: () -> Unit,
+) {
+    var horizontalDrag by remember {
+        mutableFloatStateOf(0f)
+    }
+    val thresholdPx =
+        with(LocalDensity.current) {
+            42.dp.toPx()
+        }
 
     AppScaffold(
         containerColor = Color.Black,
         contentColor = Color.White,
     ) {
         Box(
-            modifier = Modifier.fillMaxSize()
+            modifier =
+                Modifier.fillMaxSize()
         ) {
             Column(
                 modifier = Modifier
-                    .align(Alignment.TopCenter)
+                    .align(
+                        Alignment.TopCenter
+                    )
                     .width(154.dp)
-                    .padding(top = 18.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(5.dp),
+                    .padding(top = 18.dp)
+                    .pointerInput(Unit) {
+                        detectHorizontalDragGestures(
+                            onDragStart = {
+                                horizontalDrag =
+                                    0f
+                            },
+                            onHorizontalDrag = {
+                                    change,
+                                    amount ->
+                                change.consume()
+                                horizontalDrag +=
+                                    amount
+                            },
+                            onDragEnd = {
+                                if (
+                                    horizontalDrag <
+                                        -thresholdPx
+                                ) {
+                                    onOpenInbox()
+                                }
+                                horizontalDrag = 0f
+                            },
+                            onDragCancel = {
+                                horizontalDrag = 0f
+                            }
+                        )
+                    },
+                horizontalAlignment =
+                    Alignment.CenterHorizontally,
+                verticalArrangement =
+                    Arrangement.spacedBy(
+                        5.dp
+                    ),
             ) {
                 RouteStatus(state)
 
-                if (state.callState == CallVisualState.INCOMING) {
-                    IncomingActions(
-                        onAnswer = onCall,
-                        onDecline = onDecline,
-                    )
-                } else {
-                    PrimaryCallAction(
-                        state = state,
-                        onCall = onCall,
-                    )
-                }
+                PrimaryCallAction(
+                    state = state,
+                    onCall = onCall,
+                )
 
                 TalkInboxButton(
-                    count = state.messages.size,
-                    onClick = { showInbox = true },
+                    unread =
+                        state.unreadVoiceCount,
+                    onClick =
+                        onOpenInbox,
                 )
+
             }
 
-            TalkEdgeButton(
+            TalkHoldButton(
                 state = state,
                 onStart = onTalkStart,
                 onFinish = onTalkFinish,
                 onCancel = onTalkCancel,
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
+                    .align(
+                        Alignment.BottomCenter
+                    )
                     .width(142.dp)
-                    .padding(bottom = 4.dp),
+                    .padding(bottom = 6.dp),
             )
         }
     }
+}
+
+@Composable
+private fun WearIncomingCallScreen(
+    peerName: String,
+    onAnswer: () -> Unit,
+    onDecline: () -> Unit,
+) {
+    AppScaffold(
+        containerColor = Color.Black,
+        contentColor = Color.White,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(
+                    horizontal = 18.dp,
+                    vertical = 18.dp,
+                ),
+            horizontalAlignment =
+                Alignment.CenterHorizontally,
+            verticalArrangement =
+                Arrangement.SpaceBetween,
+        ) {
+            Column(
+                horizontalAlignment =
+                    Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = "INCOMING CALL",
+                    style =
+                        MaterialTheme
+                            .typography
+                            .labelMedium,
+                    color =
+                        Color(0xFF8CC0FF),
+                    fontWeight =
+                        FontWeight.Bold,
+                )
+                Spacer(
+                    Modifier.height(6.dp)
+                )
+                Text(
+                    text = peerName,
+                    style =
+                        MaterialTheme
+                            .typography
+                            .titleLarge,
+                    fontWeight =
+                        FontWeight.Bold,
+                    textAlign =
+                        TextAlign.Center,
+                )
+            }
+
+            Icon(
+                imageVector =
+                    Icons.Rounded.Call,
+                contentDescription = null,
+                modifier =
+                    Modifier.size(42.dp),
+                tint =
+                    Color(0xFF76DCA5),
+            )
+
+            Row(
+                horizontalArrangement =
+                    Arrangement.spacedBy(
+                        14.dp
+                    ),
+            ) {
+                CallCircleButton(
+                    text = "NO",
+                    icon =
+                        Icons.Rounded
+                            .CallEnd,
+                    color =
+                        Color(0xFFD9485E),
+                    onClick = onDecline,
+                )
+
+                CallCircleButton(
+                    text = "YES",
+                    icon =
+                        Icons.Rounded.Call,
+                    color =
+                        Color(0xFF1DAA6B),
+                    onClick = onAnswer,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CallCircleButton(
+    text: String,
+    icon: ImageVector,
+    color: Color,
+    onClick: () -> Unit,
+) {
+    Button(
+        onClick = onClick,
+        label = {
+            Column(
+                horizontalAlignment =
+                    Alignment.CenterHorizontally,
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier =
+                        Modifier.size(19.dp),
+                )
+                Text(
+                    text = text,
+                    style =
+                        MaterialTheme
+                            .typography
+                            .labelSmall,
+                    fontWeight =
+                        FontWeight.Bold,
+                )
+            }
+        },
+        colors =
+            ButtonDefaults.buttonColors(
+                containerColor = color,
+                contentColor = Color.White,
+            ),
+        modifier =
+            Modifier.size(62.dp),
+    )
 }
 
 @Composable
@@ -284,122 +578,149 @@ private fun PrimaryCallAction(
 }
 
 @Composable
-private fun IncomingActions(
-    onAnswer: () -> Unit,
-    onDecline: () -> Unit,
-) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Button(
-            onClick = onDecline,
-            label = {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.CallEnd,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Text(
-                        "No",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-            },
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFD9485E),
-                contentColor = Color.White,
-            ),
-            modifier = Modifier.size(58.dp),
-        )
-
-        Button(
-            onClick = onAnswer,
-            label = {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Call,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Text(
-                        "Yes",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-            },
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF1DAA6B),
-                contentColor = Color.White,
-            ),
-            modifier = Modifier.size(58.dp),
-        )
-    }
-}
-
-@Composable
 private fun TalkInboxButton(
-    count: Int,
+    unread: Int,
     onClick: () -> Unit,
 ) {
     TextButton(
         onClick = onClick,
-        enabled = count > 0,
         modifier = Modifier
-            .width(136.dp)
+            .width(138.dp)
             .height(28.dp),
     ) {
         Text(
             text =
-                if (count > 0) {
-                    "Inbox · $count"
+                if (unread > 0) {
+                    unread.toString() +
+                        " unread · swipe ←"
                 } else {
-                    "Inbox · 0"
+                    "Inbox · swipe ←"
                 },
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.SemiBold,
+            style =
+                MaterialTheme
+                    .typography
+                    .labelSmall,
+            fontWeight =
+                if (unread > 0) {
+                    FontWeight.Bold
+                } else {
+                    FontWeight.Normal
+                },
+            color =
+                if (unread > 0) {
+                    Color(0xFFFFD35A)
+                } else {
+                    Color(0xFF8E9AAF)
+                },
             maxLines = 1,
         )
     }
 }
 
 @Composable
-private fun TalkEdgeButton(
+private fun LastCallSummary(
+    entry: CallHistoryEntry
+) {
+    val detail =
+        when (entry.outcome) {
+            CallOutcome.COMPLETED ->
+                if (entry.durationMs > 0L) {
+                    "Last " +
+                        entry.displayTime() +
+                        " · " +
+                        entry.displayDuration()
+                } else {
+                    "Last call · " +
+                        entry.displayTime()
+                }
+
+            CallOutcome.DECLINED_BY_ME ->
+                "Declined · " +
+                    entry.displayTime()
+
+            CallOutcome.DECLINED_BY_PEER ->
+                "Rejected · " +
+                    entry.displayTime()
+
+            CallOutcome.NO_ANSWER ->
+                "No answer · " +
+                    entry.displayTime()
+
+            CallOutcome.MISSED ->
+                "Missed · " +
+                    entry.displayTime()
+
+            CallOutcome.CANCELLED_BY_ME ->
+                "Cancelled · " +
+                    entry.displayTime()
+
+            CallOutcome.CANCELLED_BY_PEER ->
+                "Peer cancel · " +
+                    entry.displayTime()
+
+            CallOutcome.BUSY ->
+                "Busy · " +
+                    entry.displayTime()
+
+            CallOutcome.FAILED ->
+                "Failed · " +
+                    entry.displayTime()
+
+            CallOutcome.DISCONNECTED ->
+                "Dropped · " +
+                    entry.displayTime()
+        }
+
+    Text(
+        text = detail,
+        style =
+            MaterialTheme
+                .typography
+                .labelSmall,
+        color = Color(0xFF7F8DA2),
+        maxLines = 1,
+        overflow =
+            TextOverflow.Ellipsis,
+        modifier =
+            Modifier.width(142.dp),
+        textAlign =
+            TextAlign.Center,
+    )
+}
+
+@Composable
+private fun TalkHoldButton(
     state: HappyTalkyUiState,
     onStart: () -> Unit,
     onFinish: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val enabled = state.talkEnabled
     val recording = state.recording
-    val activeContainer =
-        if (recording) {
-            Color(0xFFE4475E)
-        } else {
-            Color(0xFF0F89FF)
-        }
+
     val container =
-        if (state.talkEnabled) {
-            activeContainer
-        } else {
-            Color(0xFF182638)
-        }
-    val content =
-        if (state.talkEnabled) {
-            Color.White
-        } else {
-            Color(0xFF75849A)
+        when {
+            !enabled ->
+                Color(0xFF182638)
+
+            recording ->
+                Color(0xFFE4475E)
+
+            else ->
+                Color(0xFF0F89FF)
         }
 
     Box(
         modifier = modifier
+            .height(46.dp)
+            .background(
+                color = container,
+                shape =
+                    RoundedCornerShape(
+                        24.dp
+                    )
+            )
             .semantics {
                 role = Role.Button
                 contentDescription =
@@ -409,54 +730,265 @@ private fun TalkEdgeButton(
                         "Hold to record TALK"
                     }
             }
-            .pointerInput(state.talkEnabled) {
+            .pointerInput(
+                enabled
+            ) {
                 detectTapGestures(
                     onPress = {
-                        if (state.talkEnabled) {
-                            onStart()
-                            val released = tryAwaitRelease()
-                            if (released) {
-                                onFinish()
-                            } else {
-                                onCancel()
-                            }
+                        if (!enabled) {
+                            return@detectTapGestures
+                        }
+
+                        onStart()
+
+                        val released =
+                            tryAwaitRelease()
+
+                        if (released) {
+                            onFinish()
+                        } else {
+                            onCancel()
                         }
                     }
                 )
             },
+        contentAlignment =
+            Alignment.Center,
     ) {
-        EdgeButton(
-            onClick = {},
-            enabled = false,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(
-                disabledContainerColor = container,
-                disabledContentColor = content,
-            ),
+        Row(
+            verticalAlignment =
+                Alignment.CenterVertically,
+            horizontalArrangement =
+                Arrangement.Center,
         ) {
-            if (recording) {
-                Text(
-                    text = "SEND",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
+            Icon(
+                imageVector =
+                    Icons.Rounded.Mic,
+                contentDescription = null,
+                modifier =
+                    Modifier.size(18.dp),
+                tint =
+                    if (enabled) {
+                        Color.White
+                    } else {
+                        Color(0xFF75849A)
+                    },
+            )
+            Spacer(
+                Modifier.width(5.dp)
+            )
+            Text(
+                text =
+                    when {
+                        !enabled ->
+                            "TALK"
+
+                        recording ->
+                            "RELEASE"
+
+                        else ->
+                            "HOLD TALK"
+                    },
+                style =
+                    MaterialTheme
+                        .typography
+                        .labelMedium,
+                fontWeight =
+                    FontWeight.Bold,
+                color =
+                    if (enabled) {
+                        Color.White
+                    } else {
+                        Color(0xFF75849A)
+                    },
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
+fun WearTalkInbox(
+    messages: List<VoiceMessage>,
+    callHistory: List<CallHistoryEntry> =
+        emptyList(),
+    unreadCount: Int = 0,
+    peerName: String,
+    onBack: () -> Unit,
+    onPlay: (VoiceMessage) -> Unit,
+    onDelete: (Set<String>) -> Unit = {},
+) {
+    val sortedMessages =
+        remember(messages) {
+            messages.sortedByDescending {
+                it.createdAt
+            }
+        }
+    val listState =
+        rememberLazyListState()
+    val focusRequester =
+        remember {
+            FocusRequester()
+        }
+    val scope =
+        rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
+    AppScaffold(
+        containerColor = Color.Black,
+        contentColor = Color.White,
+    ) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxSize()
+                .focusRequester(
+                    focusRequester
                 )
-            } else {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
+                .onRotaryScrollEvent {
+                        event ->
+                    scope.launch {
+                        listState.scrollBy(
+                            event.verticalScrollPixels
+                        )
+                    }
+                    true
+                }
+                .focusable(),
+            contentPadding =
+                PaddingValues(
+                    start = 14.dp,
+                    end = 14.dp,
+                    top = 12.dp,
+                    bottom = 28.dp,
+                ),
+            horizontalAlignment =
+                Alignment.CenterHorizontally,
+            verticalArrangement =
+                Arrangement.spacedBy(6.dp),
+        ) {
+            item {
+                TextButton(
+                    onClick = onBack,
+                    modifier =
+                        Modifier.width(144.dp),
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Mic,
-                        contentDescription = null,
-                        modifier = Modifier.size(17.dp),
-                    )
-                    Spacer(Modifier.size(4.dp))
                     Text(
-                        text = "TALK",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
+                        text =
+                            if (
+                                unreadCount > 0
+                            ) {
+                                "‹ Inbox · " +
+                                    unreadCount +
+                                    " unread"
+                            } else {
+                                "‹ Inbox"
+                            },
+                        style =
+                            MaterialTheme
+                                .typography
+                                .labelMedium,
+                        fontWeight =
+                            if (
+                                unreadCount > 0
+                            ) {
+                                FontWeight.Bold
+                            } else {
+                                FontWeight.SemiBold
+                            },
+                        color =
+                            if (
+                                unreadCount > 0
+                            ) {
+                                Color(
+                                    0xFFFFD35A
+                                )
+                            } else {
+                                Color.White
+                            },
                         maxLines = 1,
+                    )
+                }
+            }
+
+            callHistory
+                .firstOrNull()
+                ?.let { latest ->
+                    item {
+                        LastCallSummary(
+                            latest
+                        )
+                    }
+                }
+
+            if (
+                sortedMessages.isEmpty()
+            ) {
+                item {
+                    Text(
+                        text =
+                            "No saved TALK",
+                        style =
+                            MaterialTheme
+                                .typography
+                                .labelMedium,
+                        color =
+                            Color(0xFF8C9AAF),
+                        textAlign =
+                            TextAlign.Center,
+                    )
+                }
+            } else {
+                items(
+                    items =
+                        sortedMessages,
+                    key = {
+                        it.id
+                    },
+                ) { message ->
+                    SwipeDeleteTalkMessage(
+                        message = message,
+                        peerName = peerName,
+                        onPlay = onPlay,
+                        onDelete = onDelete,
+                    )
+                }
+            }
+
+            if (callHistory.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "CALLS",
+                        style =
+                            MaterialTheme
+                                .typography
+                                .labelSmall,
+                        color =
+                            Color(0xFF8E9AAF),
+                        fontWeight =
+                            FontWeight.Bold,
+                        modifier =
+                            Modifier
+                                .width(140.dp)
+                                .padding(
+                                    top = 8.dp,
+                                    start = 4.dp,
+                                ),
+                    )
+                }
+
+                items(
+                    items =
+                        callHistory.take(10),
+                    key = {
+                        "call-" + it.id
+                    },
+                ) { entry ->
+                    WearCallHistoryCard(
+                        entry = entry
                     )
                 }
             }
@@ -465,61 +997,118 @@ private fun TalkEdgeButton(
 }
 
 @Composable
-fun WearTalkInbox(
-    messages: List<VoiceMessage>,
+private fun SwipeDeleteTalkMessage(
+    message: VoiceMessage,
     peerName: String,
-    onBack: () -> Unit,
     onPlay: (VoiceMessage) -> Unit,
+    onDelete: (Set<String>) -> Unit,
 ) {
-    AppScaffold(
-        containerColor = Color.Black,
-        contentColor = Color.White,
-    ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = 18.dp,
-                end = 18.dp,
-                top = 14.dp,
-                bottom = 30.dp,
-            ),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            item {
-                TextButton(
-                    onClick = onBack,
-                    modifier = Modifier.width(132.dp),
-                ) {
-                    Text(
-                        "‹ TALK inbox",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-            }
+    val revealPx =
+        with(LocalDensity.current) {
+            58.dp.toPx()
+        }
 
-            if (messages.isEmpty()) {
-                item {
-                    Text(
-                        text = "No saved TALK",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color(0xFF8C9AAF),
-                        textAlign = TextAlign.Center,
+    var offsetX by
+        remember(message.id) {
+            mutableFloatStateOf(0f)
+        }
+
+    Box(
+        modifier = Modifier
+            .width(146.dp)
+            .height(54.dp),
+        contentAlignment =
+            Alignment.CenterEnd,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    if (offsetX < -1f) {
+                        Color(0xFF8D2634)
+                    } else {
+                        Color.Transparent
+                    },
+                    RoundedCornerShape(
+                        22.dp
                     )
-                }
-            } else {
-                items(
-                    items = messages,
-                    key = { it.id },
-                ) { message ->
-                    WearTalkMessage(
-                        message = message,
-                        peerName = peerName,
-                        onPlay = onPlay,
+                ),
+            contentAlignment =
+                Alignment.CenterEnd,
+        ) {
+            TextButton(
+                onClick = {
+                    onDelete(
+                        setOf(message.id)
                     )
-                }
+                    offsetX = 0f
+                },
+                modifier =
+                    Modifier.width(58.dp),
+            ) {
+                Icon(
+                    imageVector =
+                        Icons.Rounded.Delete,
+                    contentDescription =
+                        "Delete TALK",
+                    tint = Color.White,
+                    modifier =
+                        Modifier.size(20.dp),
+                )
             }
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .offset {
+                    IntOffset(
+                        x =
+                            offsetX
+                                .roundToInt(),
+                        y = 0
+                    )
+                }
+                .pointerInput(
+                    message.id
+                ) {
+                    detectHorizontalDragGestures(
+                        onHorizontalDrag = {
+                                change,
+                                amount ->
+                            change.consume()
+                            offsetX =
+                                (
+                                    offsetX +
+                                        amount
+                                    ).coerceIn(
+                                    -revealPx,
+                                    0f
+                                )
+                        },
+                        onDragEnd = {
+                            offsetX =
+                                if (
+                                    offsetX <
+                                        -revealPx /
+                                            2f
+                                ) {
+                                    -revealPx
+                                } else {
+                                    0f
+                                }
+                        },
+                        onDragCancel = {
+                            offsetX = 0f
+                        }
+                    )
+                }
+        ) {
+            WearTalkMessage(
+                message = message,
+                peerName = peerName,
+                onPlay = onPlay,
+            )
         }
     }
 }
@@ -531,47 +1120,224 @@ private fun WearTalkMessage(
     onPlay: (VoiceMessage) -> Unit,
 ) {
     val sender =
-        if (message.direction == VoiceDirection.OUTGOING) {
+        if (
+            message.direction ==
+                VoiceDirection.OUTGOING
+        ) {
             "Me"
         } else {
             peerName
         }
 
+    val unread =
+        message.direction ==
+            VoiceDirection.INCOMING &&
+            !message.isRead
+
     Card(
-        onClick = { onPlay(message) },
-        modifier = Modifier.width(138.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF121D2E),
-            contentColor = Color.White,
-        ),
+        onClick = {
+            onPlay(message)
+        },
+        modifier =
+            Modifier.fillMaxWidth(),
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    if (unread) {
+                        Color(0xFF173B63)
+                    } else {
+                        Color(0xFF121D2E)
+                    },
+                contentColor =
+                    Color.White,
+            ),
     ) {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment =
+                Alignment.CenterVertically,
         ) {
-            Icon(
-                imageVector = Icons.Rounded.PlayArrow,
-                contentDescription = "Play TALK",
-                modifier = Modifier.size(18.dp),
-                tint = Color(0xFF70C8FF),
+            Box(
+                modifier =
+                    Modifier.size(20.dp),
+                contentAlignment =
+                    Alignment.Center,
+            ) {
+                if (unread) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Color(
+                                        0xFF2A8CFF
+                                    ),
+                                    CircleShape
+                                )
+                    )
+                }
+
+                Icon(
+                    imageVector =
+                        Icons.Rounded
+                            .PlayArrow,
+                    contentDescription =
+                        "Play TALK",
+                    modifier =
+                        Modifier.size(17.dp),
+                    tint =
+                        if (unread) {
+                            Color.White
+                        } else {
+                            Color(
+                                0xFF70C8FF
+                            )
+                        },
+                )
+            }
+
+            Spacer(
+                Modifier.size(6.dp)
             )
-            Spacer(Modifier.size(6.dp))
-            Column {
+
+            Column(
+                modifier =
+                    Modifier.width(96.dp)
+            ) {
                 Text(
-                    text = sender,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    text =
+                        if (unread) {
+                            sender + " · NEW"
+                        } else {
+                            sender
+                        },
+                    style =
+                        MaterialTheme
+                            .typography
+                            .labelMedium,
+                    fontWeight =
+                        if (unread) {
+                            FontWeight.Bold
+                        } else {
+                            FontWeight.Normal
+                        },
                     maxLines = 1,
                 )
                 Text(
                     text =
-                        if (message.durationMs > 0L) {
-                            "${message.displayDuration()} · ${message.displayTime()}"
+                        if (
+                            message.durationMs >
+                                0L
+                        ) {
+                            message
+                                .displayDuration() +
+                                " · " +
+                                message
+                                    .displayTime()
                         } else {
                             message.displayTime()
                         },
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF98A7BC),
+                    style =
+                        MaterialTheme
+                            .typography
+                            .labelSmall,
+                    color =
+                        if (unread) {
+                            Color(
+                                0xFFCEE7FF
+                            )
+                        } else {
+                            Color(
+                                0xFF98A7BC
+                            )
+                        },
+                    fontWeight =
+                        if (unread) {
+                            FontWeight.SemiBold
+                        } else {
+                            FontWeight.Normal
+                        },
                     maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WearCallHistoryCard(
+    entry: CallHistoryEntry
+) {
+    val accent =
+        when (entry.outcome) {
+            CallOutcome.COMPLETED ->
+                Color(0xFF71DFA4)
+
+            else ->
+                Color(0xFFFF8C9B)
+        }
+
+    Card(
+        onClick = {},
+        modifier =
+            Modifier.width(146.dp),
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    Color(0xFF111A29),
+                contentColor =
+                    Color.White,
+            ),
+    ) {
+        Row(
+            verticalAlignment =
+                Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector =
+                    Icons.Rounded.Call,
+                contentDescription = null,
+                tint = accent,
+                modifier =
+                    Modifier.size(18.dp),
+            )
+            Spacer(
+                Modifier.width(7.dp)
+            )
+            Column {
+                Text(
+                    text =
+                        if (
+                            entry.direction ==
+                                CallDirection
+                                    .OUTGOING
+                        ) {
+                            "Outgoing"
+                        } else {
+                            "Incoming"
+                        },
+                    style =
+                        MaterialTheme
+                            .typography
+                            .labelMedium,
+                    fontWeight =
+                        FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+                Text(
+                    text =
+                        entry.shortLabel() +
+                            " · " +
+                            entry.displayTime(),
+                    style =
+                        MaterialTheme
+                            .typography
+                            .labelSmall,
+                    color =
+                        Color(0xFF98A7BC),
+                    maxLines = 1,
+                    overflow =
+                        TextOverflow
+                            .Ellipsis,
                 )
             }
         }

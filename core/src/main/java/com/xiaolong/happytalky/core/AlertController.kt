@@ -20,8 +20,8 @@ import android.os.Vibrator
 import android.os.VibratorManager
 
 object AlertController {
-    private const val CALL_CHANNEL = "happytalky_calls_v2"
-    private const val VOICE_CHANNEL = "happytalky_voice_v1"
+    private const val CALL_CHANNEL = "happytalky_calls_v3"
+    private const val VOICE_CHANNEL = "happytalky_voice_v2"
     private const val CALL_NOTIFICATION_ID = 1001
     private const val VOICE_NOTIFICATION_ID = 1002
 
@@ -41,6 +41,12 @@ object AlertController {
 
         timeoutRunnable = Runnable {
             if (StateStore.incomingCall(appContext) == callId) {
+                CallHistoryStore.append(
+                    appContext,
+                    callId,
+                    CallDirection.INCOMING,
+                    CallOutcome.MISSED
+                )
                 StateStore.setIncomingCall(appContext, null)
                 StateStore.setStatus(
                     appContext,
@@ -71,26 +77,67 @@ object AlertController {
     }
 
     fun postVoiceNotification(context: Context) {
+        refreshVoiceNotification(context)
+    }
+
+    fun refreshVoiceNotification(context: Context) {
         ensureChannels(context)
-        if (!canNotify(context)) return
 
         val manager =
-            context.getSystemService(NotificationManager::class.java)
-                ?: return
+            context.getSystemService(
+                NotificationManager::class.java
+            ) ?: return
+
+        val unread =
+            VoiceMessageStore.unreadCount(
+                context
+            )
+
+        if (unread <= 0) {
+            manager.cancel(
+                VOICE_NOTIFICATION_ID
+            )
+            return
+        }
+
+        if (!canNotify(context)) {
+            return
+        }
 
         manager.notify(
             VOICE_NOTIFICATION_ID,
-            baseBuilder(context, VOICE_CHANNEL)
-                .setContentTitle("HappyTalky")
-                .setContentText("Voice message received · open TALK inbox")
+            baseBuilder(
+                context,
+                VOICE_CHANNEL
+            )
+                .setContentTitle(
+                    if (unread == 1) {
+                        "New TALK"
+                    } else {
+                        "$unread new TALK messages"
+                    }
+                )
+                .setContentText(
+                    if (unread == 1) {
+                        "1 unread voice message"
+                    } else {
+                        "$unread unread voice messages"
+                    }
+                )
                 .setContentIntent(
                     launcherPendingIntent(
                         context,
                         openTalkInbox = true
                     )
                 )
-                .setCategory(Notification.CATEGORY_MESSAGE)
-                .setAutoCancel(true)
+                .setCategory(
+                    Notification.CATEGORY_MESSAGE
+                )
+                .setPriority(
+                    Notification.PRIORITY_HIGH
+                )
+                .setNumber(unread)
+                .setAutoCancel(false)
                 .build()
         )
     }
@@ -235,11 +282,19 @@ object AlertController {
         if (manager.getNotificationChannel(VOICE_CHANNEL) == null) {
             val channel = NotificationChannel(
                 VOICE_CHANNEL,
-                "HappyTalky voice messages",
-                NotificationManager.IMPORTANCE_DEFAULT
+                "HappyTalky TALK messages",
+                NotificationManager.IMPORTANCE_HIGH
             )
             channel.description =
-                "HappyTalky voice messages"
+                "New HappyTalky TALK messages"
+            channel.enableVibration(true)
+            channel.vibrationPattern =
+                longArrayOf(
+                    0L,
+                    180L,
+                    100L,
+                    260L
+                )
             manager.createNotificationChannel(channel)
         }
     }

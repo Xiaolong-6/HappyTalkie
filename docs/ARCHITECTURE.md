@@ -113,9 +113,12 @@ Incoming CALL uses:
 - an importance-high CATEGORY_CALL notification;
 - Answer and Decline notification actions;
 - full-screen intent / lock-screen activity presentation when Android permits it;
-- the same Answer/Decline actions in the Compose UI.
+- a dedicated full-screen Answer / Decline screen on Wear;
+- the same Answer/Decline actions in the foreground Compose UI.
 
-If the user does nothing, the ring times out rather than remaining active indefinitely.
+On Android 14+ the Wear app checks whether full-screen-intent access is available and sends the user once to the system permission page when it is not. The Watch activity is also allowed to wake and show over the lock screen.
+
+If the user does nothing, the ring times out rather than remaining active indefinitely. Final CALL outcomes are persisted locally, including completed duration, declined, missed/no-answer, cancelled, busy, failed, and disconnected cases.
 
 ## TALK
 
@@ -144,6 +147,8 @@ On receive, HappyTalky:
 4. updates history;
 5. **does not play audio automatically**.
 
+Incoming TALK keeps an unread flag on each device until playback completes. Unread TALK drives the notification count and Watch Inbox emphasis; deleting a message also removes its unread state.
+
 The phone history supports tap-to-play, selective deletion, select-all, and clear-all.
 
 ## UI contract
@@ -167,12 +172,17 @@ Compose Material 3 follows a voice-messenger information architecture:
 
 ### Wear
 
-Wear Material 3 presents a much shorter loop:
+Wear Material 3 presents a shorter wrist-first loop:
 
 - route/action cue;
-- central CALL / ANSWER / END / CANCEL control;
-- bottom hold/release TALK control shaped as a Wear `EdgeButton`;
-- compact TALK inbox for explicit playback of received/saved voice messages.
+- central CALL / END / CANCEL control;
+- a dedicated full-screen incoming CALL screen;
+- a direct hold/release TALK surface at the bottom, with the press gesture owned by the surface itself rather than a disabled child button;
+- swipe left from the home screen to enter Inbox;
+- Inbox supports touch scrolling and the watch rotary/crown;
+- unread incoming TALK is counted and bold/highlighted in chronological history, and loses emphasis after playback completes;
+- each TALK row can be swiped left to reveal Delete;
+- recent CALL history is shown below TALK history, and the latest CALL is summarized on the home screen.
 
 Bulk history management and secondary explanation stay on the phone.
 
