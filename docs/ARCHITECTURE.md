@@ -1,59 +1,91 @@
 # Architecture
 
-## Goal
+## Product contract
 
-HappyTalkie is deliberately narrower than a chat app. It exposes two child-friendly actions: CALL and TALK.
+HappyTalkie intentionally exposes only two primary communication actions:
+
+- **CALL** = synchronous live two-way voice
+- **TALK** = asynchronous persistent voice message
+
+Text chat is intentionally out of scope.
 
 ## Modules
 
-- `core`: shared Activity, audio handling, Data Layer protocol, state, notifications and listener service.
-- `mobile`: Android phone manifest and packaging.
-- `wear`: Wear OS manifest and packaging.
+- `core`: shared Activity, call state, live audio, TALK storage, Data Layer transport, notifications and listener service.
+- `mobile`: Android phone packaging.
+- `wear`: Wear OS packaging.
 
 Both app modules use application ID `com.xiaolong.happytalkie`.
 
-## Data paths
+## CALL
 
-Transient call signaling uses `MessageClient`:
+Signaling uses transient `MessageClient` messages:
 
 - `/happytalkie/call/ring`
 - `/happytalkie/call/answer`
 - `/happytalkie/call/end`
 
-Voice uses persistent DataItems with an Asset:
+After ANSWER, the caller opens:
+
+- `/happytalkie/call/audio/<call-id>`
+
+through `ChannelClient`.
+
+Both sides then run simultaneously:
+
+- microphone -> PCM16 -> channel output
+- channel input -> PCM16 -> speaker
+
+Audio parameters:
+
+- 16 kHz
+- mono
+- 16-bit PCM
+- `VOICE_COMMUNICATION` audio source
+- acoustic echo cancellation and noise suppression when available
+
+An Android foreground microphone service keeps the active call process alive.
+
+## TALK
+
+TALK records AAC/M4A:
+
+- mono
+- 16 kHz
+- 32 kb/s
+- maximum 60 s per recording
+
+Every message gets a stable UUID and timestamp.
+
+Local copies are stored under the app's private `voice-history` directory and are not deleted after playback.
+
+Transfer uses a persistent DataItem + Asset:
 
 - `/happytalkie/voice/<uuid>`
 
-Each voice DataItem carries:
+This keeps TALK independent from CALL and allows temporary offline synchronization.
 
-- unique message ID
-- origin role (phone/watch)
-- optional active call ID
-- timestamp
-- AAC/M4A audio asset
+The receiver saves its own local copy, deletes the synchronized DataItem after ingestion, notifies the user, and exposes the message in the conversation history.
 
-A unique path prevents a new offline voice message from overwriting an older one.
+## UI
 
-## Why CALL and TALK use different transports
+The UI is deliberately compact but not bare:
 
-CALL is meaningful only in real time. MessageClient therefore reports failure when no paired node is currently reachable.
+- HappyTalkie brand mark
+- status capsule
+- large circular CALL/ANSWER/END control
+- separate HOLD TO TALK control
+- voice-message conversation history
+- incoming and outgoing message bubbles
+- tap any bubble to replay
 
-TALK must survive temporary disconnection. DataClient/DataItem is therefore used so the voice asset can remain pending and synchronize after reconnection.
+The watch shows fewer recent messages than the phone to keep controls touch-friendly.
 
-## Audio model
+## Connectivity boundary
 
-V0.1 records mono AAC:
+The app cannot communicate with a Wi-Fi-only Pixel Watch when the watch has neither:
 
-- MPEG-4 container
-- AAC encoder
-- 16 kHz sampling
-- 32 kb/s
-- maximum UI recording window: 60 seconds
+- Bluetooth connectivity to its paired phone, nor
+- usable Wi-Fi.
 
-This is intentionally optimized for speech and modest transfer size.
-
-## Not VoIP yet
-
-V0.1 does not maintain a continuous full-duplex media channel. A successful CALL creates a lightweight session; TALK remains press-to-talk.
-
-If real-time full-duplex calling is later required, keep CALL signaling but move media to a dedicated VoIP transport such as WebRTC. That would also need an Internet signaling service and a wake/push strategy.
+CALL fails as a live operation in that condition. TALK can remain locally available and Data Layer can synchronize queued state when connectivity returns.

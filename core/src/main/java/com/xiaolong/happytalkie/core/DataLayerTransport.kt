@@ -6,8 +6,6 @@ import android.os.Looper
 import com.google.android.gms.wearable.Asset
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
-import java.io.File
-import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -54,25 +52,26 @@ class DataLayerTransport(context: Context) {
     }
 
     fun queueVoice(
-        file: File,
-        callId: String?,
+        message: VoiceMessage,
         role: EndpointRole,
         callback: (Boolean) -> Unit
     ) {
         io.execute {
             try {
-                val bytes = file.readBytes()
-                val id = UUID.randomUUID().toString()
-                val mapRequest = PutDataMapRequest.create(Protocol.VOICE_PREFIX + id)
-                mapRequest.dataMap.putString(Protocol.KEY_ID, id)
+                val bytes = message.file.readBytes()
+                val mapRequest = PutDataMapRequest.create(
+                    Protocol.VOICE_PREFIX + message.id
+                )
+                mapRequest.dataMap.putString(Protocol.KEY_ID, message.id)
                 mapRequest.dataMap.putString(Protocol.KEY_ORIGIN, role.wireValue)
-                mapRequest.dataMap.putString(Protocol.KEY_CALL_ID, callId ?: "")
-                mapRequest.dataMap.putLong(Protocol.KEY_CREATED_AT, System.currentTimeMillis())
-                mapRequest.dataMap.putAsset(Protocol.KEY_AUDIO, Asset.createFromBytes(bytes))
+                mapRequest.dataMap.putLong(Protocol.KEY_CREATED_AT, message.createdAt)
+                mapRequest.dataMap.putAsset(
+                    Protocol.KEY_AUDIO,
+                    Asset.createFromBytes(bytes)
+                )
 
                 dataClient.putDataItem(mapRequest.asPutDataRequest().setUrgent())
                     .addOnSuccessListener {
-                        file.delete()
                         mainHandler.post { callback(true) }
                     }
                     .addOnFailureListener {
