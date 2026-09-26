@@ -31,11 +31,18 @@ object AlertController {
     private var timeoutRunnable: Runnable? = null
     private var wakeLock: PowerManager.WakeLock? = null
 
-    fun startIncomingCall(context: Context, callId: String) {
+    fun startIncomingCall(
+        context: Context,
+        callId: String,
+        priority: Boolean = false
+    ) {
         val appContext = context.applicationContext
         stop(appContext)
         ensureChannels(appContext)
-        postCallNotification(appContext)
+        postCallNotification(
+            appContext,
+            priority
+        )
         acquireWakeLock(appContext)
         startRinging(appContext)
 
@@ -45,7 +52,11 @@ object AlertController {
                     appContext,
                     callId,
                     CallDirection.INCOMING,
-                    CallOutcome.MISSED
+                    CallOutcome.MISSED,
+                    mode =
+                        StateStore.callMode(
+                            appContext
+                        )
                 )
                 StateStore.setIncomingCall(appContext, null)
                 StateStore.setStatus(
@@ -142,7 +153,10 @@ object AlertController {
         )
     }
 
-    private fun postCallNotification(context: Context) {
+    private fun postCallNotification(
+        context: Context,
+        priority: Boolean
+    ) {
         if (!canNotify(context)) return
 
         val manager =
@@ -162,8 +176,20 @@ object AlertController {
         )
 
         val builder = baseBuilder(context, CALL_CHANNEL)
-            .setContentTitle("HappyTalky")
-            .setContentText("Incoming call")
+            .setContentTitle(
+                if (priority) {
+                    "Priority call"
+                } else {
+                    "HappyTalky"
+                }
+            )
+            .setContentText(
+                if (priority) {
+                    "Auto-answering when HappyTalky opens"
+                } else {
+                    "Incoming call"
+                }
+            )
             .setCategory(Notification.CATEGORY_CALL)
             .setPriority(Notification.PRIORITY_MAX)
             .setOngoing(true)
@@ -172,7 +198,13 @@ object AlertController {
 
         if (Build.VERSION.SDK_INT >= 31) {
             val caller = Person.Builder()
-                .setName("HappyTalky")
+                .setName(
+                    if (priority) {
+                        "Priority call"
+                    } else {
+                        "HappyTalky"
+                    }
+                )
                 .setImportant(true)
                 .build()
             builder.setStyle(
