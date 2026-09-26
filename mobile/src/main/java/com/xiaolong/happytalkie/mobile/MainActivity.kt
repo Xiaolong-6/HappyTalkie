@@ -31,6 +31,8 @@ import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material.icons.rounded.VolumeOff
+import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -76,6 +78,7 @@ class MainActivity : HappyTalkieActivity() {
                 HappyTalkiePhoneScreen(
                     state = uiState,
                     onCall = ::handleCallAction,
+                    onSpeakerToggle = ::toggleSpeaker,
                     onTalkStart = ::beginTalk,
                     onTalkFinish = ::finishTalk,
                     onTalkCancel = ::cancelTalk,
@@ -116,6 +119,7 @@ fun HappyTalkiePhoneTheme(content: @Composable () -> Unit) {
 fun HappyTalkiePhoneScreen(
     state: HappyTalkieUiState,
     onCall: () -> Unit,
+    onSpeakerToggle: () -> Unit,
     onTalkStart: () -> Unit,
     onTalkFinish: () -> Unit,
     onTalkCancel: () -> Unit,
@@ -149,7 +153,11 @@ fun HappyTalkiePhoneScreen(
             ) {
                 AppHeader(state)
                 Spacer(Modifier.height(22.dp))
-                CallRow(state = state, onCall = onCall)
+                CallRow(
+                    state = state,
+                    onCall = onCall,
+                    onSpeakerToggle = onSpeakerToggle,
+                )
                 Spacer(Modifier.height(18.dp))
                 TalkHero(
                     state = state,
@@ -260,6 +268,7 @@ private fun statusShortLabel(state: HappyTalkieUiState): String =
 private fun CallRow(
     state: HappyTalkieUiState,
     onCall: () -> Unit,
+    onSpeakerToggle: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -291,6 +300,48 @@ private fun CallRow(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+
+                if (state.callState == CallVisualState.LIVE) {
+                    Spacer(Modifier.height(10.dp))
+                    Surface(
+                        onClick = onSpeakerToggle,
+                        shape = CircleShape,
+                        color =
+                            if (state.speakerOn) Color(0xFF244D80)
+                            else MaterialTheme.colorScheme.surfaceVariant,
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(
+                                horizontal = 11.dp,
+                                vertical = 7.dp,
+                            ),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector =
+                                    if (state.speakerOn) Icons.Rounded.VolumeUp
+                                    else Icons.Rounded.VolumeOff,
+                                contentDescription =
+                                    if (state.speakerOn) "Turn speaker off"
+                                    else "Turn speaker on",
+                                modifier = Modifier.size(17.dp),
+                                tint =
+                                    if (state.speakerOn) Color(0xFF8FCCFF)
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text =
+                                    if (state.speakerOn) "Speaker on"
+                                    else "Speaker",
+                                style = MaterialTheme.typography.labelLarge,
+                                color =
+                                    if (state.speakerOn) Color(0xFFCBE5FF)
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
             }
 
             Spacer(Modifier.width(14.dp))
@@ -663,6 +714,7 @@ private fun PhonePreview() {
         HappyTalkiePhoneScreen(
             state = HappyTalkieUiState(),
             onCall = {},
+            onSpeakerToggle = {},
             onTalkStart = {},
             onTalkFinish = {},
             onTalkCancel = {},
