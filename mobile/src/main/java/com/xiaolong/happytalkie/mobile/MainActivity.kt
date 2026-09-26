@@ -64,7 +64,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -624,6 +626,8 @@ private fun VoiceBubble(
     onTap: () -> Unit,
     onLongPress: () -> Unit,
 ) {
+    val haptic =
+        LocalHapticFeedback.current
     val outgoing =
         message.direction ==
             VoiceDirection.OUTGOING
@@ -673,8 +677,12 @@ private fun VoiceBubble(
                 modifier = Modifier
                     .combinedClickable(
                         onClick = onTap,
-                        onLongClick =
-                            onLongPress,
+                        onLongClick = {
+                            haptic.performHapticFeedback(
+                                HapticFeedbackType.LongPress
+                            )
+                            onLongPress()
+                        },
                     ),
                 shape =
                     RoundedCornerShape(
