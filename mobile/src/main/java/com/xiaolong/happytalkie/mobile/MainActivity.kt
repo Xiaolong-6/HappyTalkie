@@ -346,7 +346,7 @@ private fun ConversationHeader(
                     Modifier.weight(1f)
             ) {
                 Text(
-                    text = "HappyTalkie",
+                    text = state.peerName,
                     fontSize = 20.sp,
                     lineHeight = 23.sp,
                     fontWeight =
@@ -1379,7 +1379,7 @@ private fun headerStatusText(
                 "busy"
         }
 
-    return "${state.peerName} · $route · $capability"
+    return "$route · $capability"
 }
 
 private fun callActionLabel(
