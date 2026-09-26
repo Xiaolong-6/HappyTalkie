@@ -38,7 +38,7 @@ object Protocol {
     const val CAPABILITY_PHONE = "happytalky_phone"
     const val CAPABILITY_WATCH = "happytalky_watch"
     const val ACTION_STATE_CHANGED = "com.xiaolong.happytalky.STATE_CHANGED"
-    const val EXTRA_OPEN_TALK_INBOX = "happytalky.open_talk_inbox"
+    const val EXTRA_OPEN_INBOX = "happytalky.open_inbox"
 
     const val CALL_TIMEOUT_MS = 20_000L
     const val PRIORITY_OFFER_DELAY_MS = 5_000L
