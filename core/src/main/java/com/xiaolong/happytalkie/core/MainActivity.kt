@@ -19,6 +19,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -109,10 +110,16 @@ class MainActivity : Activity() {
             )
         }
 
+        val brand = ImageView(this).apply {
+            setImageResource(com.xiaolong.happytalkie.core.R.drawable.ic_happytalkie_mark)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            contentDescription = "HappyTalkie"
+        }
+
         val title = TextView(this).apply {
             text = "HappyTalkie"
             setTextColor(Color.WHITE)
-            textSize = if (isWatch) 20f else 30f
+            textSize = if (isWatch) 18f else 28f
             setTypeface(Typeface.DEFAULT, Typeface.BOLD)
             gravity = Gravity.CENTER
         }
@@ -178,11 +185,21 @@ class MainActivity : Activity() {
         }
 
         content.addView(
+            brand,
+            LinearLayout.LayoutParams(
+                dp(if (isWatch) 52 else 76),
+                dp(if (isWatch) 52 else 76)
+            )
+        )
+
+        content.addView(
             title,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
-            )
+            ).apply {
+                topMargin = dp(if (isWatch) 2 else 4)
+            }
         )
 
         content.addView(
