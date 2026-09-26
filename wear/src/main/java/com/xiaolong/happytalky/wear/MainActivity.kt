@@ -22,12 +22,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -980,14 +978,15 @@ private fun SwipeDeleteTalkMessage(
         }
 
     Box(
-        modifier =
-            Modifier.width(146.dp),
+        modifier = Modifier
+            .width(146.dp)
+            .height(54.dp),
         contentAlignment =
             Alignment.CenterEnd,
     ) {
         Box(
             modifier = Modifier
-                .matchParentSize()
+                .fillMaxSize()
                 .background(
                     Color(0xFF8D2634),
                     RoundedCornerShape(
@@ -1006,8 +1005,6 @@ private fun SwipeDeleteTalkMessage(
                 },
                 modifier =
                     Modifier.width(58.dp),
-                contentPadding =
-                    PaddingValues(0.dp),
             ) {
                 Icon(
                     imageVector =
@@ -1023,7 +1020,7 @@ private fun SwipeDeleteTalkMessage(
 
         Box(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .offset {
                     IntOffset(
                         x =
@@ -1129,7 +1126,7 @@ private fun WearTalkMessage(
                     Box(
                         modifier =
                             Modifier
-                                .matchParentSize()
+                                .fillMaxSize()
                                 .background(
                                     Color(
                                         0xFF2A8CFF
@@ -1164,7 +1161,7 @@ private fun WearTalkMessage(
 
             Column(
                 modifier =
-                    Modifier.weight(1f)
+                    Modifier.width(96.dp)
             ) {
                 Text(
                     text =
