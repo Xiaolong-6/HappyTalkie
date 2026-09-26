@@ -41,7 +41,8 @@ data class HappyTalkyUiState(
     val peerRoute: PeerRoute = PeerRoute.UNKNOWN,
     val messages: List<VoiceMessage> = emptyList(),
     val unreadVoiceCount: Int = 0,
-    val callHistory: List<CallHistoryEntry> = emptyList()
+    val callHistory: List<CallHistoryEntry> = emptyList(),
+    val timeline: List<ConversationItem> = emptyList()
 )
 
 abstract class HappyTalkyActivity : ComponentActivity() {
@@ -312,6 +313,15 @@ abstract class HappyTalkyActivity : ComponentActivity() {
             saved,
             role
         ) { queued ->
+            ConversationStore.updateDeliveryState(
+                this,
+                saved.id,
+                if (queued) {
+                    DeliveryState.QUEUED
+                } else {
+                    DeliveryState.LOCAL
+                }
+            )
             StateStore.setStatus(
                 this,
                 if (queued) {
@@ -752,6 +762,11 @@ abstract class HappyTalkyActivity : ComponentActivity() {
                     CallHistoryStore.list(
                         this,
                         limit = 30
+                    ),
+                timeline =
+                    ConversationStore.timeline(
+                        this,
+                        limit = 60
                     )
             )
     }
