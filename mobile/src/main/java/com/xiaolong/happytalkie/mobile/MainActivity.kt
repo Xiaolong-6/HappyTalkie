@@ -7,6 +7,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,23 +28,36 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Bluetooth
 import androidx.compose.material.icons.rounded.Call
+import androidx.compose.material.icons.rounded.CallEnd
+import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.CloudOff
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Done
 import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.NetworkCell
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.VolumeOff
 import androidx.compose.material.icons.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -65,6 +79,8 @@ import androidx.compose.ui.unit.sp
 import com.xiaolong.happytalkie.core.CallVisualState
 import com.xiaolong.happytalkie.core.HappyTalkieActivity
 import com.xiaolong.happytalkie.core.HappyTalkieUiState
+import com.xiaolong.happytalkie.core.PeerConnectionState
+import com.xiaolong.happytalkie.core.PeerRoute
 import com.xiaolong.happytalkie.core.VoiceDirection
 import com.xiaolong.happytalkie.core.VoiceMessage
 
@@ -78,11 +94,14 @@ class MainActivity : HappyTalkieActivity() {
                 HappyTalkiePhoneScreen(
                     state = uiState,
                     onCall = ::handleCallAction,
+                    onDecline = ::declineIncomingCall,
                     onSpeakerToggle = ::toggleSpeaker,
                     onTalkStart = ::beginTalk,
                     onTalkFinish = ::finishTalk,
                     onTalkCancel = ::cancelTalk,
                     onPlay = ::playMessage,
+                    onDelete = ::deleteMessages,
+                    onClear = ::clearMessages,
                 )
             }
         }
@@ -119,11 +138,14 @@ fun HappyTalkiePhoneTheme(content: @Composable () -> Unit) {
 fun HappyTalkiePhoneScreen(
     state: HappyTalkieUiState,
     onCall: () -> Unit,
+    onDecline: () -> Unit,
     onSpeakerToggle: () -> Unit,
     onTalkStart: () -> Unit,
     onTalkFinish: () -> Unit,
     onTalkCancel: () -> Unit,
     onPlay: (VoiceMessage) -> Unit,
+    onDelete: (Set<String>) -> Unit,
+    onClear: () -> Unit,
 ) {
     val scrollState = rememberScrollState()
 
@@ -152,10 +174,13 @@ fun HappyTalkiePhoneScreen(
                     .padding(horizontal = 22.dp, vertical = 18.dp),
             ) {
                 AppHeader(state)
-                Spacer(Modifier.height(22.dp))
+                Spacer(Modifier.height(14.dp))
+                ConnectionStrip(state)
+                Spacer(Modifier.height(18.dp))
                 CallRow(
                     state = state,
                     onCall = onCall,
+                    onDecline = onDecline,
                     onSpeakerToggle = onSpeakerToggle,
                 )
                 Spacer(Modifier.height(18.dp))
@@ -167,9 +192,11 @@ fun HappyTalkiePhoneScreen(
                 )
                 Spacer(Modifier.height(28.dp))
                 RecentTalk(
-                    messages = state.messages.take(6),
+                    messages = state.messages.take(12),
                     peerName = state.peerName,
                     onPlay = onPlay,
+                    onDelete = onDelete,
+                    onClear = onClear,
                 )
                 Spacer(Modifier.height(24.dp))
             }
@@ -268,6 +295,7 @@ private fun statusShortLabel(state: HappyTalkieUiState): String =
 private fun CallRow(
     state: HappyTalkieUiState,
     onCall: () -> Unit,
+    onDecline: () -> Unit,
     onSpeakerToggle: () -> Unit,
 ) {
     Surface(
@@ -714,11 +742,14 @@ private fun PhonePreview() {
         HappyTalkiePhoneScreen(
             state = HappyTalkieUiState(),
             onCall = {},
+            onDecline = {},
             onSpeakerToggle = {},
             onTalkStart = {},
             onTalkFinish = {},
             onTalkCancel = {},
             onPlay = {},
+            onDelete = {},
+            onClear = {},
         )
     }
 }
