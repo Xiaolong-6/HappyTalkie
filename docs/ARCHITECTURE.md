@@ -165,7 +165,7 @@ If the user does nothing, the ring times out rather than remaining active indefi
 
 TEXT transfer uses a persistent DataItem:
 
-`/happytalky/text/<uuid>`
+`/happytalky/message/<uuid>`
 
 The payload carries stable ID, origin role, creation time and UTF-8 text. Text is capped at 500 characters for the first protocol version.
 
