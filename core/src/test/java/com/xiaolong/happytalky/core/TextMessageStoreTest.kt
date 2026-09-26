@@ -31,12 +31,43 @@ class TextMessageStoreTest {
                 Protocol.MAX_TEXT_LENGTH +
                     25
             )
+        val normalized =
+            TextMessageStore.normalize(
+                raw
+            )
+                ?: error("missing text")
 
         assertEquals(
             Protocol.MAX_TEXT_LENGTH,
-            TextMessageStore.normalize(
+            normalized.codePointCount(
+                0,
+                normalized.length
+            )
+        )
+    }
+
+    @Test
+    fun limitDoesNotSplitEmojiSurrogates() {
+        val raw =
+            "😊".repeat(
+                Protocol.MAX_TEXT_LENGTH +
+                    1
+            )
+        val limited =
+            TextMessageStore.limit(
                 raw
-            )?.length
+            )
+
+        assertEquals(
+            Protocol.MAX_TEXT_LENGTH,
+            limited.codePointCount(
+                0,
+                limited.length
+            )
+        )
+        assertEquals(
+            "😊",
+            limited.takeLast(2)
         )
     }
 }
