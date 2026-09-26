@@ -1122,7 +1122,7 @@ fun WearTalkInbox(
                         start = 14.dp,
                         end = 14.dp,
                         top = 12.dp,
-                        bottom = 58.dp,
+                        bottom = 48.dp,
                     ),
                 horizontalAlignment =
                     Alignment.CenterHorizontally,
@@ -1170,78 +1170,6 @@ fun WearTalkInbox(
                                 },
                             maxLines = 1,
                         )
-                    }
-                }
-
-                item {
-                    Card(
-                        onClick = {
-                            onPriorityCallsChanged(
-                                !priorityCallsEnabled
-                            )
-                        },
-                        modifier = Modifier
-                            .width(146.dp)
-                            .height(34.dp),
-                        colors =
-                            CardDefaults.cardColors(
-                                containerColor =
-                                    Color(0xFF111A29),
-                                contentColor =
-                                    Color.White,
-                            ),
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(
-                                    horizontal = 10.dp
-                                ),
-                            verticalAlignment =
-                                Alignment.CenterVertically,
-                            horizontalArrangement =
-                                Arrangement.SpaceBetween,
-                        ) {
-                            Text(
-                                text = "Priority",
-                                style =
-                                    MaterialTheme
-                                        .typography
-                                        .labelSmall,
-                                fontWeight =
-                                    FontWeight.SemiBold,
-                                maxLines = 1,
-                            )
-
-                            Text(
-                                text =
-                                    if (
-                                        priorityCallsEnabled
-                                    ) {
-                                        "ON"
-                                    } else {
-                                        "OFF"
-                                    },
-                                style =
-                                    MaterialTheme
-                                        .typography
-                                        .labelSmall,
-                                fontWeight =
-                                    FontWeight.Bold,
-                                color =
-                                    if (
-                                        priorityCallsEnabled
-                                    ) {
-                                        Color(
-                                            0xFFFFD35A
-                                        )
-                                    } else {
-                                        Color(
-                                            0xFF8E9AAF
-                                        )
-                                    },
-                            )
-                        }
                     }
                 }
 
@@ -1307,6 +1235,17 @@ fun WearTalkInbox(
                         }
                     }
                 }
+
+                item(
+                    key = "priority-setting"
+                ) {
+                    PriorityCallSetting(
+                        enabled =
+                            priorityCallsEnabled,
+                        onToggle =
+                            onPriorityCallsChanged,
+                    )
+                }
             }
 
             WearTextComposer(
@@ -1317,7 +1256,7 @@ fun WearTalkInbox(
                         Alignment.BottomCenter
                     )
                     .padding(
-                        bottom = 6.dp
+                        bottom = 4.dp
                     ),
             )
         }
@@ -1405,6 +1344,72 @@ private fun WearTextMessage(
 }
 
 @Composable
+private fun PriorityCallSetting(
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit,
+) {
+    Card(
+        onClick = {
+            onToggle(!enabled)
+        },
+        modifier = Modifier
+            .width(140.dp)
+            .height(32.dp),
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    Color(0xFF111A29),
+                contentColor =
+                    Color.White,
+            ),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(
+                    horizontal = 10.dp
+                ),
+            verticalAlignment =
+                Alignment.CenterVertically,
+            horizontalArrangement =
+                Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = "Priority calls",
+                style =
+                    MaterialTheme
+                        .typography
+                        .labelSmall,
+                color =
+                    Color(0xFF98A7BC),
+                maxLines = 1,
+            )
+            Text(
+                text =
+                    if (enabled) {
+                        "ON"
+                    } else {
+                        "OFF"
+                    },
+                style =
+                    MaterialTheme
+                        .typography
+                        .labelSmall,
+                fontWeight =
+                    FontWeight.Bold,
+                color =
+                    if (enabled) {
+                        Color(0xFFFFD35A)
+                    } else {
+                        Color(0xFF8E9AAF)
+                    },
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
 private fun WearTextComposer(
     enabled: Boolean,
     onCompose: () -> Unit,
@@ -1417,8 +1422,8 @@ private fun WearTextComposer(
             }
         },
         modifier = modifier
-            .width(146.dp)
-            .height(40.dp),
+            .width(142.dp)
+            .height(34.dp),
         colors =
             CardDefaults.cardColors(
                 containerColor =
@@ -1767,8 +1772,9 @@ private fun WearCallHistoryCard(
 
     Card(
         onClick = {},
-        modifier =
-            Modifier.width(146.dp),
+        modifier = Modifier
+            .width(146.dp)
+            .height(48.dp),
         colors =
             CardDefaults.cardColors(
                 containerColor =
@@ -1778,6 +1784,11 @@ private fun WearCallHistoryCard(
             ),
     ) {
         Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(
+                    horizontal = 8.dp
+                ),
             verticalAlignment =
                 Alignment.CenterVertically,
         ) {
