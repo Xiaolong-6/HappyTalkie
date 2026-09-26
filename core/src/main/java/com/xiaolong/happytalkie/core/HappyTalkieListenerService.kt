@@ -2,13 +2,13 @@ package com.xiaolong.happytalkie.core
 
 import android.util.Log
 import com.google.android.gms.tasks.Tasks
+import com.google.android.gms.wearable.ChannelClient
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.Wearable
 import com.google.android.gms.wearable.WearableListenerService
-import java.io.File
 
 class HappyTalkieListenerService : WearableListenerService() {
 
@@ -20,6 +20,37 @@ class HappyTalkieListenerService : WearableListenerService() {
             Protocol.CALL_RING -> receiveRing(callId)
             Protocol.CALL_ANSWER -> receiveAnswer(callId)
             Protocol.CALL_END -> receiveEnd(callId)
+        }
+    }
+
+    override fun onChannelOpened(channel: ChannelClient.Channel) {
+        val path = channel.path
+        if (!path.startsWith(Protocol.CALL_AUDIO_PREFIX)) return
+
+        val callId = path.removePrefix(Protocol.CALL_AUDIO_PREFIX)
+        if (callId.isBlank() || StateStore.activeCall(this) != callId) {
+            Wearable.getChannelClient(this).close(channel)
+            return
+        }
+
+        LiveCallAudio.attachIncoming(this, channel)
+    }
+
+    override fun onChannelClosed(
+        channel: ChannelClient.Channel,
+        closeReason: Int,
+        appSpecificErrorCode: Int
+    ) {
+        val path = channel.path
+        if (!path.startsWith(Protocol.CALL_AUDIO_PREFIX)) return
+        val callId = path.removePrefix(Protocol.CALL_AUDIO_PREFIX)
+
+        if (StateStore.activeCall(this) == callId) {
+            LiveCallAudio.stop(this, closeChannel = false)
+            StateStore.clearCallState(this)
+            StateStore.setStatus(this, "Call disconnected")
+            EventBus.notifyStateChanged(this)
+            LiveCallService.stop(this)
         }
     }
 
@@ -39,24 +70,30 @@ class HappyTalkieListenerService : WearableListenerService() {
                 if (origin == role.wireValue) return@forEach
 
                 val asset = map.getAsset(Protocol.KEY_AUDIO) ?: return@forEach
-                val voiceId = map.getString(Protocol.KEY_ID) ?: path.substringAfterLast('/')
-                val callId = map.getString(Protocol.KEY_CALL_ID).orEmpty()
-                val dir = File(filesDir, "received-voice").apply { mkdirs() }
-                val output = File(dir, "voice-" + voiceId + ".m4a")
+                val voiceId =
+                    map.getString(Protocol.KEY_ID) ?: path.substringAfterLast('/')
+                val createdAt = map.getLong(Protocol.KEY_CREATED_AT)
 
                 val response = Tasks.await(dataClient.getFdForAsset(asset))
-                try {
-                    response.inputStream?.use { input ->
-                        output.outputStream().use { destination ->
-                            input.copyTo(destination)
-                        }
-                    } ?: return@forEach
+                val saved = try {
+                    val stream = response.inputStream ?: return@forEach
+                    stream.use {
+                        VoiceMessageStore.saveIncoming(
+                            this,
+                            voiceId,
+                            createdAt,
+                            it
+                        )
+                    }
                 } finally {
                     response.release()
                 }
 
                 Tasks.await(dataClient.deleteDataItems(item.uri))
-                deliverVoice(output, callId)
+                StateStore.setStatus(this, "New voice message")
+                AlertController.postVoiceNotification(this)
+                AudioPlayer.play(this, saved.file, deleteAfter = false)
+                EventBus.notifyStateChanged(this)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to receive voice message", e)
             }
@@ -68,17 +105,20 @@ class HappyTalkieListenerService : WearableListenerService() {
         if (StateStore.incomingCall(this) == callId) return
 
         StateStore.setOutgoingCall(this, null)
+        StateStore.setCallInitiator(this, false)
         StateStore.setIncomingCall(this, callId)
-        StateStore.setStatus(this, "Incoming call — tap ANSWER")
+        StateStore.setStatus(this, "Incoming call")
         AlertController.startIncomingCall(this, callId)
         EventBus.notifyStateChanged(this)
     }
 
     private fun receiveAnswer(callId: String) {
+        if (StateStore.outgoingCall(this) != callId) return
+
         StateStore.setIncomingCall(this, null)
         StateStore.setOutgoingCall(this, null)
         StateStore.setActiveCall(this, callId)
-        StateStore.setStatus(this, "Connected — hold TALK to speak")
+        StateStore.setStatus(this, "Connecting live audio…")
         AlertController.stop(this)
         EventBus.notifyStateChanged(this)
     }
@@ -94,26 +134,8 @@ class HappyTalkieListenerService : WearableListenerService() {
         StateStore.clearCallState(this)
         StateStore.setStatus(this, "Call ended")
         AlertController.stop(this)
-        AudioPlayer.stop()
-        EventBus.notifyStateChanged(this)
-    }
-
-    private fun deliverVoice(file: File, callId: String) {
-        val activeCall = StateStore.activeCall(this)
-        val inCurrentCall = callId.isNotBlank() && activeCall == callId
-
-        if (inCurrentCall) {
-            StateStore.setStatus(this, "Connected — voice received")
-        } else {
-            if (StateStore.incomingCall(this) != null) {
-                StateStore.setIncomingCall(this, null)
-                AlertController.stop(this)
-            }
-            StateStore.setStatus(this, "Voice message received")
-            AlertController.postVoiceNotification(this)
-        }
-
-        AudioPlayer.play(this, file, deleteAfter = true)
+        LiveCallAudio.stop(this)
+        LiveCallService.stop(this)
         EventBus.notifyStateChanged(this)
     }
 
