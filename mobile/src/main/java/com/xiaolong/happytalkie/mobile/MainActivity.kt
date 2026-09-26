@@ -491,31 +491,61 @@ private fun CallRow(
 
             Spacer(Modifier.width(14.dp))
 
-            Button(
-                onClick = onCall,
-                enabled = state.callEnabled,
-                modifier = Modifier.size(78.dp),
-                shape = CircleShape,
-                contentPadding = PaddingValues(0.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = callButtonColor(state),
-                    contentColor = Color.White,
-                    disabledContainerColor = Color(0xFF263752),
-                    disabledContentColor = Color(0xFF8492AA),
-                ),
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        imageVector = callIcon(state),
-                        contentDescription = callActionLabel(state),
-                        modifier = Modifier.size(25.dp),
-                    )
-                    Spacer(Modifier.height(3.dp))
-                    Text(
-                        text = callActionLabel(state),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
+                Button(
+                    onClick = onCall,
+                    enabled = state.callEnabled,
+                    modifier = Modifier.size(78.dp),
+                    shape = CircleShape,
+                    contentPadding = PaddingValues(0.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = callButtonColor(state),
+                        contentColor = Color.White,
+                        disabledContainerColor = Color(0xFF263752),
+                        disabledContentColor = Color(0xFF8492AA),
+                    ),
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Icon(
+                            imageVector = callIcon(state),
+                            contentDescription = callActionLabel(state),
+                            modifier = Modifier.size(25.dp),
+                        )
+                        Spacer(Modifier.height(3.dp))
+                        Text(
+                            text = callActionLabel(state),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+
+                if (state.callState == CallVisualState.INCOMING) {
+                    Spacer(Modifier.height(4.dp))
+                    TextButton(
+                        onClick = onDecline,
+                        contentPadding = PaddingValues(
+                            horizontal = 8.dp,
+                            vertical = 4.dp,
+                        ),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.CallEnd,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = Color(0xFFFF7585),
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = "Decline",
+                            color = Color(0xFFFF9CA7),
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    }
                 }
             }
         }
