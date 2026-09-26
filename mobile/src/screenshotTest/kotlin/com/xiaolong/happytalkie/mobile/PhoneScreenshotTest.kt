@@ -111,3 +111,73 @@ fun PhoneRecordingScreenshot() {
         )
     }
 }
+
+
+@PreviewTest
+@Preview(
+    name = "Phone offline",
+    widthDp = 412,
+    heightDp = 915,
+    showBackground = true,
+    backgroundColor = PHONE_BACKGROUND,
+)
+@Composable
+fun PhoneOfflineScreenshot() {
+    HappyTalkiePhoneTheme {
+        HappyTalkiePhoneScreen(
+            state = HappyTalkieUiState(
+                status = "Watch offline · TALK recommended",
+                callState = CallVisualState.READY,
+                callEnabled = false,
+                talkEnabled = true,
+                peerName = "Watch",
+                peerConnection = PeerConnectionState.DISCONNECTED,
+                peerRoute = PeerRoute.OFFLINE,
+            ),
+            onCall = {},
+            onDecline = {},
+            onSpeakerToggle = {},
+            onTalkStart = {},
+            onTalkFinish = {},
+            onTalkCancel = {},
+            onPlay = {},
+            onDelete = {},
+            onClear = {},
+        )
+    }
+}
+
+@PreviewTest
+@Preview(
+    name = "Phone live",
+    widthDp = 412,
+    heightDp = 915,
+    showBackground = true,
+    backgroundColor = PHONE_BACKGROUND,
+)
+@Composable
+fun PhoneLiveScreenshot() {
+    HappyTalkiePhoneTheme {
+        HappyTalkiePhoneScreen(
+            state = HappyTalkieUiState(
+                status = "Live with Watch",
+                callState = CallVisualState.LIVE,
+                callEnabled = true,
+                talkEnabled = false,
+                speakerOn = true,
+                peerName = "Watch",
+                peerConnection = PeerConnectionState.CONNECTED,
+                peerRoute = PeerRoute.NEARBY_BLUETOOTH,
+            ),
+            onCall = {},
+            onDecline = {},
+            onSpeakerToggle = {},
+            onTalkStart = {},
+            onTalkFinish = {},
+            onTalkCancel = {},
+            onPlay = {},
+            onDelete = {},
+            onClear = {},
+        )
+    }
+}
