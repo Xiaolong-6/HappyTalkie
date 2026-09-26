@@ -34,6 +34,7 @@ class MainActivity : Activity() {
     private lateinit var callButton: Button
     private lateinit var talkButton: Button
     private lateinit var conversationList: LinearLayout
+    private var historyTitle: TextView? = null
 
     private val handler = Handler(Looper.getMainLooper())
     private var recording = false
@@ -93,65 +94,263 @@ class MainActivity : Activity() {
     }
 
     private fun buildUi() {
+        if (isWatch) buildWatchUi() else buildPhoneUi()
+    }
+
+    private fun buildPhoneUi() {
         val scroll = ScrollView(this).apply {
             isFillViewport = true
-            setBackgroundColor(BACKGROUND)
+            setBackgroundColor(PHONE_BACKGROUND)
             overScrollMode = View.OVER_SCROLL_NEVER
         }
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(22), dp(22), dp(22), dp(32))
+        }
 
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val titles = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), 0, 0, 0)
+        }
+        titles.addView(textView("HappyTalkie", 27f, Color.WHITE, true))
+        titles.addView(
+            textView("Call live. Talk anytime.", 13f, TEXT_SECONDARY).apply {
+                setPadding(0, dp(2), 0, 0)
+            }
+        )
+        header.addView(brandView(54), LinearLayout.LayoutParams(dp(54), dp(54)))
+        header.addView(
+            titles,
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        )
+        content.addView(
+            header,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        )
+
+        statusView = createStatusView(false)
+        content.addView(
+            statusView,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp(18) }
+        )
+
+        callButton = createCallButton(false)
+        content.addView(
+            modeCard(
+                eyebrow = "CALL",
+                heading = "Live conversation",
+                helper = "Ring the Watch and talk in real time.",
+                action = callButton,
+                actionWidth = dp(150),
+                actionHeight = dp(150)
+            ),
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp(16) }
+        )
+
+        talkButton = createTalkButton(false)
+        content.addView(
+            modeCard(
+                eyebrow = "TALK",
+                heading = "Voice message",
+                helper = "Hold to record. Release to send — even if the Watch is temporarily offline.",
+                action = talkButton,
+                actionWidth = ViewGroup.LayoutParams.MATCH_PARENT,
+                actionHeight = dp(68)
+            ),
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp(14) }
+        )
+
+        val historyHeader = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        historyTitle = textView("Recent TALK", 16f, Color.WHITE, true)
+        val historyHint = textView("Tap to play", 12f, TEXT_MUTED).apply {
+            gravity = Gravity.END
+        }
+        historyHeader.addView(
+            historyTitle,
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        )
+        historyHeader.addView(historyHint)
+        content.addView(
+            historyHeader,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = dp(24)
+                bottomMargin = dp(9)
+            }
+        )
+
+        conversationList = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        content.addView(
+            conversationList,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        )
+
+        scroll.addView(
+            content,
+            ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        )
+        setContentView(scroll)
+    }
+
+    private fun buildWatchUi() {
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            setBackgroundColor(WATCH_BACKGROUND)
+            overScrollMode = View.OVER_SCROLL_NEVER
+        }
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(
-                dp(if (isWatch) 12 else 24),
-                dp(if (isWatch) 10 else 26),
-                dp(if (isWatch) 12 else 24),
-                dp(if (isWatch) 18 else 30)
-            )
+            setPadding(dp(10), dp(8), dp(10), dp(14))
         }
 
-        val brand = ImageView(this).apply {
+        statusView = createStatusView(true)
+        content.addView(
+            statusView,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp(2) }
+        )
+
+        callButton = createCallButton(true)
+        content.addView(
+            callButton,
+            LinearLayout.LayoutParams(dp(88), dp(88)).apply {
+                topMargin = dp(6)
+                gravity = Gravity.CENTER_HORIZONTAL
+            }
+        )
+
+        talkButton = createTalkButton(true)
+        content.addView(
+            talkButton,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(44)
+            ).apply { topMargin = dp(6) }
+        )
+
+        historyTitle = textView("RECENT TALK", 10f, TEXT_MUTED, true).apply {
+            gravity = Gravity.START
+        }
+        content.addView(
+            historyTitle,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = dp(10)
+                bottomMargin = dp(5)
+            }
+        )
+
+        conversationList = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        content.addView(
+            conversationList,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        )
+
+        scroll.addView(
+            content,
+            ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        )
+        setContentView(scroll)
+    }
+
+    private fun brandView(sizeDp: Int): ImageView =
+        ImageView(this).apply {
             setImageResource(com.xiaolong.happytalkie.core.R.drawable.ic_happytalkie_brand)
             scaleType = ImageView.ScaleType.FIT_CENTER
             contentDescription = "HappyTalkie"
+            layoutParams = ViewGroup.LayoutParams(dp(sizeDp), dp(sizeDp))
         }
 
-        val title = TextView(this).apply {
-            text = "HappyTalkie"
-            setTextColor(Color.WHITE)
-            textSize = if (isWatch) 18f else 28f
+    private fun createStatusView(watch: Boolean): TextView =
+        TextView(this).apply {
+            setTextColor(TEXT_SECONDARY)
+            textSize = if (watch) 11f else 14f
             setTypeface(Typeface.DEFAULT, Typeface.BOLD)
             gravity = Gravity.CENTER
+            setPadding(
+                dp(if (watch) 8 else 12),
+                dp(if (watch) 6 else 9),
+                dp(if (watch) 8 else 12),
+                dp(if (watch) 6 else 9)
+            )
+            background = rounded(SURFACE, if (watch) 18 else 20)
         }
 
-        statusView = TextView(this).apply {
-            setTextColor(TEXT_SECONDARY)
-            textSize = if (isWatch) 12f else 15f
-            gravity = Gravity.CENTER
-            setPadding(dp(12), dp(7), dp(12), dp(7))
-            background = rounded(SURFACE, if (isWatch) 18 else 22)
-        }
-
-        callButton = Button(this).apply {
-            textSize = if (isWatch) 18f else 27f
+    private fun createCallButton(watch: Boolean): Button =
+        Button(this).apply {
+            textSize = if (watch) 17f else 24f
             setTextColor(Color.WHITE)
             setTypeface(Typeface.DEFAULT, Typeface.BOLD)
             setAllCaps(false)
+            gravity = Gravity.CENTER
             stateListAnimator = null
-            elevation = dp(if (isWatch) 2 else 5).toFloat()
+            elevation = dp(if (watch) 2 else 5).toFloat()
             backgroundTintList = null
+            minWidth = 0
+            minHeight = 0
+            setPadding(dp(8), dp(8), dp(8), dp(8))
             setOnClickListener { handleCallButton() }
         }
 
-        talkButton = Button(this).apply {
-            textSize = if (isWatch) 16f else 20f
+    private fun createTalkButton(watch: Boolean): Button =
+        Button(this).apply {
+            textSize = if (watch) 14f else 19f
             setTextColor(Color.WHITE)
             setTypeface(Typeface.DEFAULT, Typeface.BOLD)
             setAllCaps(false)
+            gravity = Gravity.CENTER
             stateListAnimator = null
-            elevation = 0f
+            elevation = dp(if (watch) 1 else 2).toFloat()
             backgroundTintList = null
-            background = rounded(SURFACE_RAISED, 22)
+            minWidth = 0
+            minHeight = 0
+            background = roundedGradient(
+                TALK_COLOR_LIGHT,
+                TALK_COLOR,
+                if (watch) 24 else 22
+            )
             setOnTouchListener { _, event ->
                 if (!isEnabled) return@setOnTouchListener true
                 when (event.actionMasked) {
@@ -172,95 +371,64 @@ class MainActivity : Activity() {
             }
         }
 
-        val historyTitle = TextView(this).apply {
-            text = if (isWatch) "VOICE MESSAGES" else "Voice messages"
-            setTextColor(TEXT_SECONDARY)
-            textSize = if (isWatch) 10f else 14f
-            setTypeface(Typeface.DEFAULT, Typeface.BOLD)
-            gravity = Gravity.START
-        }
-
-        conversationList = LinearLayout(this).apply {
+    private fun modeCard(
+        eyebrow: String,
+        heading: String,
+        helper: String,
+        action: View,
+        actionWidth: Int,
+        actionHeight: Int
+    ): LinearLayout =
+        LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(dp(18), dp(17), dp(18), dp(18))
+            background = rounded(SURFACE, 24)
+
+            addView(
+                textView(eyebrow, 11f, ACCENT_YELLOW, true).apply {
+                    letterSpacing = 0.12f
+                    gravity = Gravity.CENTER
+                }
+            )
+            addView(
+                textView(heading, 20f, Color.WHITE, true).apply {
+                    gravity = Gravity.CENTER
+                    setPadding(0, dp(5), 0, 0)
+                }
+            )
+            addView(
+                textView(helper, 13f, TEXT_SECONDARY).apply {
+                    gravity = Gravity.CENTER
+                    setLineSpacing(0f, 1.08f)
+                    setPadding(dp(4), dp(5), dp(4), 0)
+                },
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            )
+            addView(
+                action,
+                LinearLayout.LayoutParams(actionWidth, actionHeight).apply {
+                    topMargin = dp(16)
+                    gravity = Gravity.CENTER_HORIZONTAL
+                }
+            )
         }
 
-        content.addView(
-            brand,
-            LinearLayout.LayoutParams(
-                dp(if (isWatch) 52 else 76),
-                dp(if (isWatch) 52 else 76)
-            )
-        )
-
-        content.addView(
-            title,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                topMargin = dp(if (isWatch) 2 else 4)
-            }
-        )
-
-        content.addView(
-            statusView,
-            LinearLayout.LayoutParams(
-                if (isWatch) ViewGroup.LayoutParams.MATCH_PARENT else dp(300),
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                topMargin = dp(if (isWatch) 7 else 12)
-            }
-        )
-
-        content.addView(
-            callButton,
-            LinearLayout.LayoutParams(
-                dp(if (isWatch) 122 else 188),
-                dp(if (isWatch) 122 else 188)
-            ).apply {
-                topMargin = dp(if (isWatch) 12 else 24)
-            }
-        )
-
-        content.addView(
-            talkButton,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(if (isWatch) 52 else 64)
-            ).apply {
-                topMargin = dp(if (isWatch) 8 else 16)
-            }
-        )
-
-        content.addView(
-            historyTitle,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                topMargin = dp(if (isWatch) 15 else 26)
-                bottomMargin = dp(7)
-            }
-        )
-
-        content.addView(
-            conversationList,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        )
-
-        scroll.addView(
-            content,
-            ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        )
-
-        setContentView(scroll)
-    }
+    private fun textView(
+        text: String,
+        size: Float,
+        color: Int,
+        bold: Boolean = false
+    ): TextView =
+        TextView(this).apply {
+            this.text = text
+            textSize = size
+            setTextColor(color)
+            if (bold) setTypeface(Typeface.DEFAULT, Typeface.BOLD)
+        }
 
     private fun handleCallButton() {
         val incoming = StateStore.incomingCall(this)
@@ -348,7 +516,8 @@ class MainActivity : Activity() {
     private fun beginRecording() {
         if (recording || hasAnyCallState()) return
 
-        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) !=
+        if (
+            checkSelfPermission(Manifest.permission.RECORD_AUDIO) !=
             PackageManager.PERMISSION_GRANTED
         ) {
             requestPermissions(
@@ -431,35 +600,83 @@ class MainActivity : Activity() {
         val active = StateStore.activeCall(this)
         val live = LiveCallAudio.isRunning()
 
-        statusView.text = when {
-            active != null && live -> "●  LIVE AUDIO"
+        val status = when {
+            active != null && live -> "●  LIVE WITH ${peerName().uppercase()}"
             active != null -> "Connecting live audio…"
-            incoming != null -> "Incoming call"
-            outgoing != null -> "Calling " + peerName() + "…"
+            incoming != null -> "${peerName()} is calling"
+            outgoing != null -> "Calling ${peerName()}…"
             else -> StateStore.status(this)
         }
+        statusView.text = status
+
+        val statusColor = when {
+            recording -> RECORDING_SURFACE
+            active != null && live -> LIVE_SURFACE
+            incoming != null -> INCOMING_SURFACE
+            status.contains("offline", ignoreCase = true) ||
+                status.contains("unreachable", ignoreCase = true) ||
+                status.contains("failed", ignoreCase = true) -> ERROR_SURFACE
+            else -> SURFACE_RAISED
+        }
+        statusView.background = rounded(statusColor, if (isWatch) 18 else 20)
         statusView.setTextColor(
-            if (active != null && live) LIVE_COLOR else TEXT_SECONDARY
+            when {
+                active != null && live -> LIVE_COLOR
+                recording -> RECORDING_TEXT
+                incoming != null -> ANSWER_TEXT
+                else -> TEXT_SECONDARY
+            }
         )
 
         when {
-            incoming != null -> styleCallButton("☎  ANSWER", ANSWER_COLOR)
-            active != null -> styleCallButton("■  END", END_COLOR)
-            outgoing != null -> styleCallButton("☎  CALLING", CALLING_COLOR)
-            else -> styleCallButton("☎  CALL", CALL_COLOR)
+            incoming != null -> styleCallButton(
+                if (isWatch) "☎\nANSWER" else "☎  ANSWER",
+                ANSWER_COLOR
+            )
+            active != null -> styleCallButton(
+                if (isWatch) "■\nEND" else "■  END",
+                END_COLOR
+            )
+            outgoing != null -> styleCallButton(
+                if (isWatch) "☎\nCALLING" else "☎  CALLING",
+                CALLING_COLOR
+            )
+            else -> styleCallButton(
+                if (isWatch) "☎\nCALL" else "☎  CALL",
+                CALL_COLOR
+            )
         }
 
         callButton.isEnabled = outgoing == null || active != null || incoming != null
-        callButton.alpha = if (callButton.isEnabled) 1f else 0.72f
+        callButton.alpha = if (callButton.isEnabled) 1f else 0.62f
 
         val busy = hasAnyCallState()
         talkButton.isEnabled = !busy
-        talkButton.alpha = if (busy) 0.42f else 1f
+        talkButton.alpha = if (busy) 0.38f else 1f
         talkButton.text = when {
-            active != null -> "◉  LIVE AUDIO"
-            outgoing != null || incoming != null -> "TALK available after call"
+            active != null -> if (isWatch) "LIVE AUDIO" else "◉  LIVE AUDIO"
+            outgoing != null || incoming != null ->
+                if (isWatch) "TALK AFTER CALL" else "TALK available after call"
             recording -> "●  RELEASE TO SEND"
             else -> "●  HOLD TO TALK"
+        }
+        talkButton.background = when {
+            busy -> rounded(SURFACE_RAISED, if (isWatch) 24 else 22)
+            recording -> roundedGradient(
+                RECORDING_LIGHT,
+                RECORDING_COLOR,
+                if (isWatch) 24 else 22
+            )
+            else -> roundedGradient(
+                TALK_COLOR_LIGHT,
+                TALK_COLOR,
+                if (isWatch) 24 else 22
+            )
+        }
+
+        if (isWatch) {
+            historyTitle.alpha = if (recording || busy) 0.46f else 1f
+            conversationList.alpha = if (recording || busy) 0.46f else 1f
         }
 
         renderConversation()
@@ -468,16 +685,21 @@ class MainActivity : Activity() {
     private fun renderConversation() {
         conversationList.removeAllViews()
         val messages = VoiceMessageStore
-            .list(this, if (isWatch) 8 else 30)
+            .list(this, if (isWatch) 4 else 30)
             .reversed()
 
         if (messages.isEmpty()) {
             val empty = TextView(this).apply {
-                text = "No voice messages yet"
+                text = "No TALK messages yet"
                 setTextColor(TEXT_MUTED)
-                textSize = if (isWatch) 11f else 14f
+                textSize = if (isWatch) 10f else 13f
                 gravity = Gravity.CENTER
-                setPadding(dp(8), dp(14), dp(8), dp(14))
+                setPadding(
+                    dp(8),
+                    dp(if (isWatch) 8 else 14),
+                    dp(8),
+                    dp(if (isWatch) 8 else 14)
+                )
             }
             conversationList.addView(
                 empty,
@@ -510,18 +732,18 @@ class MainActivity : Activity() {
                 append(message.displayTime())
             }
             setTextColor(Color.WHITE)
-            textSize = if (isWatch) 12f else 15f
+            textSize = if (isWatch) 11f else 14f
             setTypeface(Typeface.DEFAULT, Typeface.BOLD)
             gravity = Gravity.CENTER_VERTICAL
             setPadding(
-                dp(if (isWatch) 10 else 14),
-                dp(if (isWatch) 9 else 12),
-                dp(if (isWatch) 10 else 14),
-                dp(if (isWatch) 9 else 12)
+                dp(if (isWatch) 9 else 13),
+                dp(if (isWatch) 8 else 11),
+                dp(if (isWatch) 9 else 13),
+                dp(if (isWatch) 8 else 11)
             )
             background = rounded(
                 if (outgoing) MESSAGE_OUT else MESSAGE_IN,
-                if (isWatch) 18 else 20
+                if (isWatch) 17 else 19
             )
             setOnClickListener {
                 AudioPlayer.play(this@MainActivity, message.file, deleteAfter = false)
@@ -531,7 +753,7 @@ class MainActivity : Activity() {
         wrapper.addView(
             bubble,
             LinearLayout.LayoutParams(
-                if (isWatch) ViewGroup.LayoutParams.MATCH_PARENT else dp(270),
+                if (isWatch) ViewGroup.LayoutParams.MATCH_PARENT else dp(286),
                 ViewGroup.LayoutParams.WRAP_CONTENT
             )
         )
@@ -540,17 +762,19 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         ).apply {
-            bottomMargin = dp(if (isWatch) 6 else 9)
+            bottomMargin = dp(if (isWatch) 5 else 8)
         }
         return wrapper
     }
 
     private fun styleCallButton(label: String, color: Int) {
         callButton.text = label
-        callButton.background = GradientDrawable().apply {
+        callButton.background = GradientDrawable(
+            GradientDrawable.Orientation.TL_BR,
+            intArrayOf(lighten(color), color)
+        ).apply {
             shape = GradientDrawable.OVAL
-            setColor(color)
-            setStroke(dp(1), lighten(color))
+            setStroke(dp(if (isWatch) 2 else 1), lighten(lighten(color)))
         }
     }
 
@@ -562,7 +786,8 @@ class MainActivity : Activity() {
     private fun requestNeededPermissions() {
         val missing = mutableListOf<String>()
 
-        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) !=
+        if (
+            checkSelfPermission(Manifest.permission.RECORD_AUDIO) !=
             PackageManager.PERMISSION_GRANTED
         ) {
             missing += Manifest.permission.RECORD_AUDIO
@@ -591,6 +816,19 @@ class MainActivity : Activity() {
             setColor(color)
         }
 
+    private fun roundedGradient(
+        startColor: Int,
+        endColor: Int,
+        radiusDp: Int
+    ): GradientDrawable =
+        GradientDrawable(
+            GradientDrawable.Orientation.TL_BR,
+            intArrayOf(startColor, endColor)
+        ).apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dp(radiusDp).toFloat()
+        }
+
     private fun lighten(color: Int): Int {
         val factor = 1.16f
         return Color.rgb(
@@ -606,19 +844,33 @@ class MainActivity : Activity() {
     companion object {
         private const val REQUEST_PERMISSIONS = 42
 
-        private val BACKGROUND = Color.rgb(12, 15, 20)
-        private val SURFACE = Color.rgb(27, 32, 40)
-        private val SURFACE_RAISED = Color.rgb(38, 44, 54)
-        private val TEXT_SECONDARY = Color.rgb(184, 193, 207)
-        private val TEXT_MUTED = Color.rgb(123, 133, 149)
+        private val PHONE_BACKGROUND = Color.rgb(7, 13, 29)
+        private val WATCH_BACKGROUND = Color.rgb(0, 0, 0)
+        private val SURFACE = Color.rgb(18, 29, 55)
+        private val SURFACE_RAISED = Color.rgb(28, 42, 70)
+        private val TEXT_SECONDARY = Color.rgb(196, 207, 226)
+        private val TEXT_MUTED = Color.rgb(126, 142, 170)
+        private val ACCENT_YELLOW = Color.rgb(255, 205, 55)
 
-        private val CALL_COLOR = Color.rgb(53, 105, 255)
-        private val CALLING_COLOR = Color.rgb(66, 83, 125)
-        private val ANSWER_COLOR = Color.rgb(35, 168, 100)
-        private val END_COLOR = Color.rgb(222, 67, 76)
-        private val LIVE_COLOR = Color.rgb(101, 226, 158)
+        private val CALL_COLOR = Color.rgb(31, 111, 255)
+        private val CALLING_COLOR = Color.rgb(67, 88, 138)
+        private val ANSWER_COLOR = Color.rgb(24, 183, 111)
+        private val END_COLOR = Color.rgb(235, 68, 83)
+        private val LIVE_COLOR = Color.rgb(103, 237, 165)
 
-        private val MESSAGE_OUT = Color.rgb(47, 91, 190)
-        private val MESSAGE_IN = Color.rgb(43, 49, 60)
+        private val TALK_COLOR_LIGHT = Color.rgb(27, 205, 255)
+        private val TALK_COLOR = Color.rgb(20, 125, 255)
+        private val RECORDING_LIGHT = Color.rgb(255, 93, 107)
+        private val RECORDING_COLOR = Color.rgb(225, 45, 65)
+
+        private val LIVE_SURFACE = Color.rgb(20, 59, 47)
+        private val INCOMING_SURFACE = Color.rgb(21, 67, 49)
+        private val ERROR_SURFACE = Color.rgb(70, 31, 39)
+        private val RECORDING_SURFACE = Color.rgb(74, 27, 39)
+        private val RECORDING_TEXT = Color.rgb(255, 188, 197)
+        private val ANSWER_TEXT = Color.rgb(158, 246, 197)
+
+        private val MESSAGE_OUT = Color.rgb(36, 100, 219)
+        private val MESSAGE_IN = Color.rgb(30, 39, 58)
     }
 }
