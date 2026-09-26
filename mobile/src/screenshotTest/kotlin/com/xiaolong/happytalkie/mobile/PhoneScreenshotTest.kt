@@ -181,3 +181,72 @@ fun PhoneLiveScreenshot() {
         )
     }
 }
+
+
+@PreviewTest
+@Preview(
+    name = "Phone incoming",
+    widthDp = 412,
+    heightDp = 915,
+    showBackground = true,
+    backgroundColor = PHONE_BACKGROUND,
+)
+@Composable
+fun PhoneIncomingScreenshot() {
+    HappyTalkiePhoneTheme {
+        HappyTalkiePhoneScreen(
+            state = HappyTalkieUiState(
+                status = "Watch is calling",
+                callState = CallVisualState.INCOMING,
+                callEnabled = true,
+                talkEnabled = false,
+                peerName = "Watch",
+                peerConnection = PeerConnectionState.CONNECTED,
+                peerRoute = PeerRoute.NEARBY_DIRECT,
+            ),
+            onCall = {},
+            onDecline = {},
+            onSpeakerToggle = {},
+            onTalkStart = {},
+            onTalkFinish = {},
+            onTalkCancel = {},
+            onPlay = {},
+            onDelete = {},
+            onClear = {},
+        )
+    }
+}
+
+@PreviewTest
+@Preview(
+    name = "Phone reconnecting",
+    widthDp = 412,
+    heightDp = 915,
+    showBackground = true,
+    backgroundColor = PHONE_BACKGROUND,
+)
+@Composable
+fun PhoneReconnectingScreenshot() {
+    HappyTalkiePhoneTheme {
+        HappyTalkiePhoneScreen(
+            state = HappyTalkieUiState(
+                status = "Reconnecting…",
+                callState = CallVisualState.RECONNECTING,
+                callEnabled = true,
+                talkEnabled = false,
+                peerName = "Watch",
+                peerConnection = PeerConnectionState.RECONNECTING,
+                peerRoute = PeerRoute.RECONNECTING,
+            ),
+            onCall = {},
+            onDecline = {},
+            onSpeakerToggle = {},
+            onTalkStart = {},
+            onTalkFinish = {},
+            onTalkCancel = {},
+            onPlay = {},
+            onDelete = {},
+            onClear = {},
+        )
+    }
+}
