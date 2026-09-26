@@ -944,36 +944,49 @@ fun WearTalkInbox(
                             !priorityCallsEnabled
                         )
                     },
-                    modifier =
-                        Modifier.width(146.dp),
+                    modifier = Modifier
+                        .width(146.dp)
+                        .height(40.dp),
                     colors =
                         CardDefaults.cardColors(
                             containerColor =
-                                if (
-                                    priorityCallsEnabled
-                                ) {
-                                    Color(0xFF3A3214)
-                                } else {
-                                    Color(0xFF111A29)
-                                },
+                                Color(0xFF111A29),
                             contentColor =
                                 Color.White,
                         ),
                 ) {
-                    Column {
+                    Row(
+                        modifier =
+                            Modifier.fillMaxSize(),
+                        verticalAlignment =
+                            Alignment.CenterVertically,
+                        horizontalArrangement =
+                            Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            text = "Priority",
+                            style =
+                                MaterialTheme
+                                    .typography
+                                    .labelMedium,
+                            fontWeight =
+                                FontWeight.SemiBold,
+                            maxLines = 1,
+                        )
+
                         Text(
                             text =
                                 if (
                                     priorityCallsEnabled
                                 ) {
-                                    "Priority calls · ON"
+                                    "ON"
                                 } else {
-                                    "Priority calls · OFF"
+                                    "OFF"
                                 },
                             style =
                                 MaterialTheme
                                     .typography
-                                    .labelMedium,
+                                    .labelSmall,
                             fontWeight =
                                 FontWeight.Bold,
                             color =
@@ -982,25 +995,8 @@ fun WearTalkInbox(
                                 ) {
                                     Color(0xFFFFD35A)
                                 } else {
-                                    Color.White
+                                    Color(0xFF8E9AAF)
                                 },
-                        )
-                        Text(
-                            text =
-                                "Tap to " +
-                                    if (
-                                        priorityCallsEnabled
-                                    ) {
-                                        "disable"
-                                    } else {
-                                        "allow auto-answer"
-                                    },
-                            style =
-                                MaterialTheme
-                                    .typography
-                                    .labelSmall,
-                            color =
-                                Color(0xFF98A7BC),
                             maxLines = 1,
                         )
                     }
