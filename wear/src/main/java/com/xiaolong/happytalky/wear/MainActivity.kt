@@ -341,8 +341,14 @@ fun WearHome(
         }
     }
 
-    LaunchedEffect(showInbox) {
-        if (showInbox) {
+    LaunchedEffect(
+        showInbox,
+        state.unreadTextCount
+    ) {
+        if (
+            showInbox &&
+            state.unreadTextCount > 0
+        ) {
             onInboxOpened()
         }
     }
