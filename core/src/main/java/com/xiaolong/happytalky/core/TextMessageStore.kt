@@ -22,8 +22,7 @@ object TextMessageStore {
                     ConversationDirection.OUTGOING,
                 createdAt =
                     System.currentTimeMillis(),
-                readAt =
-                    System.currentTimeMillis(),
+                readAt = null,
                 deliveryState =
                     DeliveryState.LOCAL,
                 text = text
