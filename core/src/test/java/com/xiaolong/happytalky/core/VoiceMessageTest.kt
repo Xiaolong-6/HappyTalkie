@@ -2,6 +2,8 @@ package com.xiaolong.happytalky.core
 
 import java.io.File
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class VoiceMessageTest {
@@ -22,6 +24,33 @@ class VoiceMessageTest {
             "1:05",
             message.displayDuration()
         )
+    }
+
+    @Test
+    fun incomingReadStateDependsOnReadTimestamp() {
+        val unread =
+            VoiceMessage(
+                id = "in-unread",
+                createdAt = 1L,
+                direction =
+                    VoiceDirection.INCOMING,
+                file =
+                    File("unread.m4a"),
+            )
+        val read =
+            unread.copy(
+                readAt = 2L
+            )
+        val outgoing =
+            unread.copy(
+                id = "out",
+                direction =
+                    VoiceDirection.OUTGOING,
+            )
+
+        assertFalse(unread.isRead)
+        assertTrue(read.isRead)
+        assertTrue(outgoing.isRead)
     }
 
     @Test
