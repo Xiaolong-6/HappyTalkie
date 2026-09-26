@@ -29,6 +29,9 @@ class HappyTalkyListenerService : WearableListenerService() {
 
     override fun onPeerConnected(peer: Node) {
         DataLayerTransport(this)
+            .also {
+                it.publishDeviceInfo()
+            }
             .refreshPeerConnection { state, _ ->
                 if (
                     state == PeerConnectionState.CONNECTED &&
@@ -136,49 +139,209 @@ class HappyTalkyListenerService : WearableListenerService() {
     }
 
     override fun onDataChanged(dataEvents: DataEventBuffer) {
-        val role = EndpointRole.fromContext(this)
-        val dataClient = Wearable.getDataClient(this)
+        val role =
+            EndpointRole.fromContext(this)
+        val localDeviceId =
+            LocalDeviceIdentity.id(this)
+        val dataClient =
+            Wearable.getDataClient(this)
 
         dataEvents.forEach { event ->
-            if (event.type != DataEvent.TYPE_CHANGED) return@forEach
-            val item = event.dataItem
-            val path = item.uri.path ?: return@forEach
-            if (!path.startsWith(Protocol.VOICE_PREFIX)) return@forEach
+            if (
+                event.type !=
+                    DataEvent.TYPE_CHANGED
+            ) {
+                return@forEach
+            }
+
+            val item =
+                event.dataItem
+            val path =
+                item.uri.path
+                    ?: return@forEach
 
             try {
-                val map = DataMapItem.fromDataItem(item).dataMap
-                val origin = map.getString(Protocol.KEY_ORIGIN)
-                if (origin == role.wireValue) return@forEach
+                when {
+                    path.startsWith(
+                        Protocol.DEVICE_INFO_PREFIX
+                    ) -> {
+                        val map =
+                            DataMapItem
+                                .fromDataItem(item)
+                                .dataMap
+                        val deviceId =
+                            map.getString(
+                                Protocol.KEY_ID
+                            )
+                                ?: return@forEach
 
-                val asset = map.getAsset(Protocol.KEY_AUDIO) ?: return@forEach
-                val voiceId =
-                    map.getString(Protocol.KEY_ID) ?: path.substringAfterLast('/')
-                val createdAt = map.getLong(Protocol.KEY_CREATED_AT)
+                        if (
+                            deviceId ==
+                                localDeviceId
+                        ) {
+                            return@forEach
+                        }
 
-                val response = Tasks.await(dataClient.getFdForAsset(asset))
-                try {
-                    val stream = response.inputStream ?: return@forEach
-                    stream.use {
-                        VoiceMessageStore.saveIncoming(
+                        val peerRole =
+                            when (
+                                map.getString(
+                                    Protocol.KEY_ROLE
+                                )
+                            ) {
+                                EndpointRole
+                                    .WATCH
+                                    .wireValue ->
+                                    EndpointRole.WATCH
+
+                                EndpointRole
+                                    .PHONE
+                                    .wireValue ->
+                                    EndpointRole.PHONE
+
+                                else ->
+                                    return@forEach
+                            }
+
+                        if (peerRole == role) {
+                            return@forEach
+                        }
+
+                        val info =
+                            DeviceInfo(
+                                deviceId =
+                                    deviceId,
+                                role =
+                                    peerRole,
+                                manufacturer =
+                                    map.getString(
+                                        Protocol
+                                            .KEY_MANUFACTURER
+                                    )
+                                        .orEmpty(),
+                                model =
+                                    map.getString(
+                                        Protocol
+                                            .KEY_MODEL
+                                    )
+                                        .orEmpty(),
+                                appVersion =
+                                    map.getString(
+                                        Protocol
+                                            .KEY_APP_VERSION
+                                    )
+                                        .orEmpty(),
+                                protocolVersion =
+                                    map.getInt(
+                                        Protocol
+                                            .KEY_PROTOCOL_VERSION
+                                    ),
+                                capabilities =
+                                    map.getStringArrayList(
+                                        Protocol
+                                            .KEY_CAPABILITIES
+                                    )
+                                        ?.toSet()
+                                        .orEmpty()
+                            )
+
+                        PeerInfoStore.save(
                             this,
-                            voiceId,
-                            createdAt,
-                            it
+                            info
+                        )
+                        EventBus.notifyStateChanged(
+                            this
                         )
                     }
-                } finally {
-                    response.release()
+
+                    path.startsWith(
+                        Protocol.VOICE_PREFIX
+                    ) -> {
+                        val map =
+                            DataMapItem
+                                .fromDataItem(item)
+                                .dataMap
+                        val origin =
+                            map.getString(
+                                Protocol.KEY_ORIGIN
+                            )
+                        if (
+                            origin ==
+                                role.wireValue
+                        ) {
+                            return@forEach
+                        }
+
+                        val asset =
+                            map.getAsset(
+                                Protocol.KEY_AUDIO
+                            )
+                                ?: return@forEach
+                        val voiceId =
+                            map.getString(
+                                Protocol.KEY_ID
+                            )
+                                ?: path
+                                    .substringAfterLast(
+                                        '/'
+                                    )
+                        val createdAt =
+                            map.getLong(
+                                Protocol
+                                    .KEY_CREATED_AT
+                            )
+
+                        val response =
+                            Tasks.await(
+                                dataClient
+                                    .getFdForAsset(
+                                        asset
+                                    )
+                            )
+                        try {
+                            val stream =
+                                response.inputStream
+                                    ?: return@forEach
+                            stream.use {
+                                VoiceMessageStore
+                                    .saveIncoming(
+                                        this,
+                                        voiceId,
+                                        createdAt,
+                                        it
+                                    )
+                            }
+                        } finally {
+                            response.release()
+                        }
+
+                        Tasks.await(
+                            dataClient
+                                .deleteDataItems(
+                                    item.uri
+                                )
+                        )
+                        StateStore.setStatus(
+                            this,
+                            "New voice message"
+                        )
+                        AlertController
+                            .postVoiceNotification(
+                                this
+                            )
+
+                        // TALK messages are intentionally never
+                        // auto-played.
+                        EventBus.notifyStateChanged(
+                            this
+                        )
+                    }
                 }
-
-                Tasks.await(dataClient.deleteDataItems(item.uri))
-                StateStore.setStatus(this, "New voice message")
-                AlertController.postVoiceNotification(this)
-
-                // TALK messages are intentionally never auto-played.
-                // The user explicitly chooses when audio is played.
-                EventBus.notifyStateChanged(this)
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to receive voice message", e)
+                Log.e(
+                    TAG,
+                    "Failed to receive Data Layer item",
+                    e
+                )
             }
         }
     }
