@@ -7,6 +7,7 @@ import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.MessageEvent
+import com.google.android.gms.wearable.Node
 import com.google.android.gms.wearable.Wearable
 import com.google.android.gms.wearable.WearableListenerService
 
@@ -19,8 +20,44 @@ class HappyTalkieListenerService : WearableListenerService() {
         when (messageEvent.path) {
             Protocol.CALL_RING -> receiveRing(callId)
             Protocol.CALL_ANSWER -> receiveAnswer(callId)
+            Protocol.CALL_DECLINE -> receiveDecline(callId)
+            Protocol.CALL_CANCEL -> receiveCancel(callId)
+            Protocol.CALL_BUSY -> receiveBusy(callId)
             Protocol.CALL_END -> receiveEnd(callId)
         }
+    }
+
+    override fun onPeerConnected(peer: Node) {
+        StateStore.setPeerConnection(this, PeerConnectionState.CONNECTED)
+
+        if (StateStore.activeCall(this) != null) {
+            StateStore.setStatus(this, "Reconnecting live audio…")
+            StateStore.beginReconnectWindow(this)
+            LiveCallService.start(this)
+        }
+
+        EventBus.notifyStateChanged(this)
+    }
+
+    override fun onPeerDisconnected(peer: Node) {
+        if (StateStore.activeCall(this) != null) {
+            StateStore.setPeerConnection(
+                this,
+                PeerConnectionState.RECONNECTING
+            )
+            StateStore.setStatus(this, "Reconnecting…")
+            StateStore.beginReconnectWindow(this)
+            LiveCallAudio.stop(this, closeChannel = false)
+            LiveCallService.start(this)
+        } else {
+            StateStore.setPeerConnection(
+                this,
+                PeerConnectionState.DISCONNECTED
+            )
+            StateStore.setStatus(this, "Peer offline")
+        }
+
+        EventBus.notifyStateChanged(this)
     }
 
     override fun onChannelOpened(channel: ChannelClient.Channel) {
@@ -47,10 +84,14 @@ class HappyTalkieListenerService : WearableListenerService() {
 
         if (StateStore.activeCall(this) == callId) {
             LiveCallAudio.stop(this, closeChannel = false)
-            StateStore.clearCallState(this)
-            StateStore.setStatus(this, "Call disconnected")
+            StateStore.setPeerConnection(
+                this,
+                PeerConnectionState.RECONNECTING
+            )
+            StateStore.setStatus(this, "Reconnecting…")
+            StateStore.beginReconnectWindow(this)
             EventBus.notifyStateChanged(this)
-            LiveCallService.stop(this)
+            LiveCallService.start(this)
         }
     }
 
@@ -75,7 +116,7 @@ class HappyTalkieListenerService : WearableListenerService() {
                 val createdAt = map.getLong(Protocol.KEY_CREATED_AT)
 
                 val response = Tasks.await(dataClient.getFdForAsset(asset))
-                val saved = try {
+                try {
                     val stream = response.inputStream ?: return@forEach
                     stream.use {
                         VoiceMessageStore.saveIncoming(
@@ -92,7 +133,9 @@ class HappyTalkieListenerService : WearableListenerService() {
                 Tasks.await(dataClient.deleteDataItems(item.uri))
                 StateStore.setStatus(this, "New voice message")
                 AlertController.postVoiceNotification(this)
-                AudioPlayer.play(this, saved.file, deleteAfter = false)
+
+                // TALK messages are intentionally never auto-played.
+                // The user explicitly chooses when audio is played.
                 EventBus.notifyStateChanged(this)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to receive voice message", e)
@@ -101,12 +144,25 @@ class HappyTalkieListenerService : WearableListenerService() {
     }
 
     private fun receiveRing(callId: String) {
-        if (StateStore.activeCall(this) != null) return
         if (StateStore.incomingCall(this) == callId) return
 
-        StateStore.setOutgoingCall(this, null)
+        val busy =
+            StateStore.activeCall(this) != null ||
+            StateStore.outgoingCall(this) != null ||
+            StateStore.incomingCall(this) != null
+
+        if (busy) {
+            DataLayerTransport(this)
+                .sendSignal(Protocol.CALL_BUSY, callId) { }
+            return
+        }
+
         StateStore.setCallInitiator(this, false)
         StateStore.setIncomingCall(this, callId)
+        StateStore.setPeerConnection(
+            this,
+            PeerConnectionState.CONNECTED
+        )
         StateStore.setStatus(this, "Incoming call")
         AlertController.startIncomingCall(this, callId)
         EventBus.notifyStateChanged(this)
@@ -118,8 +174,47 @@ class HappyTalkieListenerService : WearableListenerService() {
         StateStore.setIncomingCall(this, null)
         StateStore.setOutgoingCall(this, null)
         StateStore.setActiveCall(this, callId)
+        StateStore.clearReconnectWindow(this)
+        StateStore.setPeerConnection(
+            this,
+            PeerConnectionState.CONNECTED
+        )
         StateStore.setStatus(this, "Connecting live audio…")
         AlertController.stop(this)
+        LiveCallService.start(this)
+        EventBus.notifyStateChanged(this)
+    }
+
+    private fun receiveDecline(callId: String) {
+        if (StateStore.outgoingCall(this) != callId) return
+
+        StateStore.clearCallState(this)
+        StateStore.setStatus(this, "Call declined")
+        AlertController.stop(this)
+        LiveCallAudio.stop(this)
+        LiveCallService.stop(this)
+        EventBus.notifyStateChanged(this)
+    }
+
+    private fun receiveCancel(callId: String) {
+        if (StateStore.incomingCall(this) != callId) return
+
+        StateStore.clearCallState(this)
+        StateStore.setStatus(this, "Call cancelled")
+        AlertController.stop(this)
+        LiveCallAudio.stop(this)
+        LiveCallService.stop(this)
+        EventBus.notifyStateChanged(this)
+    }
+
+    private fun receiveBusy(callId: String) {
+        if (StateStore.outgoingCall(this) != callId) return
+
+        StateStore.clearCallState(this)
+        StateStore.setStatus(this, "Peer is busy")
+        AlertController.stop(this)
+        LiveCallAudio.stop(this)
+        LiveCallService.stop(this)
         EventBus.notifyStateChanged(this)
     }
 
