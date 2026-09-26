@@ -259,3 +259,25 @@ fun WatchTalkInboxScreenshot() {
         )
     }
 }
+
+
+@PreviewTest
+@Preview(
+    name = "Watch CALL history",
+    device = WATCH_DEVICE,
+    showBackground = true,
+    backgroundColor = WATCH_BACKGROUND,
+)
+@Composable
+fun WatchCallHistoryScreenshot() {
+    MaterialTheme {
+        WearTalkInbox(
+            messages = emptyList(),
+            callHistory = watchCallHistory,
+            unreadCount = 0,
+            peerName = "Phone",
+            onBack = {},
+            onPlay = {},
+        )
+    }
+}
