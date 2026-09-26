@@ -7,7 +7,7 @@ HappyTalky keeps two primary child-facing voice actions:
 - **CALL** = synchronous live two-way voice
 - **TALK** = asynchronous persistent voice message
 
-The conversation model also reserves **TEXT** as a secondary message type so text/emoji can join the same timeline without creating a separate storage or history subsystem.
+The conversation model includes **TEXT** as a secondary message type so text/emoji share the same timeline as TALK and CALL instead of creating a separate storage or history subsystem.
 
 ## Modules
 
@@ -25,13 +25,15 @@ The `conversation_items` table is the metadata source of truth for:
 
 - TALK voice messages;
 - CALL events;
-- future TEXT messages.
+- TEXT messages.
 
 Every row carries a stable ID, direction, creation time, read time and delivery state, plus type-specific fields. CALL rows also retain call ID, outcome, mode, start/end timestamps and duration.
 
 TALK audio remains in app-private `voice-history` files. The first database access imports legacy TALK filename/read-state metadata and legacy CALL JSONL entries once, preserving existing installs while new writes go to Room.
 
 The current Store APIs remain synchronous during this migration so the existing UI/state machine does not change behavior. A later UI pass can expose Room as Flow without changing the persisted schema.
+
+TEXT uses a stable UUID and is stored directly in Room. Outgoing text is initially `LOCAL`; once `DataClient.putDataItem()` accepts the persistent item it becomes `QUEUED`. HappyTalky does not label a message Delivered or Read without an explicit receiver acknowledgement.
 
 ## Companion discovery
 
@@ -159,6 +161,22 @@ On Android 14+ the Wear app checks whether full-screen-intent access is availabl
 
 If the user does nothing, the ring times out rather than remaining active indefinitely. Final CALL outcomes are persisted locally, including completed duration, declined, missed/no-answer, cancelled, busy, failed, and disconnected cases.
 
+## TEXT
+
+TEXT transfer uses a persistent DataItem:
+
+`/happytalky/text/<uuid>`
+
+The payload carries stable ID, origin role, creation time and UTF-8 text. Text is capped at 500 characters for the first protocol version.
+
+A receiving endpoint performs idempotent insert-by-ID, consumes the synchronized DataItem, updates the shared timeline, and posts the same message notification family used by TALK. Replayed DataItems are deleted without producing duplicate user notifications.
+
+Phone uses a Material 3 single-line composer with IME Send and a quick emoji affordance.
+
+Wear keeps only a compact fixed composer in Inbox. Tapping it launches the system Wear RemoteInput flow through `androidx.wear:wear-input`, enabling dictation, emoji, predefined choices and the system IME. HappyTalky does not attempt to render a phone-style keyboard on a 192 dp round screen.
+
+Opening the Watch Inbox marks incoming TEXT as read locally. TALK retains its stricter playback-completes-read rule.
+
 ## TALK
 
 TALK records AAC/M4A:
@@ -199,12 +217,12 @@ Phone and Watch share `HappyTalkyUiState`, not presentation code.
 Compose Material 3 follows a voice-messenger information architecture:
 
 - compact conversation header with peer reachability and CALL/TALK availability;
-- chronological TALK timeline as the main screen content;
+- one chronological conversation timeline containing TEXT, TALK and persisted CALL events;
 - incoming TALK bubbles on the left and outgoing TALK bubbles on the right;
 - tap to play, with duration and timestamp shown in the bubble;
 - long-press any TALK to enter multi-selection; the temporary top bar provides select-all and delete;
 - current CALL state appears inside the conversation timeline instead of occupying a permanent dashboard card;
-- bottom action bar owns the two primary actions: CALL and press-and-hold TALK;
+- bottom action area keeps CALL and press-and-hold TALK on the first row and a Message composer beneath them;
 - during an eligible unanswered outgoing CALL, the TALK-side action temporarily becomes **PRIORITY** after the delay;
 - incoming CALL temporarily replaces the bottom actions with Decline / Answer;
 - live CALL replaces the right action with the Speaker toggle;
@@ -218,13 +236,14 @@ Wear Material 3 presents a shorter wrist-first loop:
 - central CALL / END / CANCEL control;
 - a dedicated full-screen incoming CALL screen;
 - a direct hold/release TALK surface at the bottom, with the press gesture owned by the surface itself rather than a disabled child button;
-- swipe left from the home screen to enter Inbox;
+- swipe left from the home screen to enter the unified Inbox;
 - Inbox supports touch scrolling and the watch rotary/crown;
 - unread incoming TALK is counted and bold/highlighted in chronological history, and loses emphasis after playback completes;
-- each TALK row can be swiped left to reveal Delete;
+- TEXT, TALK and CALL rows are interleaved by timestamp; TALK rows can be swiped left to reveal Delete;
 - recent CALL history is shown below TALK history, and the latest CALL is summarized on the home screen;
 - Inbox exposes the explicit **Priority calls** opt-in; enabling it republishes Watch device-info immediately;
-- priority incoming presentation is visually labelled before the resumed foreground UI performs auto-answer.
+- priority incoming presentation is visually labelled before the resumed foreground UI performs auto-answer;
+- a fixed compact Message composer launches the system RemoteInput/IME with emoji and dictation support.
 
 Bulk history management and secondary explanation stay on the phone.
 
@@ -240,6 +259,8 @@ CI renders Compose screenshot previews for:
 - live;
 - reconnecting;
 - phone Priority offer/requested;
-- Watch Priority incoming and Priority setting.
+- Watch Priority incoming and Priority setting;
+- Phone mixed TEXT/TALK conversation;
+- Watch mixed TEXT/TALK/CALL Inbox.
 
 Phone previews use a 412 x 915 dp surface. Wear previews use a 192 dp round device specification.
