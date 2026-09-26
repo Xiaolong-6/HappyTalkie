@@ -136,13 +136,9 @@ class DataLayerTransport(context: Context) {
                     }
                 }
                 .addOnFailureListener {
-                    refreshPeerConnection { state, _ ->
+                    refreshPeerConnection { _, _ ->
                         mainHandler.post {
-                            callback(
-                                state ==
-                                    PeerConnectionState.CONNECTED &&
-                                    false
-                            )
+                            callback(false)
                         }
                     }
                 }
