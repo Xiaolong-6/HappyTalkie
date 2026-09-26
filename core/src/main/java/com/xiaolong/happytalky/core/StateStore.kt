@@ -27,6 +27,8 @@ object StateStore {
     private const val KEY_ACTIVE = "active_call"
     private const val KEY_CALL_INITIATOR = "call_initiator"
     private const val KEY_ACTIVE_STARTED_AT = "active_started_at"
+    private const val KEY_OUTGOING_STARTED_AT = "outgoing_started_at"
+    private const val KEY_CALL_MODE = "call_mode"
     private const val KEY_PEER_CONNECTION = "peer_connection"
     private const val KEY_PEER_ROUTE = "peer_route"
     private const val KEY_RECONNECT_UNTIL = "reconnect_until"
@@ -88,6 +90,53 @@ object StateStore {
             .apply()
     }
 
+    fun outgoingStartedAt(context: Context): Long =
+        prefs(context).getLong(
+            KEY_OUTGOING_STARTED_AT,
+            0L
+        )
+
+    fun setOutgoingStartedAt(
+        context: Context,
+        value: Long
+    ) {
+        prefs(context)
+            .edit()
+            .putLong(
+                KEY_OUTGOING_STARTED_AT,
+                value
+            )
+            .apply()
+    }
+
+    fun callMode(context: Context): CallMode {
+        val raw =
+            prefs(context).getString(
+                KEY_CALL_MODE,
+                null
+            )
+
+        return runCatching {
+            raw?.let {
+                CallMode.valueOf(it)
+            }
+        }.getOrNull()
+            ?: CallMode.NORMAL
+    }
+
+    fun setCallMode(
+        context: Context,
+        mode: CallMode
+    ) {
+        prefs(context)
+            .edit()
+            .putString(
+                KEY_CALL_MODE,
+                mode.name
+            )
+            .apply()
+    }
+
     fun peerConnection(context: Context): PeerConnectionState {
         val raw = prefs(context).getString(KEY_PEER_CONNECTION, null)
         return runCatching {
@@ -140,6 +189,8 @@ object StateStore {
             .remove(KEY_ACTIVE)
             .remove(KEY_CALL_INITIATOR)
             .remove(KEY_ACTIVE_STARTED_AT)
+            .remove(KEY_OUTGOING_STARTED_AT)
+            .remove(KEY_CALL_MODE)
             .remove(KEY_RECONNECT_UNTIL)
             .apply()
     }
