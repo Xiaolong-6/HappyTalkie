@@ -1131,67 +1131,147 @@ fun WearInbox(
                     PaddingValues(
                         start = 14.dp,
                         end = 14.dp,
-                        top = 12.dp,
+                        top = 10.dp,
                         bottom = 8.dp,
                     ),
                 horizontalAlignment =
                     Alignment.CenterHorizontally,
                 verticalArrangement =
-                    Arrangement.spacedBy(6.dp),
+                    Arrangement.spacedBy(4.dp),
             ) {
-                item {
-                    TextButton(
-                        onClick = onBack,
-                        modifier =
-                            Modifier.width(144.dp),
-                    ) {
-                        Text(
-                            text =
-                                if (
-                                    unreadCount > 0
-                                ) {
-                                    "‹ Inbox · " +
-                                        unreadCount +
-                                        " unread"
-                                } else {
-                                    "‹ Inbox"
-                                },
-                            style =
-                                MaterialTheme
-                                    .typography
-                                    .labelMedium,
-                            fontWeight =
-                                if (
-                                    unreadCount > 0
-                                ) {
-                                    FontWeight.Bold
-                                } else {
-                                    FontWeight.SemiBold
-                                },
-                            color =
-                                if (
-                                    unreadCount > 0
-                                ) {
-                                    Color(
-                                        0xFFFFD35A
-                                    )
-                                } else {
-                                    Color.White
-                                },
-                            maxLines = 1,
-                        )
-                    }
-                }
-
                 item(
-                    key = "priority-setting"
+                    key = "inbox-header"
                 ) {
-                    PriorityCallSetting(
-                        enabled =
-                            priorityCallsEnabled,
-                        onToggle =
-                            onPriorityCallsChanged,
-                    )
+                    Row(
+                        modifier = Modifier
+                            .width(146.dp)
+                            .height(28.dp),
+                        verticalAlignment =
+                            Alignment.CenterVertically,
+                        horizontalArrangement =
+                            Arrangement.SpaceBetween,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxSize()
+                                .semantics {
+                                    role =
+                                        Role.Button
+                                    contentDescription =
+                                        "Back"
+                                }
+                                .pointerInput(Unit) {
+                                    detectTapGestures(
+                                        onTap = {
+                                            onBack()
+                                        }
+                                    )
+                                },
+                            contentAlignment =
+                                Alignment.CenterStart,
+                        ) {
+                            Text(
+                                text =
+                                    if (
+                                        unreadCount > 0
+                                    ) {
+                                        "‹ Inbox · " +
+                                            unreadCount
+                                    } else {
+                                        "‹ Inbox"
+                                    },
+                                style =
+                                    MaterialTheme
+                                        .typography
+                                        .labelMedium,
+                                fontWeight =
+                                    if (
+                                        unreadCount > 0
+                                    ) {
+                                        FontWeight.Bold
+                                    } else {
+                                        FontWeight.SemiBold
+                                    },
+                                color =
+                                    if (
+                                        unreadCount > 0
+                                    ) {
+                                        Color(
+                                            0xFFFFD35A
+                                        )
+                                    } else {
+                                        Color.White
+                                    },
+                                maxLines = 1,
+                                overflow =
+                                    TextOverflow.Ellipsis,
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .width(42.dp)
+                                .height(24.dp)
+                                .background(
+                                    Color(0xFF111A29),
+                                    RoundedCornerShape(
+                                        12.dp
+                                    )
+                                )
+                                .semantics {
+                                    role =
+                                        Role.Button
+                                    contentDescription =
+                                        if (
+                                            priorityCallsEnabled
+                                        ) {
+                                            "Disable priority calls"
+                                        } else {
+                                            "Enable priority calls"
+                                        }
+                                }
+                                .pointerInput(
+                                    priorityCallsEnabled
+                                ) {
+                                    detectTapGestures(
+                                        onTap = {
+                                            onPriorityCallsChanged(
+                                                !priorityCallsEnabled
+                                            )
+                                        }
+                                    )
+                                },
+                            contentAlignment =
+                                Alignment.Center,
+                        ) {
+                            Text(
+                                text =
+                                    if (
+                                        priorityCallsEnabled
+                                    ) {
+                                        "P ON"
+                                    } else {
+                                        "P OFF"
+                                    },
+                                style =
+                                    MaterialTheme
+                                        .typography
+                                        .labelSmall,
+                                fontWeight =
+                                    FontWeight.Bold,
+                                color =
+                                    if (
+                                        priorityCallsEnabled
+                                    ) {
+                                        Color(0xFFFFD35A)
+                                    } else {
+                                        Color(0xFF8E9AAF)
+                                    },
+                                maxLines = 1,
+                            )
+                        }
+                    }
                 }
 
                 if (
@@ -1370,72 +1450,6 @@ private fun WearTextMessage(
                 maxLines = 2,
                 overflow =
                     TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-
-@Composable
-private fun PriorityCallSetting(
-    enabled: Boolean,
-    onToggle: (Boolean) -> Unit,
-) {
-    Card(
-        onClick = {
-            onToggle(!enabled)
-        },
-        modifier = Modifier
-            .width(140.dp)
-            .height(32.dp),
-        colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    Color(0xFF111A29),
-                contentColor =
-                    Color.White,
-            ),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(
-                    horizontal = 10.dp
-                ),
-            verticalAlignment =
-                Alignment.CenterVertically,
-            horizontalArrangement =
-                Arrangement.SpaceBetween,
-        ) {
-            Text(
-                text = "Priority calls",
-                style =
-                    MaterialTheme
-                        .typography
-                        .labelSmall,
-                color =
-                    Color(0xFF98A7BC),
-                maxLines = 1,
-            )
-            Text(
-                text =
-                    if (enabled) {
-                        "ON"
-                    } else {
-                        "OFF"
-                    },
-                style =
-                    MaterialTheme
-                        .typography
-                        .labelSmall,
-                fontWeight =
-                    FontWeight.Bold,
-                color =
-                    if (enabled) {
-                        Color(0xFFFFD35A)
-                    } else {
-                        Color(0xFF8E9AAF)
-                    },
-                maxLines = 1,
             )
         }
     }
