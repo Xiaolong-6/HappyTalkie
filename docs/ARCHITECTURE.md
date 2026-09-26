@@ -171,9 +171,10 @@ Wear Material 3 presents a much shorter loop:
 
 - route/action cue;
 - central CALL / ANSWER / END / CANCEL control;
-- bottom `EdgeButton` TALK control.
+- bottom hold/release TALK control shaped as a Wear `EdgeButton`;
+- compact TALK inbox for explicit playback of received/saved voice messages.
 
-Long history management and secondary explanation stay on the phone.
+Bulk history management and secondary explanation stay on the phone.
 
 ## Visual regression
 
