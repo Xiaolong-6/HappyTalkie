@@ -28,7 +28,7 @@ class HappyTalkieListenerService : WearableListenerService() {
     }
 
     override fun onPeerConnected(peer: Node) {
-        StateStore.setPeerConnection(this, PeerConnectionState.CONNECTED)
+        DataLayerTransport(this).refreshPeerConnection()
 
         if (StateStore.activeCall(this) != null) {
             StateStore.setStatus(this, "Reconnecting live audio…")
@@ -45,6 +45,10 @@ class HappyTalkieListenerService : WearableListenerService() {
                 this,
                 PeerConnectionState.RECONNECTING
             )
+            StateStore.setPeerRoute(
+                this,
+                PeerRoute.RECONNECTING
+            )
             StateStore.setStatus(this, "Reconnecting…")
             StateStore.beginReconnectWindow(this)
             LiveCallAudio.stop(this, closeChannel = false)
@@ -54,7 +58,11 @@ class HappyTalkieListenerService : WearableListenerService() {
                 this,
                 PeerConnectionState.DISCONNECTED
             )
-            StateStore.setStatus(this, "Peer offline")
+            StateStore.setPeerRoute(
+                this,
+                PeerRoute.OFFLINE
+            )
+            StateStore.setStatus(this, "Peer offline · TALK recommended")
         }
 
         EventBus.notifyStateChanged(this)
@@ -87,6 +95,10 @@ class HappyTalkieListenerService : WearableListenerService() {
             StateStore.setPeerConnection(
                 this,
                 PeerConnectionState.RECONNECTING
+            )
+            StateStore.setPeerRoute(
+                this,
+                PeerRoute.RECONNECTING
             )
             StateStore.setStatus(this, "Reconnecting…")
             StateStore.beginReconnectWindow(this)
@@ -163,6 +175,7 @@ class HappyTalkieListenerService : WearableListenerService() {
             this,
             PeerConnectionState.CONNECTED
         )
+        DataLayerTransport(this).refreshPeerConnection()
         StateStore.setStatus(this, "Incoming call")
         AlertController.startIncomingCall(this, callId)
         EventBus.notifyStateChanged(this)
@@ -179,6 +192,7 @@ class HappyTalkieListenerService : WearableListenerService() {
             this,
             PeerConnectionState.CONNECTED
         )
+        DataLayerTransport(this).refreshPeerConnection()
         StateStore.setStatus(this, "Connecting live audio…")
         AlertController.stop(this)
         LiveCallService.start(this)
