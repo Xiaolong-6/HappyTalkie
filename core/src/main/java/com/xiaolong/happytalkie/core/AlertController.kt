@@ -97,8 +97,10 @@ object AlertController {
     }
 
     private fun baseBuilder(context: Context, channelId: String): Notification.Builder {
-        val intent = Intent(context, MainActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        val intent = context.packageManager
+            .getLaunchIntentForPackage(context.packageName)
+            ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            ?: Intent(Intent.ACTION_MAIN).setPackage(context.packageName)
         val pendingIntent = PendingIntent.getActivity(
             context,
             0,
