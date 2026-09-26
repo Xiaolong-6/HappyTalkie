@@ -329,11 +329,6 @@ private fun WearHomePage(
                         onOpenInbox,
                 )
 
-                state.callHistory
-                    .firstOrNull()
-                    ?.let {
-                        LastCallSummary(it)
-                    }
             }
 
             TalkHoldButton(
@@ -887,6 +882,16 @@ fun WearTalkInbox(
                     )
                 }
             }
+
+            callHistory
+                .firstOrNull()
+                ?.let { latest ->
+                    item {
+                        LastCallSummary(
+                            latest
+                        )
+                    }
+                }
 
             if (
                 sortedMessages.isEmpty()
