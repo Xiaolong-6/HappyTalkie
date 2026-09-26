@@ -18,10 +18,33 @@ class DataLayerTransport(context: Context) {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val io = Executors.newSingleThreadExecutor()
 
+    fun refreshPeerConnection(callback: (PeerConnectionState) -> Unit = {}) {
+        nodeClient.connectedNodes
+            .addOnSuccessListener { nodes ->
+                val state =
+                    if (nodes.isEmpty()) PeerConnectionState.DISCONNECTED
+                    else PeerConnectionState.CONNECTED
+                StateStore.setPeerConnection(appContext, state)
+                EventBus.notifyStateChanged(appContext)
+                mainHandler.post { callback(state) }
+            }
+            .addOnFailureListener {
+                StateStore.setPeerConnection(
+                    appContext,
+                    PeerConnectionState.DISCONNECTED
+                )
+                EventBus.notifyStateChanged(appContext)
+                mainHandler.post {
+                    callback(PeerConnectionState.DISCONNECTED)
+                }
+            }
+    }
+
     fun sendSignal(path: String, callId: String, callback: (Boolean) -> Unit) {
         nodeClient.connectedNodes
             .addOnSuccessListener { nodes ->
                 if (nodes.isEmpty()) {
+                    markDisconnected()
                     mainHandler.post { callback(false) }
                     return@addOnSuccessListener
                 }
@@ -37,16 +60,20 @@ class DataLayerTransport(context: Context) {
                     ).addOnSuccessListener {
                         anySuccess.set(true)
                         if (remaining.decrementAndGet() == 0) {
+                            if (anySuccess.get()) markConnected()
                             mainHandler.post { callback(anySuccess.get()) }
                         }
                     }.addOnFailureListener {
                         if (remaining.decrementAndGet() == 0) {
+                            if (anySuccess.get()) markConnected()
+                            else markDisconnected()
                             mainHandler.post { callback(anySuccess.get()) }
                         }
                     }
                 }
             }
             .addOnFailureListener {
+                markDisconnected()
                 mainHandler.post { callback(false) }
             }
     }
@@ -81,5 +108,22 @@ class DataLayerTransport(context: Context) {
                 mainHandler.post { callback(false) }
             }
         }
+    }
+
+    private fun markConnected() {
+        StateStore.setPeerConnection(
+            appContext,
+            PeerConnectionState.CONNECTED
+        )
+        EventBus.notifyStateChanged(appContext)
+    }
+
+    private fun markDisconnected() {
+        val state =
+            if (StateStore.activeCall(appContext) != null)
+                PeerConnectionState.RECONNECTING
+            else PeerConnectionState.DISCONNECTED
+        StateStore.setPeerConnection(appContext, state)
+        EventBus.notifyStateChanged(appContext)
     }
 }
