@@ -10,10 +10,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bluetooth
 import androidx.compose.material.icons.rounded.Call
@@ -22,7 +22,6 @@ import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.NetworkCell
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.runtime.Composable
@@ -37,23 +36,20 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material3.AppScaffold
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.ButtonDefaults
-import androidx.wear.compose.material3.Card
-import androidx.wear.compose.material3.CardDefaults
 import androidx.wear.compose.material3.EdgeButton
 import androidx.wear.compose.material3.Icon
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.Text
-import androidx.wear.compose.material3.TextButton
 import com.xiaolong.happytalkie.core.CallVisualState
 import com.xiaolong.happytalkie.core.HappyTalkieActivity
 import com.xiaolong.happytalkie.core.HappyTalkieUiState
 import com.xiaolong.happytalkie.core.PeerConnectionState
 import com.xiaolong.happytalkie.core.PeerRoute
-import com.xiaolong.happytalkie.core.VoiceDirection
 import com.xiaolong.happytalkie.core.VoiceMessage
 
 class MainActivity : HappyTalkieActivity() {
@@ -69,7 +65,6 @@ class MainActivity : HappyTalkieActivity() {
                     onTalkStart = ::beginTalk,
                     onTalkFinish = ::finishTalk,
                     onTalkCancel = ::cancelTalk,
-                    onPlay = ::playMessage,
                 )
             }
         }
@@ -84,7 +79,6 @@ fun WearHome(
     onTalkStart: () -> Unit,
     onTalkFinish: () -> Unit,
     onTalkCancel: () -> Unit,
-    onPlay: (VoiceMessage) -> Unit,
 ) {
     AppScaffold(
         containerColor = Color.Black,
@@ -97,42 +91,63 @@ fun WearHome(
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        start = 13.dp,
-                        end = 13.dp,
-                        top = 24.dp,
-                        bottom = 58.dp,
-                    ),
+                    .align(Alignment.TopCenter)
+                    .width(154.dp)
+                    .padding(top = 26.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(7.dp),
             ) {
                 RouteStatus(state)
 
-                CallControl(
-                    state = state,
-                    onCall = onCall,
-                    onDecline = onDecline,
-                )
-
-                state.messages.firstOrNull()?.let { latest ->
-                    LatestTalk(
-                        message = latest,
-                        peerName = state.peerName,
-                        onPlay = onPlay,
+                if (state.callState == CallVisualState.INCOMING) {
+                    IncomingActions(
+                        onAnswer = onCall,
+                        onDecline = onDecline,
+                    )
+                } else {
+                    PrimaryCallAction(
+                        state = state,
+                        onCall = onCall,
                     )
                 }
+
+                Text(
+                    text = callHint(state),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color(0xFF95A4B9),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.width(138.dp),
+                )
             }
 
-            TalkEdgeButton(
-                state = state,
-                onStart = onTalkStart,
-                onFinish = onTalkFinish,
-                onCancel = onTalkCancel,
+            Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .fillMaxWidth(),
-            )
+                    .padding(bottom = 2.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text =
+                        when {
+                            !state.talkEnabled -> "TALK after call"
+                            state.recording -> "Release to send"
+                            else -> "Hold"
+                        },
+                    style = MaterialTheme.typography.labelSmall,
+                    color =
+                        if (state.talkEnabled) Color(0xFF9BAABD)
+                        else Color(0xFF657286),
+                )
+
+                TalkEdgeButton(
+                    state = state,
+                    onStart = onTalkStart,
+                    onFinish = onTalkFinish,
+                    onCancel = onTalkCancel,
+                )
+            }
         }
     }
 }
@@ -141,30 +156,24 @@ fun WearHome(
 private fun RouteStatus(state: HappyTalkieUiState) {
     val routeColor =
         when (state.peerRoute) {
-            PeerRoute.NEARBY_BLUETOOTH ->
-                Color(0xFF8CC0FF)
-            PeerRoute.REMOTE_WIFI ->
-                Color(0xFF71D7FF)
-            PeerRoute.REMOTE_CELLULAR ->
-                Color(0xFF8EE0A8)
-            PeerRoute.REMOTE_INTERNET ->
-                Color(0xFFC0CCE0)
-            PeerRoute.RECONNECTING ->
-                Color(0xFFFFD35A)
-            PeerRoute.OFFLINE ->
-                Color(0xFFFF7D8D)
-            PeerRoute.UNKNOWN ->
-                Color(0xFF8E9AAF)
+            PeerRoute.NEARBY_BLUETOOTH -> Color(0xFF8CC0FF)
+            PeerRoute.REMOTE_WIFI -> Color(0xFF71D7FF)
+            PeerRoute.REMOTE_CELLULAR -> Color(0xFF8EE0A8)
+            PeerRoute.REMOTE_INTERNET -> Color(0xFFC0CCE0)
+            PeerRoute.RECONNECTING -> Color(0xFFFFD35A)
+            PeerRoute.OFFLINE -> Color(0xFFFF7D8D)
+            PeerRoute.UNKNOWN -> Color(0xFF8E9AAF)
         }
 
     Row(
+        modifier = Modifier.width(136.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
         Icon(
             imageVector = wearRouteIcon(state.peerRoute),
             contentDescription = null,
-            modifier = Modifier.size(13.dp),
+            modifier = Modifier.size(12.dp),
             tint = routeColor,
         )
         Spacer(Modifier.size(5.dp))
@@ -173,16 +182,16 @@ private fun RouteStatus(state: HappyTalkieUiState) {
             style = MaterialTheme.typography.labelSmall,
             color = routeColor,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
         )
     }
 }
 
 @Composable
-private fun CallControl(
+private fun PrimaryCallAction(
     state: HappyTalkieUiState,
     onCall: () -> Unit,
-    onDecline: () -> Unit,
 ) {
     val container =
         when (state.callState) {
@@ -203,108 +212,101 @@ private fun CallControl(
         onClick = onCall,
         enabled = state.callEnabled,
         label = {
-            Text(
-                text = wearCallLabel(state),
-                fontWeight = FontWeight.SemiBold,
-            )
-        },
-        secondaryLabel = {
-            Text(
-                text = wearCallSecondary(state),
-                maxLines = 1,
-            )
-        },
-        icon = {
-            Icon(
-                imageVector =
-                    when (state.callState) {
-                        CallVisualState.LIVE,
-                        CallVisualState.OUTGOING,
-                        CallVisualState.CONNECTING,
-                        CallVisualState.RECONNECTING ->
-                            Icons.Rounded.CallEnd
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Icon(
+                    imageVector =
+                        when (state.callState) {
+                            CallVisualState.LIVE,
+                            CallVisualState.OUTGOING,
+                            CallVisualState.CONNECTING,
+                            CallVisualState.RECONNECTING ->
+                                Icons.Rounded.CallEnd
 
-                        CallVisualState.INCOMING,
-                        CallVisualState.READY ->
-                            Icons.Rounded.Call
-                    },
-                contentDescription = null,
-                modifier = Modifier.size(ButtonDefaults.IconSize),
-            )
+                            CallVisualState.INCOMING,
+                            CallVisualState.READY ->
+                                Icons.Rounded.Call
+                        },
+                    contentDescription = null,
+                    modifier = Modifier.size(22.dp),
+                )
+                Text(
+                    text = wearCallLabel(state),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+            }
         },
         colors = ButtonDefaults.buttonColors(
             containerColor = container,
             contentColor = Color.White,
-            secondaryContentColor = Color.White.copy(alpha = 0.76f),
-            iconColor = Color.White,
             disabledContainerColor = Color(0xFF1C293C),
             disabledContentColor = Color(0xFF7D8A9F),
-            disabledSecondaryContentColor = Color(0xFF667387),
-            disabledIconColor = Color(0xFF7D8A9F),
         ),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.size(72.dp),
     )
-
-    if (state.callState == CallVisualState.INCOMING) {
-        TextButton(
-            onClick = onDecline,
-            modifier = Modifier.height(30.dp),
-        ) {
-            Text(
-                "Decline",
-                color = Color(0xFFFF8D9A),
-                style = MaterialTheme.typography.labelSmall,
-            )
-        }
-    }
 }
 
 @Composable
-private fun LatestTalk(
-    message: VoiceMessage,
-    peerName: String,
-    onPlay: (VoiceMessage) -> Unit,
+private fun IncomingActions(
+    onAnswer: () -> Unit,
+    onDecline: () -> Unit,
 ) {
-    Card(
-        onClick = { onPlay(message) },
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF111C2D),
-            contentColor = Color.White,
-        ),
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.PlayArrow,
-                contentDescription = "Play latest TALK",
-                modifier = Modifier.size(17.dp),
-                tint = Color(0xFF70C8FF),
-            )
-            Spacer(Modifier.size(6.dp))
-            Column {
-                Text(
-                    text =
-                        if (
-                            message.direction ==
-                                VoiceDirection.OUTGOING
-                        ) {
-                            "My TALK"
-                        } else {
-                            "$peerName TALK"
-                        },
-                    style = MaterialTheme.typography.labelSmall,
-                    maxLines = 1,
-                )
-                Text(
-                    text = "${message.displayTime()} · tap to play",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF95A5BA),
-                    maxLines = 1,
-                )
-            }
-        }
+        Button(
+            onClick = onDecline,
+            label = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.CallEnd,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Text(
+                        "No",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFFD9485E),
+                contentColor = Color.White,
+            ),
+            modifier = Modifier.size(62.dp),
+        )
+
+        Button(
+            onClick = onAnswer,
+            label = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Call,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Text(
+                        "Yes",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF1DAA6B),
+                contentColor = Color.White,
+            ),
+            modifier = Modifier.size(62.dp),
+        )
     }
 }
 
@@ -314,14 +316,14 @@ private fun TalkEdgeButton(
     onStart: () -> Unit,
     onFinish: () -> Unit,
     onCancel: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
     val recording = state.recording
 
     EdgeButton(
         onClick = {},
         enabled = state.talkEnabled,
-        modifier = modifier
+        modifier = Modifier
+            .width(146.dp)
             .semantics {
                 role = Role.Button
                 contentDescription =
@@ -375,16 +377,11 @@ private fun TalkEdgeButton(
             Spacer(Modifier.size(5.dp))
             Text(
                 text =
-                    when {
-                        !state.talkEnabled ->
-                            "TALK after call"
-                        recording ->
-                            "Release to send"
-                        else ->
-                            "Hold to TALK"
-                    },
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
+                    if (recording) "SEND"
+                    else "TALK",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
             )
         }
     }
@@ -392,76 +389,60 @@ private fun TalkEdgeButton(
 
 private fun wearRouteIcon(route: PeerRoute): ImageVector =
     when (route) {
-        PeerRoute.NEARBY_BLUETOOTH ->
-            Icons.Rounded.Bluetooth
-        PeerRoute.REMOTE_WIFI ->
-            Icons.Rounded.Wifi
-        PeerRoute.REMOTE_CELLULAR ->
-            Icons.Rounded.NetworkCell
-        PeerRoute.REMOTE_INTERNET ->
-            Icons.Rounded.Cloud
-        PeerRoute.RECONNECTING ->
-            Icons.Rounded.Cloud
-        PeerRoute.OFFLINE ->
-            Icons.Rounded.CloudOff
-        PeerRoute.UNKNOWN ->
-            Icons.Rounded.Cloud
+        PeerRoute.NEARBY_BLUETOOTH -> Icons.Rounded.Bluetooth
+        PeerRoute.REMOTE_WIFI -> Icons.Rounded.Wifi
+        PeerRoute.REMOTE_CELLULAR -> Icons.Rounded.NetworkCell
+        PeerRoute.REMOTE_INTERNET -> Icons.Rounded.Cloud
+        PeerRoute.RECONNECTING -> Icons.Rounded.Cloud
+        PeerRoute.OFFLINE -> Icons.Rounded.CloudOff
+        PeerRoute.UNKNOWN -> Icons.Rounded.Cloud
     }
 
 private fun wearRouteLabel(state: HappyTalkieUiState): String =
     when {
         state.callState == CallVisualState.RECONNECTING ->
-            "Reconnecting…"
+            "Reconnecting"
 
-        state.peerConnection ==
-            PeerConnectionState.DISCONNECTED ->
-            "Offline · TALK ready"
+        state.peerConnection == PeerConnectionState.DISCONNECTED ->
+            "Offline · TALK"
 
-        state.peerRoute ==
-            PeerRoute.NEARBY_BLUETOOTH ->
-            "Bluetooth · CALL ready"
+        state.peerRoute == PeerRoute.NEARBY_BLUETOOTH ->
+            "Bluetooth"
 
-        state.peerRoute ==
-            PeerRoute.REMOTE_WIFI ->
-            "Remote Wi‑Fi · CALL"
+        state.peerRoute == PeerRoute.REMOTE_WIFI ->
+            "Remote · Wi‑Fi"
 
-        state.peerRoute ==
-            PeerRoute.REMOTE_CELLULAR ->
-            "Remote cellular · CALL"
+        state.peerRoute == PeerRoute.REMOTE_CELLULAR ->
+            "Remote · Cell"
 
-        state.peerRoute ==
-            PeerRoute.REMOTE_INTERNET ->
-            "Remote · CALL"
+        state.peerRoute == PeerRoute.REMOTE_INTERNET ->
+            "Remote"
 
         else ->
-            "Checking connection"
+            "Checking"
     }
 
 private fun wearCallLabel(state: HappyTalkieUiState): String =
     when (state.callState) {
-        CallVisualState.LIVE -> "End call"
-        CallVisualState.INCOMING -> "Answer phone"
-        CallVisualState.OUTGOING -> "Cancel call"
-        CallVisualState.CONNECTING -> "End call"
-        CallVisualState.RECONNECTING -> "End call"
+        CallVisualState.LIVE -> "END"
+        CallVisualState.INCOMING -> "ANSWER"
+        CallVisualState.OUTGOING -> "CANCEL"
+        CallVisualState.CONNECTING -> "END"
+        CallVisualState.RECONNECTING -> "END"
         CallVisualState.READY ->
-            if (state.callEnabled) {
-                "Call phone"
-            } else {
-                "CALL unavailable"
-            }
+            if (state.callEnabled) "CALL" else "CALL"
     }
 
-private fun wearCallSecondary(state: HappyTalkieUiState): String =
+private fun callHint(state: HappyTalkieUiState): String =
     when (state.callState) {
         CallVisualState.LIVE -> "Live audio"
-        CallVisualState.INCOMING -> "You choose whether to answer"
+        CallVisualState.INCOMING -> "Phone is calling"
         CallVisualState.OUTGOING -> "Waiting for answer"
-        CallVisualState.CONNECTING -> "Opening audio"
-        CallVisualState.RECONNECTING -> "Trying a new route"
+        CallVisualState.CONNECTING -> "Connecting audio"
+        CallVisualState.RECONNECTING -> "Trying another route"
         CallVisualState.READY ->
             if (state.callEnabled) {
-                "Live conversation"
+                "Call ready"
             } else {
                 "Use TALK instead"
             }
