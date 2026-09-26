@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Bluetooth
+import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.CallEnd
 import androidx.compose.material.icons.rounded.Cloud
@@ -364,7 +364,7 @@ private fun TalkEdgeButton(
 
 private fun wearRouteIcon(route: PeerRoute): ImageVector =
     when (route) {
-        PeerRoute.NEARBY_DIRECT -> Icons.Rounded.Bluetooth
+        PeerRoute.NEARBY_DIRECT -> Icons.Rounded.Link
         PeerRoute.REMOTE_WIFI -> Icons.Rounded.Wifi
         PeerRoute.REMOTE_CELLULAR -> Icons.Rounded.NetworkCell
         PeerRoute.REMOTE_INTERNET -> Icons.Rounded.Cloud
@@ -382,7 +382,7 @@ private fun wearRouteLabel(state: HappyTalkieUiState): String =
             "Offline · TALK"
 
         state.peerRoute == PeerRoute.NEARBY_DIRECT ->
-            "Bluetooth"
+            "Nearby · direct"
 
         state.peerRoute == PeerRoute.REMOTE_WIFI ->
             "Remote · Wi‑Fi"
