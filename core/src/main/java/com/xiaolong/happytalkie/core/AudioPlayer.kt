@@ -9,7 +9,7 @@ object AudioPlayer {
     private var player: MediaPlayer? = null
 
     @Synchronized
-    fun play(context: Context, file: File, deleteAfter: Boolean = true) {
+    fun play(context: Context, file: File, deleteAfter: Boolean = false) {
         stop()
         val mediaPlayer = MediaPlayer()
         player = mediaPlayer
