@@ -9,10 +9,13 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import androidx.core.app.NotificationCompat
+import androidx.wear.ongoing.OngoingActivity
 
 class LiveCallService : Service() {
     private var receiverRegistered = false
@@ -424,7 +427,9 @@ class LiveCallService : Service() {
         }
     }
 
-    private fun notification(text: String): Notification {
+    private fun notification(
+        text: String
+    ): Notification {
         val openIntent =
             packageManager
                 .getLaunchIntentForPackage(
@@ -463,27 +468,88 @@ class LiveCallService : Service() {
                     PendingIntent.FLAG_IMMUTABLE
             )
 
+        val actionLabel =
+            if (
+                StateStore.outgoingCall(this) != null &&
+                StateStore.activeCall(this) == null
+            ) {
+                "Cancel"
+            } else {
+                "End"
+            }
+
+        if (
+            packageManager.hasSystemFeature(
+                PackageManager.FEATURE_WATCH
+            )
+        ) {
+            val builder =
+                NotificationCompat.Builder(
+                    this,
+                    CHANNEL_ID
+                )
+                    .setSmallIcon(
+                        android.R.drawable
+                            .sym_call_incoming
+                    )
+                    .setContentTitle(
+                        "HappyTalky"
+                    )
+                    .setContentText(text)
+                    .setContentIntent(pending)
+                    .addAction(
+                        android.R.drawable
+                            .sym_call_missed,
+                        actionLabel,
+                        hangUpPending
+                    )
+                    .setOngoing(true)
+                    .setCategory(
+                        NotificationCompat
+                            .CATEGORY_CALL
+                    )
+                    .setVisibility(
+                        NotificationCompat
+                            .VISIBILITY_PUBLIC
+                    )
+
+            val ongoingActivity =
+                OngoingActivity.Builder(
+                    applicationContext,
+                    NOTIFICATION_ID,
+                    builder
+                )
+                    .setStaticIcon(
+                        android.R.drawable
+                            .sym_call_incoming
+                    )
+                    .setTouchIntent(
+                        pending
+                    )
+                    .build()
+
+            ongoingActivity.apply(
+                applicationContext
+            )
+            return builder.build()
+        }
+
         return Notification.Builder(
             this,
             CHANNEL_ID
         )
             .setSmallIcon(
-                android.R.drawable.sym_call_incoming
+                android.R.drawable
+                    .sym_call_incoming
             )
             .setContentTitle("HappyTalky")
             .setContentText(text)
             .setContentIntent(pending)
             .addAction(
                 Notification.Action.Builder(
-                    android.R.drawable.sym_call_missed,
-                    if (
-                        StateStore.outgoingCall(this) != null &&
-                        StateStore.activeCall(this) == null
-                    ) {
-                        "Cancel"
-                    } else {
-                        "End"
-                    },
+                    android.R.drawable
+                        .sym_call_missed,
+                    actionLabel,
                     hangUpPending
                 ).build()
             )
