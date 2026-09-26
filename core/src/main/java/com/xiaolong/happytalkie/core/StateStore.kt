@@ -9,6 +9,16 @@ enum class PeerConnectionState {
     RECONNECTING
 }
 
+enum class PeerRoute {
+    UNKNOWN,
+    NEARBY_BLUETOOTH,
+    REMOTE_WIFI,
+    REMOTE_CELLULAR,
+    REMOTE_INTERNET,
+    OFFLINE,
+    RECONNECTING
+}
+
 object StateStore {
     private const val PREFS = "happytalkie_state"
     private const val KEY_STATUS = "status"
@@ -17,6 +27,7 @@ object StateStore {
     private const val KEY_ACTIVE = "active_call"
     private const val KEY_CALL_INITIATOR = "call_initiator"
     private const val KEY_PEER_CONNECTION = "peer_connection"
+    private const val KEY_PEER_ROUTE = "peer_route"
     private const val KEY_RECONNECT_UNTIL = "reconnect_until"
 
     private fun prefs(context: Context) =
@@ -68,6 +79,20 @@ object StateStore {
     fun setPeerConnection(context: Context, state: PeerConnectionState) {
         prefs(context).edit()
             .putString(KEY_PEER_CONNECTION, state.name)
+            .apply()
+    }
+
+    fun peerRoute(context: Context): PeerRoute {
+        val raw = prefs(context).getString(KEY_PEER_ROUTE, null)
+        return runCatching {
+            if (raw == null) PeerRoute.UNKNOWN
+            else PeerRoute.valueOf(raw)
+        }.getOrDefault(PeerRoute.UNKNOWN)
+    }
+
+    fun setPeerRoute(context: Context, route: PeerRoute) {
+        prefs(context).edit()
+            .putString(KEY_PEER_ROUTE, route.name)
             .apply()
     }
 
