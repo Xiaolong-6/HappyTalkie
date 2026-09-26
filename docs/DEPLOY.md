@@ -120,7 +120,12 @@ For incoming CALL, Android may also control whether full-screen call notificatio
 3. Verify a call-style notification appears.
 4. Verify Answer and Decline work.
 5. If the OS allows full-screen call intents, verify the incoming UI appears over the lock screen.
-6. Ignore one call and verify it times out rather than ringing forever.
+6. On Wear, verify the screen wakes and the dedicated full-screen **YES / NO** incoming-call UI appears when full-screen-intent access is permitted.
+7. On Android 14+ Wear, if full-screen access is disabled, grant it from the system screen opened by HappyTalky and repeat.
+8. Ignore one call and verify it times out rather than ringing forever.
+9. Verify the missed call appears in Watch CALL history with its time.
+10. Complete a call and verify the history records its time and duration.
+11. Decline a call from each side and verify the correct declined outcome is recorded.
 
 ### Route change / reconnect
 
@@ -160,7 +165,11 @@ This is intentional: the current live implementation uses a continuous Data Laye
 7. On phone, long-press a TALK bubble to enter multi-selection.
 8. Select one or more messages and delete them from the temporary selection bar.
 9. Select all messages and verify the bulk delete path clears the history.
-10. On Watch, open **Inbox** and verify saved TALK messages can be explicitly played there.
+10. On Watch, swipe left from the home screen to open **Inbox**.
+11. Verify the crown/rotary control scrolls the Inbox.
+12. Verify incoming unread TALK is bold/highlighted and the unread count is visible.
+13. Play one incoming TALK to completion and verify its unread emphasis/count disappears.
+14. Swipe a TALK row left, reveal **Delete**, and delete it.
 
 ### Offline TALK
 
