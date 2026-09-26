@@ -2,6 +2,7 @@ package com.xiaolong.happytalkie.core
 
 import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioDeviceInfo
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioRecord
@@ -9,6 +10,8 @@ import android.media.AudioTrack
 import android.media.MediaRecorder
 import android.media.audiofx.AcousticEchoCanceler
 import android.media.audiofx.NoiseSuppressor
+import android.os.Build
+import android.util.Log
 import com.google.android.gms.tasks.Tasks
 import com.google.android.gms.wearable.ChannelClient
 import com.google.android.gms.wearable.Wearable
@@ -18,6 +21,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
 object LiveCallAudio {
+    private const val TAG = "HappyTalkieLiveAudio"
     private val executor = Executors.newCachedThreadPool()
     private val running = AtomicBoolean(false)
     private val starting = AtomicBoolean(false)
@@ -30,6 +34,7 @@ object LiveCallAudio {
     @Volatile private var echoCanceler: AcousticEchoCanceler? = null
     @Volatile private var noiseSuppressor: NoiseSuppressor? = null
     @Volatile private var previousAudioMode: Int? = null
+    @Volatile private var communicationDeviceRequested = false
 
     fun isRunning(): Boolean = running.get()
     fun isStarting(): Boolean = starting.get()
@@ -98,6 +103,9 @@ object LiveCallAudio {
             val remoteInput = Tasks.await(channelClient.getInputStream(opened))
             val remoteOutput = Tasks.await(channelClient.getOutputStream(opened))
 
+            val manager = context.getSystemService(AudioManager::class.java)
+            configureCommunicationAudio(manager)
+
             val sampleRate = Protocol.AUDIO_SAMPLE_RATE
             val recordMin = AudioRecord.getMinBufferSize(
                 sampleRate,
@@ -145,25 +153,44 @@ object LiveCallAudio {
                 runCatching { remoteInput.close() }
                 runCatching { remoteOutput.close() }
                 runCatching { channelClient.close(opened) }
+                restoreCommunicationAudio(manager)
                 return false
             }
 
-            val manager = context.getSystemService(AudioManager::class.java)
-            previousAudioMode = manager?.mode
-            manager?.mode = AudioManager.MODE_IN_COMMUNICATION
-            @Suppress("DEPRECATION")
-            runCatching { manager?.isSpeakerphoneOn = true }
-
+            val aecAvailable = AcousticEchoCanceler.isAvailable()
             val echo =
-                if (AcousticEchoCanceler.isAvailable())
-                    AcousticEchoCanceler.create(audioRecord.audioSessionId)
+                if (aecAvailable)
+                    runCatching {
+                        AcousticEchoCanceler.create(audioRecord.audioSessionId)
+                    }.getOrNull()
                 else null
+            val nsAvailable = NoiseSuppressor.isAvailable()
             val noise =
-                if (NoiseSuppressor.isAvailable())
-                    NoiseSuppressor.create(audioRecord.audioSessionId)
+                if (nsAvailable)
+                    runCatching {
+                        NoiseSuppressor.create(audioRecord.audioSessionId)
+                    }.getOrNull()
                 else null
-            echo?.enabled = true
-            noise?.enabled = true
+
+            if (echo != null && !echo.enabled && echo.hasControl()) {
+                runCatching { echo.enabled = true }
+            }
+            if (noise != null && !noise.enabled && noise.hasControl()) {
+                runCatching { noise.enabled = true }
+            }
+
+            Log.i(
+                TAG,
+                "live audio configured " +
+                    "mode=${manager?.mode} " +
+                    "route=${communicationRoute(manager)} " +
+                    "aecAvailable=$aecAvailable " +
+                    "aecCreated=${echo != null} " +
+                    "aecEnabled=${echo?.enabled == true} " +
+                    "aecControl=${echo?.hasControl() == true} " +
+                    "nsAvailable=$nsAvailable " +
+                    "nsEnabled=${noise?.enabled == true}"
+            )
 
             synchronized(this) {
                 channel = opened
@@ -247,6 +274,63 @@ object LiveCallAudio {
         LiveCallService.stop(context)
     }
 
+    private fun configureCommunicationAudio(manager: AudioManager?) {
+        if (manager == null) return
+
+        previousAudioMode = manager.mode
+        manager.mode = AudioManager.MODE_IN_COMMUNICATION
+        communicationDeviceRequested = false
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val speaker =
+                manager.availableCommunicationDevices.firstOrNull {
+                    it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+                }
+            if (speaker != null) {
+                communicationDeviceRequested =
+                    runCatching { manager.setCommunicationDevice(speaker) }
+                        .getOrDefault(false)
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            runCatching { manager.isSpeakerphoneOn = true }
+        }
+    }
+
+    private fun clearCommunicationAudio(manager: AudioManager?) {
+        if (manager == null) return
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (communicationDeviceRequested) {
+                runCatching { manager.clearCommunicationDevice() }
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            runCatching { manager.isSpeakerphoneOn = false }
+        }
+        communicationDeviceRequested = false
+    }
+
+    private fun restoreCommunicationAudio(manager: AudioManager?) {
+        clearCommunicationAudio(manager)
+        previousAudioMode?.let { oldMode ->
+            runCatching { manager?.mode = oldMode }
+        }
+        previousAudioMode = null
+    }
+
+    private fun communicationRoute(manager: AudioManager?): String {
+        if (manager == null) return "none"
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            manager.communicationDevice?.let { device ->
+                "${device.type}:${device.productName}"
+            } ?: "default"
+        } else {
+            @Suppress("DEPRECATION")
+            if (manager.isSpeakerphoneOn) "legacy-speaker" else "legacy-default"
+        }
+    }
+
     fun stop(context: Context, closeChannel: Boolean = true) {
         val wasRunning = running.getAndSet(false)
         starting.set(false)
@@ -290,12 +374,7 @@ object LiveCallAudio {
         }
 
         val manager = context.getSystemService(AudioManager::class.java)
-        previousAudioMode?.let { oldMode ->
-            runCatching { manager?.mode = oldMode }
-        }
-        previousAudioMode = null
-        @Suppress("DEPRECATION")
-        runCatching { manager?.isSpeakerphoneOn = false }
+        restoreCommunicationAudio(manager)
 
         if (wasRunning) {
             EventBus.notifyStateChanged(context)
