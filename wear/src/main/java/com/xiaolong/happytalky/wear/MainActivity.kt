@@ -1513,7 +1513,7 @@ private fun WearTextComposer(
                     if (enabled) {
                         "Message…"
                     } else {
-                        "Text unavailable"
+                        "Text off"
                     },
                 style =
                     MaterialTheme
@@ -1530,13 +1530,15 @@ private fun WearTextComposer(
                     TextOverflow.Ellipsis,
             )
 
-            Text(
-                text = "😊",
-                style =
-                    MaterialTheme
-                        .typography
-                        .labelMedium,
-            )
+            if (enabled) {
+                Text(
+                    text = "😊",
+                    style =
+                        MaterialTheme
+                            .typography
+                            .labelMedium,
+                )
+            }
         }
     }
 }
