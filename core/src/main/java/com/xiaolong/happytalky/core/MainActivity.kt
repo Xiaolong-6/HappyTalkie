@@ -348,12 +348,13 @@ abstract class HappyTalkyActivity : ComponentActivity() {
                 text
             )
 
+        val peerConnected =
+            StateStore.peerConnection(this) ==
+                PeerConnectionState.CONNECTED
+
         StateStore.setStatus(
             this,
-            if (
-                StateStore.peerConnection(this) ==
-                    PeerConnectionState.CONNECTED
-            ) {
+            if (peerConnected) {
                 "Sending text…"
             } else {
                 "Saving text for delivery…"
@@ -364,22 +365,35 @@ abstract class HappyTalkyActivity : ComponentActivity() {
         transport.queueText(
             saved,
             role
-        ) { queued ->
+        ) { accepted ->
+            val state =
+                when {
+                    !accepted ->
+                        DeliveryState.LOCAL
+
+                    peerConnected ->
+                        DeliveryState.SENT
+
+                    else ->
+                        DeliveryState.QUEUED
+                }
+
             ConversationStore.updateDeliveryState(
                 this,
                 saved.id,
-                if (queued) {
-                    DeliveryState.QUEUED
-                } else {
-                    DeliveryState.LOCAL
-                }
+                state
             )
             StateStore.setStatus(
                 this,
-                if (queued) {
-                    "Text queued for delivery"
-                } else {
-                    "Text saved locally · retry later"
+                when (state) {
+                    DeliveryState.SENT ->
+                        "Text sent"
+
+                    DeliveryState.QUEUED ->
+                        "Text queued · will sync when connected"
+
+                    else ->
+                        "Text saved locally · retry later"
                 }
             )
             refreshUiState()
