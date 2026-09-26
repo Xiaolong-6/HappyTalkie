@@ -637,60 +637,113 @@ private fun IncomingActions(
 
 @Composable
 private fun TalkInboxButton(
-    count: Int,
+    unread: Int,
     onClick: () -> Unit,
 ) {
     TextButton(
         onClick = onClick,
-        enabled = count > 0,
         modifier = Modifier
-            .width(136.dp)
+            .width(138.dp)
             .height(28.dp),
     ) {
         Text(
             text =
-                if (count > 0) {
-                    "Inbox · $count"
+                if (unread > 0) {
+                    unread.toString() +
+                        " unread · swipe ←"
                 } else {
-                    "Inbox · 0"
+                    "Inbox · swipe ←"
                 },
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.SemiBold,
+            style =
+                MaterialTheme
+                    .typography
+                    .labelSmall,
+            fontWeight =
+                if (unread > 0) {
+                    FontWeight.Bold
+                } else {
+                    FontWeight.Normal
+                },
+            color =
+                if (unread > 0) {
+                    Color(0xFFFFD35A)
+                } else {
+                    Color(0xFF8E9AAF)
+                },
             maxLines = 1,
         )
     }
 }
 
 @Composable
-private fun TalkEdgeButton(
+private fun LastCallSummary(
+    entry: CallHistoryEntry
+) {
+    val detail =
+        if (
+            entry.outcome ==
+                CallOutcome.COMPLETED &&
+            entry.durationMs > 0L
+        ) {
+            entry.displayTime() +
+                " · " +
+                entry.displayDuration()
+        } else {
+            entry.shortLabel() +
+                " · " +
+                entry.displayTime()
+        }
+
+    Text(
+        text = "Last · " + detail,
+        style =
+            MaterialTheme
+                .typography
+                .labelSmall,
+        color = Color(0xFF7F8DA2),
+        maxLines = 1,
+        overflow =
+            TextOverflow.Ellipsis,
+        modifier =
+            Modifier.width(142.dp),
+        textAlign =
+            TextAlign.Center,
+    )
+}
+
+@Composable
+private fun TalkHoldButton(
     state: HappyTalkyUiState,
     onStart: () -> Unit,
     onFinish: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val enabled = state.talkEnabled
     val recording = state.recording
-    val activeContainer =
-        if (recording) {
-            Color(0xFFE4475E)
-        } else {
-            Color(0xFF0F89FF)
-        }
+
     val container =
-        if (state.talkEnabled) {
-            activeContainer
-        } else {
-            Color(0xFF182638)
-        }
-    val content =
-        if (state.talkEnabled) {
-            Color.White
-        } else {
-            Color(0xFF75849A)
+        when {
+            !enabled ->
+                Color(0xFF182638)
+
+            recording ->
+                Color(0xFFE4475E)
+
+            else ->
+                Color(0xFF0F89FF)
         }
 
     Box(
         modifier = modifier
+            .height(46.dp)
+            .background(
+                color = container,
+                shape =
+                    RoundedCornerShape(
+                        24.dp
+                    )
+            )
             .semantics {
                 role = Role.Button
                 contentDescription =
@@ -700,57 +753,80 @@ private fun TalkEdgeButton(
                         "Hold to record TALK"
                     }
             }
-            .pointerInput(state.talkEnabled) {
+            .pointerInput(
+                enabled,
+                recording
+            ) {
                 detectTapGestures(
                     onPress = {
-                        if (state.talkEnabled) {
-                            onStart()
-                            val released = tryAwaitRelease()
-                            if (released) {
-                                onFinish()
-                            } else {
-                                onCancel()
-                            }
+                        if (!enabled) {
+                            return@detectTapGestures
+                        }
+
+                        onStart()
+
+                        val released =
+                            tryAwaitRelease()
+
+                        if (released) {
+                            onFinish()
+                        } else {
+                            onCancel()
                         }
                     }
                 )
             },
+        contentAlignment =
+            Alignment.Center,
     ) {
-        EdgeButton(
-            onClick = {},
-            enabled = false,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(
-                disabledContainerColor = container,
-                disabledContentColor = content,
-            ),
+        Row(
+            verticalAlignment =
+                Alignment.CenterVertically,
+            horizontalArrangement =
+                Arrangement.Center,
         ) {
-            if (recording) {
-                Text(
-                    text = "SEND",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                )
-            } else {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Mic,
-                        contentDescription = null,
-                        modifier = Modifier.size(17.dp),
-                    )
-                    Spacer(Modifier.size(4.dp))
-                    Text(
-                        text = "TALK",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                    )
-                }
-            }
+            Icon(
+                imageVector =
+                    Icons.Rounded.Mic,
+                contentDescription = null,
+                modifier =
+                    Modifier.size(18.dp),
+                tint =
+                    if (enabled) {
+                        Color.White
+                    } else {
+                        Color(0xFF75849A)
+                    },
+            )
+            Spacer(
+                Modifier.width(5.dp)
+            )
+            Text(
+                text =
+                    when {
+                        !enabled ->
+                            "TALK"
+
+                        recording ->
+                            "RELEASE"
+
+                        else ->
+                            "HOLD TALK"
+                    },
+                style =
+                    MaterialTheme
+                        .typography
+                        .labelMedium,
+                fontWeight =
+                    FontWeight.Bold,
+                color =
+                    if (enabled) {
+                        Color.White
+                    } else {
+                        Color(0xFF75849A)
+                    },
+                maxLines = 1,
+            )
         }
     }
 }
