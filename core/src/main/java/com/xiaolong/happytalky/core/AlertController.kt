@@ -182,7 +182,7 @@ object AlertController {
                 .setContentIntent(
                     launcherPendingIntent(
                         context,
-                        openTalkInbox = true
+                        openInbox = true
                     )
                 )
                 .setCategory(
@@ -289,7 +289,7 @@ object AlertController {
 
     private fun launcherPendingIntent(
         context: Context,
-        openTalkInbox: Boolean = false
+        openInbox: Boolean = false
     ): PendingIntent {
         val intent = context.packageManager
             .getLaunchIntentForPackage(context.packageName)
@@ -302,7 +302,7 @@ object AlertController {
                 .setPackage(context.packageName)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
-        if (openTalkInbox) {
+        if (openInbox) {
             intent.putExtra(
                 Protocol.EXTRA_OPEN_INBOX,
                 true
@@ -311,7 +311,7 @@ object AlertController {
 
         return PendingIntent.getActivity(
             context,
-            if (openTalkInbox) 23 else 20,
+            if (openInbox) 23 else 20,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or
                 PendingIntent.FLAG_IMMUTABLE
