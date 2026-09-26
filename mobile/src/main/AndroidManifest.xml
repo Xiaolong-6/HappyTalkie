@@ -23,7 +23,7 @@
             android:value="phone" />
 
         <activity
-            android:name="com.xiaolong.happytalkie.core.MainActivity"
+            android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
