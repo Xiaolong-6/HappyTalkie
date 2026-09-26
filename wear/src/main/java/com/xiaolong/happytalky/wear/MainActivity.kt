@@ -78,6 +78,7 @@ import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.Text
 import androidx.wear.compose.material3.TextButton
 import com.xiaolong.happytalky.core.CallDirection
+import com.xiaolong.happytalky.core.CallMode
 import com.xiaolong.happytalky.core.CallHistoryEntry
 import com.xiaolong.happytalky.core.CallOutcome
 import com.xiaolong.happytalky.core.CallVisualState
@@ -115,6 +116,8 @@ class MainActivity : HappyTalkyActivity() {
                     onTalkCancel = ::cancelTalk,
                     onPlay = ::playMessage,
                     onDelete = ::deleteMessages,
+                    onPriorityCallsChanged =
+                        ::setPriorityCallsEnabled,
                     openInbox = openInboxRequested,
                     onInboxOpened = {
                         openInboxRequested = false
@@ -195,6 +198,7 @@ fun WearHome(
     onTalkCancel: () -> Unit,
     onPlay: (VoiceMessage) -> Unit,
     onDelete: (Set<String>) -> Unit = {},
+    onPriorityCallsChanged: (Boolean) -> Unit = {},
     openInbox: Boolean = false,
     onInboxOpened: () -> Unit = {},
 ) {
@@ -215,6 +219,9 @@ fun WearHome(
     ) {
         WearIncomingCallScreen(
             peerName = state.peerName,
+            priority =
+                state.callMode ==
+                    CallMode.PRIORITY,
             onAnswer = onCall,
             onDecline = onDecline,
         )
@@ -228,6 +235,10 @@ fun WearHome(
             unreadCount =
                 state.unreadVoiceCount,
             peerName = state.peerName,
+            priorityCallsEnabled =
+                state.localPriorityCallsAllowed,
+            onPriorityCallsChanged =
+                onPriorityCallsChanged,
             onBack = {
                 showInbox = false
             },
@@ -350,6 +361,7 @@ private fun WearHomePage(
 @Composable
 private fun WearIncomingCallScreen(
     peerName: String,
+    priority: Boolean = false,
     onAnswer: () -> Unit,
     onDecline: () -> Unit,
 ) {
@@ -374,13 +386,22 @@ private fun WearIncomingCallScreen(
                     Alignment.CenterHorizontally,
             ) {
                 Text(
-                    text = "INCOMING CALL",
+                    text =
+                        if (priority) {
+                            "PRIORITY CALL"
+                        } else {
+                            "INCOMING CALL"
+                        },
                     style =
                         MaterialTheme
                             .typography
                             .labelMedium,
                     color =
-                        Color(0xFF8CC0FF),
+                        if (priority) {
+                            Color(0xFFFFD35A)
+                        } else {
+                            Color(0xFF8CC0FF)
+                        },
                     fontWeight =
                         FontWeight.Bold,
                 )
@@ -814,6 +835,8 @@ fun WearTalkInbox(
         emptyList(),
     unreadCount: Int = 0,
     peerName: String,
+    priorityCallsEnabled: Boolean = false,
+    onPriorityCallsChanged: (Boolean) -> Unit = {},
     onBack: () -> Unit,
     onPlay: (VoiceMessage) -> Unit,
     onDelete: (Set<String>) -> Unit = {},
@@ -911,6 +934,76 @@ fun WearTalkInbox(
                             },
                         maxLines = 1,
                     )
+                }
+            }
+
+            item {
+                Card(
+                    onClick = {
+                        onPriorityCallsChanged(
+                            !priorityCallsEnabled
+                        )
+                    },
+                    modifier =
+                        Modifier.width(146.dp),
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor =
+                                if (
+                                    priorityCallsEnabled
+                                ) {
+                                    Color(0xFF3A3214)
+                                } else {
+                                    Color(0xFF111A29)
+                                },
+                            contentColor =
+                                Color.White,
+                        ),
+                ) {
+                    Column {
+                        Text(
+                            text =
+                                if (
+                                    priorityCallsEnabled
+                                ) {
+                                    "Priority calls · ON"
+                                } else {
+                                    "Priority calls · OFF"
+                                },
+                            style =
+                                MaterialTheme
+                                    .typography
+                                    .labelMedium,
+                            fontWeight =
+                                FontWeight.Bold,
+                            color =
+                                if (
+                                    priorityCallsEnabled
+                                ) {
+                                    Color(0xFFFFD35A)
+                                } else {
+                                    Color.White
+                                },
+                        )
+                        Text(
+                            text =
+                                "Tap to " +
+                                    if (
+                                        priorityCallsEnabled
+                                    ) {
+                                        "disable"
+                                    } else {
+                                        "allow auto-answer"
+                                    },
+                            style =
+                                MaterialTheme
+                                    .typography
+                                    .labelSmall,
+                            color =
+                                Color(0xFF98A7BC),
+                            maxLines = 1,
+                        )
+                    }
                 }
             }
 
