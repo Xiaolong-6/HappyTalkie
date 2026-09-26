@@ -21,6 +21,10 @@ class CallActionReceiver : BroadcastReceiver() {
         StateStore.setIncomingCall(context, null)
         StateStore.setCallInitiator(context, false)
         StateStore.setActiveCall(context, callId)
+        StateStore.setActiveStartedAt(
+            context,
+            System.currentTimeMillis()
+        )
         StateStore.clearReconnectWindow(context)
         StateStore.setStatus(context, "Connecting live audio…")
         LiveCallService.start(context)
@@ -29,6 +33,12 @@ class CallActionReceiver : BroadcastReceiver() {
         DataLayerTransport(context)
             .sendSignal(Protocol.CALL_ANSWER, callId) { sent ->
                 if (!sent && StateStore.activeCall(context) == callId) {
+                    CallHistoryStore.append(
+                        context,
+                        callId,
+                        CallDirection.INCOMING,
+                        CallOutcome.FAILED
+                    )
                     StateStore.clearCallState(context)
                     StateStore.setStatus(context, "Peer is unreachable")
                     LiveCallService.stop(context)
@@ -40,6 +50,12 @@ class CallActionReceiver : BroadcastReceiver() {
     private fun decline(context: Context) {
         val callId = StateStore.incomingCall(context) ?: return
 
+        CallHistoryStore.append(
+            context,
+            callId,
+            CallDirection.INCOMING,
+            CallOutcome.DECLINED_BY_ME
+        )
         StateStore.clearCallState(context)
         StateStore.setStatus(context, "Call declined")
         AlertController.stop(context)
@@ -59,6 +75,47 @@ class CallActionReceiver : BroadcastReceiver() {
             active != null -> Protocol.CALL_END
             outgoing != null -> Protocol.CALL_CANCEL
             else -> Protocol.CALL_DECLINE
+        }
+
+        when {
+            active != null -> {
+                CallHistoryStore.append(
+                    context,
+                    callId,
+                    if (
+                        StateStore.callInitiator(
+                            context
+                        )
+                    ) {
+                        CallDirection.OUTGOING
+                    } else {
+                        CallDirection.INCOMING
+                    },
+                    CallOutcome.COMPLETED,
+                    startedAt =
+                        StateStore.activeStartedAt(
+                            context
+                        )
+                )
+            }
+
+            outgoing != null -> {
+                CallHistoryStore.append(
+                    context,
+                    callId,
+                    CallDirection.OUTGOING,
+                    CallOutcome.CANCELLED_BY_ME
+                )
+            }
+
+            else -> {
+                CallHistoryStore.append(
+                    context,
+                    callId,
+                    CallDirection.INCOMING,
+                    CallOutcome.DECLINED_BY_ME
+                )
+            }
         }
 
         StateStore.clearCallState(context)
