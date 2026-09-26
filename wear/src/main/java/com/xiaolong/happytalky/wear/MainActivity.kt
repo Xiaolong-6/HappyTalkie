@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -28,6 +29,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -47,12 +49,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.rotary.onRotaryScrollEvent
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -85,6 +91,7 @@ import com.xiaolong.happytalky.core.Protocol
 import com.xiaolong.happytalky.core.VoiceDirection
 import com.xiaolong.happytalky.core.VoiceMessage
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 class MainActivity : HappyTalkyActivity() {
     private var openInboxRequested by mutableStateOf(false)
@@ -855,14 +862,40 @@ fun WearTalkInbox(
                 }
             )
         }
+    val listState =
+        rememberLazyListState()
+    val focusRequester =
+        remember {
+            FocusRequester()
+        }
+    val scope =
+        rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
 
     AppScaffold(
         containerColor = Color.Black,
         contentColor = Color.White,
     ) {
         LazyColumn(
-            modifier =
-                Modifier.fillMaxSize(),
+            state = listState,
+            modifier = Modifier
+                .fillMaxSize()
+                .focusRequester(
+                    focusRequester
+                )
+                .onRotaryScrollEvent {
+                        event ->
+                    scope.launch {
+                        listState.scrollBy(
+                            event.verticalScrollPixels
+                        )
+                    }
+                    true
+                }
+                .focusable(),
             contentPadding =
                 PaddingValues(
                     start = 14.dp,
