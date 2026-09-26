@@ -1,6 +1,7 @@
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("com.google.devtools.ksp")
 }
 
 android {
@@ -22,14 +23,17 @@ android {
     }
 }
 
-
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2026.09.00")
+    val roomVersion = "2.8.5"
 
     api("com.google.android.gms:play-services-wearable:20.0.1")
     implementation("androidx.activity:activity:1.13.0")
     implementation(composeBom)
     implementation("androidx.compose.runtime:runtime")
+
+    implementation("androidx.room:room-runtime:$roomVersion")
+    ksp("androidx.room:room-compiler:$roomVersion")
 
     testImplementation("junit:junit:4.13.2")
 }
