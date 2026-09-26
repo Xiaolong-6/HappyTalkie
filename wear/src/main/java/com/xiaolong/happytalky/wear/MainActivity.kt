@@ -1256,7 +1256,7 @@ fun WearTalkInbox(
                         Alignment.BottomCenter
                     )
                     .padding(
-                        bottom = 4.dp
+                        bottom = 10.dp
                     ),
             )
         }
@@ -1422,7 +1422,7 @@ private fun WearTextComposer(
             }
         },
         modifier = modifier
-            .width(142.dp)
+            .width(132.dp)
             .height(34.dp),
         colors =
             CardDefaults.cardColors(
