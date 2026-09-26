@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Call
@@ -92,6 +93,7 @@ private fun WearHome(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .verticalScroll(scrollState)
                     .padding(padding)
                     .padding(horizontal = 2.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -271,10 +273,11 @@ private fun TalkButton(
             .pointerInput(state.talkEnabled) {
                 detectTapGestures(
                     onPress = {
-                        if (!state.talkEnabled) return@detectTapGestures
-                        onStart()
-                        val released = tryAwaitRelease()
-                        if (released) onFinish() else onCancel()
+                        if (state.talkEnabled) {
+                            onStart()
+                            val released = tryAwaitRelease()
+                            if (released) onFinish() else onCancel()
+                        }
                     }
                 )
             },
