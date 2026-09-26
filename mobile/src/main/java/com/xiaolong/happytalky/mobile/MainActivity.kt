@@ -200,6 +200,14 @@ fun HappyTalkyPhoneScreen(
         mutableStateOf(emptySet<String>())
     }
 
+    LaunchedEffect(
+        state.unreadTextCount
+    ) {
+        if (state.unreadTextCount > 0) {
+            onTextViewed()
+        }
+    }
+
     val messages =
         remember(state.messages) {
             state.messages.sortedBy {
