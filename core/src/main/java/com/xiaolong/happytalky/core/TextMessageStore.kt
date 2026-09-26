@@ -92,7 +92,33 @@ object TextMessageStore {
             .takeIf {
                 it.isNotEmpty()
             }
-            ?.take(
+            ?.let(::limit)
+
+    fun limit(
+        rawText: String
+    ): String {
+        val count =
+            rawText.codePointCount(
+                0,
+                rawText.length
+            )
+
+        if (
+            count <=
+                Protocol.MAX_TEXT_LENGTH
+        ) {
+            return rawText
+        }
+
+        val end =
+            rawText.offsetByCodePoints(
+                0,
                 Protocol.MAX_TEXT_LENGTH
             )
+
+        return rawText.substring(
+            0,
+            end
+        )
+    }
 }
