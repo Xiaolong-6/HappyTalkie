@@ -1173,6 +1173,17 @@ fun WearTalkInbox(
                     }
                 }
 
+                item(
+                    key = "priority-setting"
+                ) {
+                    PriorityCallSetting(
+                        enabled =
+                            priorityCallsEnabled,
+                        onToggle =
+                            onPriorityCallsChanged,
+                    )
+                }
+
                 if (
                     displayTimeline.isEmpty()
                 ) {
@@ -1236,16 +1247,6 @@ fun WearTalkInbox(
                     }
                 }
 
-                item(
-                    key = "priority-setting"
-                ) {
-                    PriorityCallSetting(
-                        enabled =
-                            priorityCallsEnabled,
-                        onToggle =
-                            onPriorityCallsChanged,
-                    )
-                }
             }
 
             WearTextComposer(
