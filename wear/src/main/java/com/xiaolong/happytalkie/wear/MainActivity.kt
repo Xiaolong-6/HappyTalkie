@@ -382,16 +382,16 @@ private fun wearRouteLabel(state: HappyTalkieUiState): String =
             "Offline · TALK"
 
         state.peerRoute == PeerRoute.NEARBY_DIRECT ->
-            "Nearby · direct"
+            "Nearby · CALL"
 
         state.peerRoute == PeerRoute.REMOTE_WIFI ->
-            "Remote · Wi‑Fi"
+            "Wi‑Fi · CALL"
 
         state.peerRoute == PeerRoute.REMOTE_CELLULAR ->
-            "Remote · Cell"
+            "Cell · TALK"
 
         state.peerRoute == PeerRoute.REMOTE_INTERNET ->
-            "Remote"
+            "Remote · TALK"
 
         else ->
             "Checking"
