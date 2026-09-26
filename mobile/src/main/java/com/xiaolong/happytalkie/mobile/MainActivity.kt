@@ -44,7 +44,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.graphicsLayer
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -386,10 +386,11 @@ private fun TalkHero(
                 .pointerInput(state.talkEnabled) {
                     detectTapGestures(
                         onPress = {
-                            if (!state.talkEnabled) return@detectTapGestures
-                            onStart()
-                            val released = tryAwaitRelease()
-                            if (released) onFinish() else onCancel()
+                            if (state.talkEnabled) {
+                                onStart()
+                                val released = tryAwaitRelease()
+                                if (released) onFinish() else onCancel()
+                            }
                         }
                     )
                 },
