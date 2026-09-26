@@ -83,6 +83,12 @@ object AlertController {
             baseBuilder(context, VOICE_CHANNEL)
                 .setContentTitle("HappyTalkie")
                 .setContentText("Voice message received · open TALK inbox")
+                .setContentIntent(
+                    launcherPendingIntent(
+                        context,
+                        openTalkInbox = true
+                    )
+                )
                 .setCategory(Notification.CATEGORY_MESSAGE)
                 .setAutoCancel(true)
                 .build()
@@ -158,7 +164,10 @@ object AlertController {
             .setContentIntent(launcherPendingIntent(context))
             .setVisibility(Notification.VISIBILITY_PUBLIC)
 
-    private fun launcherPendingIntent(context: Context): PendingIntent {
+    private fun launcherPendingIntent(
+        context: Context,
+        openTalkInbox: Boolean = false
+    ): PendingIntent {
         val intent = context.packageManager
             .getLaunchIntentForPackage(context.packageName)
             ?.addFlags(
@@ -169,6 +178,13 @@ object AlertController {
             ?: Intent(Intent.ACTION_MAIN)
                 .setPackage(context.packageName)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+        if (openTalkInbox) {
+            intent.putExtra(
+                Protocol.EXTRA_OPEN_TALK_INBOX,
+                true
+            )
+        }
 
         return PendingIntent.getActivity(
             context,
