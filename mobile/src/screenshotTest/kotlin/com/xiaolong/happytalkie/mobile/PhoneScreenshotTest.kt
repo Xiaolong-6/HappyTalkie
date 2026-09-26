@@ -250,3 +250,38 @@ fun PhoneReconnectingScreenshot() {
         )
     }
 }
+
+
+@PreviewTest
+@Preview(
+    name = "Phone compact 360x800",
+    widthDp = 360,
+    heightDp = 800,
+    showBackground = true,
+    backgroundColor = PHONE_BACKGROUND,
+)
+@Composable
+fun PhoneCompactScreenshot() {
+    HappyTalkiePhoneTheme {
+        HappyTalkiePhoneScreen(
+            state = HappyTalkieUiState(
+                status = "Ready",
+                callState = CallVisualState.READY,
+                callEnabled = true,
+                talkEnabled = true,
+                peerName = "Watch",
+                peerConnection = PeerConnectionState.CONNECTED,
+                peerRoute = PeerRoute.NEARBY_DIRECT,
+            ),
+            onCall = {},
+            onDecline = {},
+            onSpeakerToggle = {},
+            onTalkStart = {},
+            onTalkFinish = {},
+            onTalkCancel = {},
+            onPlay = {},
+            onDelete = {},
+            onClear = {},
+        )
+    }
+}
