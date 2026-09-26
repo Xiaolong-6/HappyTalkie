@@ -653,7 +653,13 @@ abstract class HappyTalkieActivity : ComponentActivity() {
                 recording = recording,
                 callEnabled =
                     callInProgress ||
-                        CallRoutePolicy.canStartCall(connection, route),
+                        (
+                            !recording &&
+                                CallRoutePolicy.canStartCall(
+                                    connection,
+                                    route
+                                )
+                            ),
                 talkEnabled =
                     !callInProgress,
                 speakerOn =
