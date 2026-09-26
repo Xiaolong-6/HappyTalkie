@@ -41,7 +41,7 @@ class DataLayerTransport(context: Context) {
 
                 val route =
                     if (nodes.any { it.isNearby }) {
-                        PeerRoute.NEARBY_BLUETOOTH
+                        PeerRoute.NEARBY_DIRECT
                     } else {
                         remoteRoute()
                     }
@@ -86,7 +86,7 @@ class DataLayerTransport(context: Context) {
 
                 val route =
                     if (nodes.any { it.isNearby }) {
-                        PeerRoute.NEARBY_BLUETOOTH
+                        PeerRoute.NEARBY_DIRECT
                     } else {
                         remoteRoute()
                     }
