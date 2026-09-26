@@ -470,7 +470,7 @@ class MainActivity : Activity() {
             elevation = dp(if (watch) 2 else 4).toFloat()
             isClickable = true
             isFocusable = true
-            drawablePadding = dp(if (watch) 1 else 3)
+            setCompoundDrawablePadding(dp(if (watch) 1 else 3))
             setOnClickListener { handleCallButton() }
         }
 
@@ -484,7 +484,7 @@ class MainActivity : Activity() {
             elevation = dp(if (watch) 1 else 3).toFloat()
             isClickable = true
             isFocusable = true
-            drawablePadding = dp(if (watch) 7 else 10)
+            setCompoundDrawablePadding(dp(if (watch) 7 else 10))
             background = roundedGradient(
                 TALK_COLOR_LIGHT,
                 TALK_COLOR,
