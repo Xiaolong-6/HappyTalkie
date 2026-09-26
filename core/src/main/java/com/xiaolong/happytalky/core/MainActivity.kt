@@ -39,7 +39,9 @@ data class HappyTalkyUiState(
     val peerName: String = "Watch",
     val peerConnection: PeerConnectionState = PeerConnectionState.UNKNOWN,
     val peerRoute: PeerRoute = PeerRoute.UNKNOWN,
-    val messages: List<VoiceMessage> = emptyList()
+    val messages: List<VoiceMessage> = emptyList(),
+    val unreadVoiceCount: Int = 0,
+    val callHistory: List<CallHistoryEntry> = emptyList()
 )
 
 abstract class HappyTalkyActivity : ComponentActivity() {
@@ -195,6 +197,12 @@ abstract class HappyTalkyActivity : ComponentActivity() {
             StateStore.incomingCall(this)
                 ?: return
 
+        CallHistoryStore.append(
+            this,
+            callId,
+            CallDirection.INCOMING,
+            CallOutcome.DECLINED_BY_ME
+        )
         StateStore.clearCallState(this)
         StateStore.setStatus(this, "Call declined")
         AlertController.stop(this)
@@ -341,7 +349,22 @@ abstract class HappyTalkyActivity : ComponentActivity() {
             this,
             message.file,
             deleteAfter = false
-        )
+        ) {
+            if (
+                message.direction ==
+                    VoiceDirection.INCOMING &&
+                !message.isRead
+            ) {
+                VoiceMessageStore.markRead(
+                    this,
+                    message.id
+                )
+                AlertController.refreshVoiceNotification(
+                    this
+                )
+                refreshUiState()
+            }
+        }
     }
 
     protected fun deleteMessages(
@@ -355,6 +378,7 @@ abstract class HappyTalkyActivity : ComponentActivity() {
             )
 
         if (deleted > 0) {
+            AlertController.refreshVoiceNotification(this)
             StateStore.setStatus(
                 this,
                 "$deleted TALK message" +
@@ -374,6 +398,7 @@ abstract class HappyTalkyActivity : ComponentActivity() {
         val deleted =
             VoiceMessageStore.clear(this)
 
+        AlertController.refreshVoiceNotification(this)
         StateStore.setStatus(
             this,
             if (deleted > 0) {
@@ -464,6 +489,12 @@ abstract class HappyTalkyActivity : ComponentActivity() {
             }
 
             if (!sent) {
+                CallHistoryStore.append(
+                    this,
+                    callId,
+                    CallDirection.OUTGOING,
+                    CallOutcome.FAILED
+                )
                 StateStore.clearCallState(this)
                 StateStore.setStatus(
                     this,
@@ -489,6 +520,12 @@ abstract class HappyTalkyActivity : ComponentActivity() {
                         StateStore.activeCall(this) ==
                             null
                     ) {
+                        CallHistoryStore.append(
+                            this,
+                            callId,
+                            CallDirection.OUTGOING,
+                            CallOutcome.NO_ANSWER
+                        )
                         StateStore.clearCallState(this)
                         StateStore.setStatus(
                             this,
@@ -519,6 +556,12 @@ abstract class HappyTalkyActivity : ComponentActivity() {
         callTimeout?.let(handler::removeCallbacks)
         callTimeout = null
 
+        CallHistoryStore.append(
+            this,
+            callId,
+            CallDirection.OUTGOING,
+            CallOutcome.CANCELLED_BY_ME
+        )
         StateStore.clearCallState(this)
         StateStore.setStatus(this, "Call cancelled")
         LiveCallService.stop(this)
@@ -536,6 +579,10 @@ abstract class HappyTalkyActivity : ComponentActivity() {
         StateStore.setIncomingCall(this, null)
         StateStore.setCallInitiator(this, false)
         StateStore.setActiveCall(this, callId)
+        StateStore.setActiveStartedAt(
+            this,
+            System.currentTimeMillis()
+        )
         StateStore.clearReconnectWindow(this)
         StateStore.setStatus(
             this,
@@ -555,6 +602,12 @@ abstract class HappyTalkyActivity : ComponentActivity() {
                 StateStore.activeCall(this) ==
                     callId
             ) {
+                CallHistoryStore.append(
+                    this,
+                    callId,
+                    CallDirection.INCOMING,
+                    CallOutcome.FAILED
+                )
                 StateStore.clearCallState(this)
                 StateStore.setStatus(
                     this,
@@ -569,6 +622,23 @@ abstract class HappyTalkyActivity : ComponentActivity() {
     private fun endCall(callId: String) {
         callTimeout?.let(handler::removeCallbacks)
         callTimeout = null
+
+        val direction =
+            if (StateStore.callInitiator(this)) {
+                CallDirection.OUTGOING
+            } else {
+                CallDirection.INCOMING
+            }
+        val startedAt =
+            StateStore.activeStartedAt(this)
+
+        CallHistoryStore.append(
+            this,
+            callId,
+            direction,
+            CallOutcome.COMPLETED,
+            startedAt = startedAt
+        )
 
         StateStore.clearCallState(this)
         StateStore.setStatus(this, "Call ended")
@@ -671,6 +741,15 @@ abstract class HappyTalkyActivity : ComponentActivity() {
                 peerRoute = route,
                 messages =
                     VoiceMessageStore.list(
+                        this,
+                        limit = 30
+                    ),
+                unreadVoiceCount =
+                    VoiceMessageStore.unreadCount(
+                        this
+                    ),
+                callHistory =
+                    CallHistoryStore.list(
                         this,
                         limit = 30
                     )
