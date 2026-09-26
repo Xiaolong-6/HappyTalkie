@@ -18,6 +18,7 @@ class LiveCallService : Service() {
     private var receiverRegistered = false
     private val handler = Handler(Looper.getMainLooper())
     private var retryRunnable: Runnable? = null
+    private var ringTimeoutRunnable: Runnable? = null
 
     private val stateReceiver =
         object : BroadcastReceiver() {
@@ -51,6 +52,7 @@ class LiveCallService : Service() {
 
     override fun onDestroy() {
         cancelRetry()
+        cancelRingTimeout()
 
         if (receiverRegistered) {
             unregisterReceiver(stateReceiver)
@@ -105,8 +107,16 @@ class LiveCallService : Service() {
 
         if (activeCall == null) {
             cancelRetry()
+
+            if (outgoingCall != null) {
+                ensureRingTimeout(outgoingCall)
+            } else {
+                cancelRingTimeout()
+            }
             return
         }
+
+        cancelRingTimeout()
 
         if (LiveCallAudio.isRunning()) {
             StateStore.clearReconnectWindow(this)
@@ -295,6 +305,47 @@ class LiveCallService : Service() {
             ) { }
 
         stopSelf()
+    }
+
+    private fun ensureRingTimeout(callId: String) {
+        if (ringTimeoutRunnable != null) return
+
+        ringTimeoutRunnable =
+            Runnable {
+                ringTimeoutRunnable = null
+
+                if (
+                    StateStore.outgoingCall(this) != callId ||
+                    StateStore.activeCall(this) != null
+                ) {
+                    return@Runnable
+                }
+
+                StateStore.clearCallState(this)
+                StateStore.setStatus(
+                    this,
+                    "No answer · TALK recommended"
+                )
+                EventBus.notifyStateChanged(this)
+
+                DataLayerTransport(this)
+                    .sendSignal(
+                        Protocol.CALL_CANCEL,
+                        callId
+                    ) { }
+
+                stopSelf()
+            }.also {
+                handler.postDelayed(
+                    it,
+                    Protocol.CALL_TIMEOUT_MS
+                )
+            }
+    }
+
+    private fun cancelRingTimeout() {
+        ringTimeoutRunnable?.let(handler::removeCallbacks)
+        ringTimeoutRunnable = null
     }
 
     private fun cancelRetry() {
