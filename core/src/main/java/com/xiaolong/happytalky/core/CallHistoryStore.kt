@@ -105,6 +105,15 @@ object CallHistoryStore {
         endedAt: Long =
             System.currentTimeMillis()
     ): CallHistoryEntry {
+        list(
+            context,
+            limit = 100
+        ).firstOrNull {
+            it.callId == callId
+        }?.let {
+            return it
+        }
+
         val duration =
             if (
                 startedAt > 0L &&
