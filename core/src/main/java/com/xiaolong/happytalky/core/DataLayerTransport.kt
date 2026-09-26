@@ -242,7 +242,7 @@ class DataLayerTransport(context: Context) {
 
         val mapRequest =
             PutDataMapRequest.create(
-                Protocol.TEXT_PREFIX +
+                Protocol.MESSAGE_PREFIX +
                     item.id
             )
 
