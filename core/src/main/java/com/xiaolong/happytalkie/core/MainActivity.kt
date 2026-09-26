@@ -421,13 +421,22 @@ abstract class HappyTalkieActivity : ComponentActivity() {
     }
 
     private fun startCall() {
-        if (
-            StateStore.peerConnection(this) !=
-                PeerConnectionState.CONNECTED
-        ) {
+        val connection = StateStore.peerConnection(this)
+        val route = StateStore.peerRoute(this)
+
+        if (!callRouteReady(connection, route)) {
             StateStore.setStatus(
                 this,
-                "${peerName()} is offline · TALK recommended"
+                when (route) {
+                    PeerRoute.REMOTE_CELLULAR ->
+                        "Cellular route · TALK recommended"
+                    PeerRoute.REMOTE_INTERNET ->
+                        "Remote route uncertain · TALK recommended"
+                    PeerRoute.RECONNECTING ->
+                        "Reconnecting · try CALL when ready"
+                    else ->
+                        "${peerName()} is offline · TALK recommended"
+                }
             )
             refreshPeerRoute()
             refreshUiState()
@@ -644,8 +653,7 @@ abstract class HappyTalkieActivity : ComponentActivity() {
                 recording = recording,
                 callEnabled =
                     callInProgress ||
-                        connection ==
-                            PeerConnectionState.CONNECTED,
+                        callRouteReady(connection, route),
                 talkEnabled =
                     !callInProgress,
                 speakerOn =
@@ -662,6 +670,16 @@ abstract class HappyTalkieActivity : ComponentActivity() {
                     )
             )
     }
+
+    private fun callRouteReady(
+        connection: PeerConnectionState,
+        route: PeerRoute
+    ): Boolean =
+        connection == PeerConnectionState.CONNECTED &&
+            (
+                route == PeerRoute.NEARBY_DIRECT ||
+                    route == PeerRoute.REMOTE_WIFI
+            )
 
     private fun hasAnyCallState(): Boolean =
         StateStore.incomingCall(this) != null ||
