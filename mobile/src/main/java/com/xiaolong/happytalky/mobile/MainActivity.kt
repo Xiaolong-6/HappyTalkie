@@ -205,7 +205,7 @@ fun HappyTalkyPhoneScreen(
         state.unreadTextCount
     ) {
         if (state.unreadTextCount > 0) {
-            onTextViewed()
+            onTextVisible()
         }
     }
 
