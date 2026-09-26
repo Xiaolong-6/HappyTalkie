@@ -155,3 +155,33 @@ fun WatchLiveScreenshot() {
         )
     }
 }
+
+
+@PreviewTest
+@Preview(
+    name = "Watch reconnecting",
+    device = WATCH_DEVICE,
+    showBackground = true,
+    backgroundColor = WATCH_BACKGROUND,
+)
+@Composable
+fun WatchReconnectingScreenshot() {
+    MaterialTheme {
+        WearHome(
+            state = HappyTalkieUiState(
+                status = "Reconnecting…",
+                callState = CallVisualState.RECONNECTING,
+                callEnabled = true,
+                talkEnabled = false,
+                peerName = "Phone",
+                peerConnection = PeerConnectionState.RECONNECTING,
+                peerRoute = PeerRoute.RECONNECTING,
+            ),
+            onCall = {},
+            onDecline = {},
+            onTalkStart = {},
+            onTalkFinish = {},
+            onTalkCancel = {},
+        )
+    }
+}
