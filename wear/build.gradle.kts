@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("com.android.compose.screenshot")
 }
 
 android {
@@ -18,6 +19,8 @@ android {
     buildFeatures {
         compose = true
     }
+
+    experimentalProperties["android.experimental.enableScreenshotTest"] = true
 
     buildTypes {
         release {
@@ -45,4 +48,7 @@ dependencies {
     implementation("androidx.wear.compose:compose-material3:1.7.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
+
+    screenshotTestImplementation("com.android.tools.screenshot:screenshot-validation-api:0.0.1-alpha16")
+    screenshotTestImplementation("androidx.compose.ui:ui-tooling")
 }
