@@ -17,6 +17,17 @@ Text chat is intentionally out of scope.
 
 Both application modules use application ID `com.xiaolong.happytalkie` and must be signed identically.
 
+## Companion discovery
+
+The phone and watch advertise different static Wear OS capabilities:
+
+- phone: `happytalkie_phone`
+- watch: `happytalkie_watch`
+
+`CapabilityClient.FILTER_REACHABLE` is used for CALL readiness and signaling. This matters because `NodeClient` can report Android nodes even when the HappyTalkie companion app is not installed or does not support the current protocol.
+
+The preferred peer is a reachable nearby/direct capability node; otherwise HappyTalkie uses one reachable remote capability node.
+
 ## CALL state machine
 
 Signaling uses transient `MessageClient` paths:
