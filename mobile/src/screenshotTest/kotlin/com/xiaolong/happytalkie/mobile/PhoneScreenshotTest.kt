@@ -7,29 +7,59 @@ import com.xiaolong.happytalkie.core.CallVisualState
 import com.xiaolong.happytalkie.core.HappyTalkieUiState
 import com.xiaolong.happytalkie.core.PeerConnectionState
 import com.xiaolong.happytalkie.core.PeerRoute
+import com.xiaolong.happytalkie.core.VoiceDirection
+import com.xiaolong.happytalkie.core.VoiceMessage
+import java.io.File
 
-private const val PHONE_BACKGROUND = 0xFF050A16
+private val sampleMessages =
+    listOf(
+        VoiceMessage(
+            id = "in-1",
+            createdAt = 1_760_000_000_000L,
+            direction = VoiceDirection.INCOMING,
+            file = File("/tmp/in-1.m4a"),
+            durationMs = 8_000L,
+        ),
+        VoiceMessage(
+            id = "out-1",
+            createdAt = 1_760_000_060_000L,
+            direction = VoiceDirection.OUTGOING,
+            file = File("/tmp/out-1.m4a"),
+            durationMs = 12_000L,
+        ),
+        VoiceMessage(
+            id = "in-2",
+            createdAt = 1_760_000_120_000L,
+            direction = VoiceDirection.INCOMING,
+            file = File("/tmp/in-2.m4a"),
+            durationMs = 5_000L,
+        ),
+    )
 
-@PreviewTest
-@Preview(
-    name = "Phone ready",
-    widthDp = 412,
-    heightDp = 915,
-    showBackground = true,
-    backgroundColor = PHONE_BACKGROUND,
-)
+private fun readyState(
+    messages: List<VoiceMessage> = sampleMessages,
+) =
+    HappyTalkieUiState(
+        status = "Ready",
+        callState = CallVisualState.READY,
+        callEnabled = true,
+        talkEnabled = true,
+        peerName = "Watch",
+        peerConnection = PeerConnectionState.CONNECTED,
+        peerRoute = PeerRoute.NEARBY_DIRECT,
+        messages = messages,
+    )
+
 @Composable
-fun PhoneReadyScreenshot() {
-    HappyTalkiePhoneTheme {
+private fun PhoneShot(
+    state: HappyTalkieUiState,
+    dark: Boolean,
+) {
+    HappyTalkiePhoneTheme(
+        darkTheme = dark
+    ) {
         HappyTalkiePhoneScreen(
-            state = HappyTalkieUiState(
-                status = "Ready",
-                callState = CallVisualState.READY,
-                callEnabled = true,
-                peerName = "Watch",
-                peerConnection = PeerConnectionState.CONNECTED,
-                peerRoute = PeerRoute.NEARBY_DIRECT,
-            ),
+            state = state,
             onCall = {},
             onDecline = {},
             onSpeakerToggle = {},
@@ -45,36 +75,93 @@ fun PhoneReadyScreenshot() {
 
 @PreviewTest
 @Preview(
-    name = "Phone calling",
+    name = "Phone light conversation",
     widthDp = 412,
     heightDp = 915,
     showBackground = true,
-    backgroundColor = PHONE_BACKGROUND,
+)
+@Composable
+fun PhoneLightConversationScreenshot() {
+    PhoneShot(
+        state = readyState(),
+        dark = false,
+    )
+}
+
+@PreviewTest
+@Preview(
+    name = "Phone dark conversation",
+    widthDp = 412,
+    heightDp = 915,
+    showBackground = true,
+)
+@Composable
+fun PhoneDarkConversationScreenshot() {
+    PhoneShot(
+        state = readyState(),
+        dark = true,
+    )
+}
+
+@PreviewTest
+@Preview(
+    name = "Phone outgoing call",
+    widthDp = 412,
+    heightDp = 915,
+    showBackground = true,
 )
 @Composable
 fun PhoneCallingScreenshot() {
-    HappyTalkiePhoneTheme {
-        HappyTalkiePhoneScreen(
-            state = HappyTalkieUiState(
+    PhoneShot(
+        state =
+            readyState().copy(
                 status = "Calling Watch…",
                 callState = CallVisualState.OUTGOING,
-                callEnabled = true,
                 talkEnabled = false,
-                peerName = "Watch",
-                peerConnection = PeerConnectionState.CONNECTED,
-                peerRoute = PeerRoute.NEARBY_DIRECT,
             ),
-            onCall = {},
-            onDecline = {},
-            onSpeakerToggle = {},
-            onTalkStart = {},
-            onTalkFinish = {},
-            onTalkCancel = {},
-            onPlay = {},
-            onDelete = {},
-            onClear = {},
-        )
-    }
+        dark = true,
+    )
+}
+
+@PreviewTest
+@Preview(
+    name = "Phone incoming call",
+    widthDp = 412,
+    heightDp = 915,
+    showBackground = true,
+)
+@Composable
+fun PhoneIncomingScreenshot() {
+    PhoneShot(
+        state =
+            readyState().copy(
+                status = "Watch is calling",
+                callState = CallVisualState.INCOMING,
+                talkEnabled = false,
+            ),
+        dark = true,
+    )
+}
+
+@PreviewTest
+@Preview(
+    name = "Phone live speaker",
+    widthDp = 412,
+    heightDp = 915,
+    showBackground = true,
+)
+@Composable
+fun PhoneLiveScreenshot() {
+    PhoneShot(
+        state =
+            readyState().copy(
+                status = "Live with Watch",
+                callState = CallVisualState.LIVE,
+                talkEnabled = false,
+                speakerOn = true,
+            ),
+        dark = true,
+    )
 }
 
 @PreviewTest
@@ -83,35 +170,18 @@ fun PhoneCallingScreenshot() {
     widthDp = 412,
     heightDp = 915,
     showBackground = true,
-    backgroundColor = PHONE_BACKGROUND,
 )
 @Composable
 fun PhoneRecordingScreenshot() {
-    HappyTalkiePhoneTheme {
-        HappyTalkiePhoneScreen(
-            state = HappyTalkieUiState(
+    PhoneShot(
+        state =
+            readyState().copy(
                 status = "Recording TALK…",
-                callState = CallVisualState.READY,
                 recording = true,
-                callEnabled = true,
-                talkEnabled = true,
-                peerName = "Watch",
-                peerConnection = PeerConnectionState.CONNECTED,
-                peerRoute = PeerRoute.NEARBY_DIRECT,
             ),
-            onCall = {},
-            onDecline = {},
-            onSpeakerToggle = {},
-            onTalkStart = {},
-            onTalkFinish = {},
-            onTalkCancel = {},
-            onPlay = {},
-            onDelete = {},
-            onClear = {},
-        )
-    }
+        dark = true,
+    )
 }
-
 
 @PreviewTest
 @Preview(
@@ -119,102 +189,19 @@ fun PhoneRecordingScreenshot() {
     widthDp = 412,
     heightDp = 915,
     showBackground = true,
-    backgroundColor = PHONE_BACKGROUND,
 )
 @Composable
 fun PhoneOfflineScreenshot() {
-    HappyTalkiePhoneTheme {
-        HappyTalkiePhoneScreen(
-            state = HappyTalkieUiState(
+    PhoneShot(
+        state =
+            readyState().copy(
                 status = "Watch offline · TALK recommended",
-                callState = CallVisualState.READY,
                 callEnabled = false,
-                talkEnabled = true,
-                peerName = "Watch",
                 peerConnection = PeerConnectionState.DISCONNECTED,
                 peerRoute = PeerRoute.OFFLINE,
             ),
-            onCall = {},
-            onDecline = {},
-            onSpeakerToggle = {},
-            onTalkStart = {},
-            onTalkFinish = {},
-            onTalkCancel = {},
-            onPlay = {},
-            onDelete = {},
-            onClear = {},
-        )
-    }
-}
-
-@PreviewTest
-@Preview(
-    name = "Phone live",
-    widthDp = 412,
-    heightDp = 915,
-    showBackground = true,
-    backgroundColor = PHONE_BACKGROUND,
-)
-@Composable
-fun PhoneLiveScreenshot() {
-    HappyTalkiePhoneTheme {
-        HappyTalkiePhoneScreen(
-            state = HappyTalkieUiState(
-                status = "Live with Watch",
-                callState = CallVisualState.LIVE,
-                callEnabled = true,
-                talkEnabled = false,
-                speakerOn = true,
-                peerName = "Watch",
-                peerConnection = PeerConnectionState.CONNECTED,
-                peerRoute = PeerRoute.NEARBY_DIRECT,
-            ),
-            onCall = {},
-            onDecline = {},
-            onSpeakerToggle = {},
-            onTalkStart = {},
-            onTalkFinish = {},
-            onTalkCancel = {},
-            onPlay = {},
-            onDelete = {},
-            onClear = {},
-        )
-    }
-}
-
-
-@PreviewTest
-@Preview(
-    name = "Phone incoming",
-    widthDp = 412,
-    heightDp = 915,
-    showBackground = true,
-    backgroundColor = PHONE_BACKGROUND,
-)
-@Composable
-fun PhoneIncomingScreenshot() {
-    HappyTalkiePhoneTheme {
-        HappyTalkiePhoneScreen(
-            state = HappyTalkieUiState(
-                status = "Watch is calling",
-                callState = CallVisualState.INCOMING,
-                callEnabled = true,
-                talkEnabled = false,
-                peerName = "Watch",
-                peerConnection = PeerConnectionState.CONNECTED,
-                peerRoute = PeerRoute.NEARBY_DIRECT,
-            ),
-            onCall = {},
-            onDecline = {},
-            onSpeakerToggle = {},
-            onTalkStart = {},
-            onTalkFinish = {},
-            onTalkCancel = {},
-            onPlay = {},
-            onDelete = {},
-            onClear = {},
-        )
-    }
+        dark = true,
+    )
 }
 
 @PreviewTest
@@ -223,34 +210,21 @@ fun PhoneIncomingScreenshot() {
     widthDp = 412,
     heightDp = 915,
     showBackground = true,
-    backgroundColor = PHONE_BACKGROUND,
 )
 @Composable
 fun PhoneReconnectingScreenshot() {
-    HappyTalkiePhoneTheme {
-        HappyTalkiePhoneScreen(
-            state = HappyTalkieUiState(
+    PhoneShot(
+        state =
+            readyState().copy(
                 status = "Reconnecting…",
                 callState = CallVisualState.RECONNECTING,
-                callEnabled = true,
                 talkEnabled = false,
-                peerName = "Watch",
                 peerConnection = PeerConnectionState.RECONNECTING,
                 peerRoute = PeerRoute.RECONNECTING,
             ),
-            onCall = {},
-            onDecline = {},
-            onSpeakerToggle = {},
-            onTalkStart = {},
-            onTalkFinish = {},
-            onTalkCancel = {},
-            onPlay = {},
-            onDelete = {},
-            onClear = {},
-        )
-    }
+        dark = true,
+    )
 }
-
 
 @PreviewTest
 @Preview(
@@ -258,30 +232,11 @@ fun PhoneReconnectingScreenshot() {
     widthDp = 360,
     heightDp = 800,
     showBackground = true,
-    backgroundColor = PHONE_BACKGROUND,
 )
 @Composable
 fun PhoneCompactScreenshot() {
-    HappyTalkiePhoneTheme {
-        HappyTalkiePhoneScreen(
-            state = HappyTalkieUiState(
-                status = "Ready",
-                callState = CallVisualState.READY,
-                callEnabled = true,
-                talkEnabled = true,
-                peerName = "Watch",
-                peerConnection = PeerConnectionState.CONNECTED,
-                peerRoute = PeerRoute.NEARBY_DIRECT,
-            ),
-            onCall = {},
-            onDecline = {},
-            onSpeakerToggle = {},
-            onTalkStart = {},
-            onTalkFinish = {},
-            onTalkCancel = {},
-            onPlay = {},
-            onDelete = {},
-            onClear = {},
-        )
-    }
+    PhoneShot(
+        state = readyState(),
+        dark = false,
+    )
 }
