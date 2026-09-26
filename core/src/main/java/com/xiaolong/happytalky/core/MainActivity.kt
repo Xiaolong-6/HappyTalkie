@@ -63,6 +63,7 @@ abstract class HappyTalkyActivity : ComponentActivity() {
     private var recording = false
     private var receiverRegistered = false
     private var networkCallbackRegistered = false
+    private var activityResumed = false
     private var recordingTimeout: Runnable? = null
     private var callTimeout: Runnable? = null
     private var priorityOfferRefresh: Runnable? = null
@@ -158,6 +159,17 @@ abstract class HappyTalkyActivity : ComponentActivity() {
         refreshUiState()
         schedulePriorityOfferRefresh()
         maybeAutoAnswerPriorityCall()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        activityResumed = true
+        maybeAutoAnswerPriorityCall()
+    }
+
+    override fun onPause() {
+        activityResumed = false
+        super.onPause()
     }
 
     override fun onStop() {
@@ -893,7 +905,6 @@ abstract class HappyTalkyActivity : ComponentActivity() {
 
     private fun priorityOfferIsAvailable(): Boolean {
         if (
-            role != EndpointRole.PHONE ||
             StateStore.callMode(this) ==
                 CallMode.PRIORITY
         ) {
@@ -924,10 +935,20 @@ abstract class HappyTalkyActivity : ComponentActivity() {
             peerInfo()
                 ?: return false
 
-        return peer.capabilities.contains(
-            Protocol.CAPABILITY_PRIORITY_CALL_V1
-        ) &&
-            peer.priorityAutoAnswerEnabled
+        return PriorityCallPolicy.canOffer(
+            localRole = role,
+            outgoingCallPresent = true,
+            elapsedMs =
+                System.currentTimeMillis() -
+                    startedAt,
+            peerSupportsPriority =
+                peer.capabilities.contains(
+                    Protocol
+                        .CAPABILITY_PRIORITY_CALL_V1
+                ),
+            peerAllowsAutoAnswer =
+                peer.priorityAutoAnswerEnabled
+        )
     }
 
     private fun schedulePriorityOfferRefresh() {
@@ -977,20 +998,30 @@ abstract class HappyTalkyActivity : ComponentActivity() {
     }
 
     private fun maybeAutoAnswerPriorityCall() {
+        val callId =
+            StateStore.incomingCall(this)
+
         if (
-            role != EndpointRole.WATCH ||
-            !PriorityCallSettings.isEnabled(
-                this
-            ) ||
-            StateStore.callMode(this) !=
-                CallMode.PRIORITY
+            !PriorityCallPolicy.canAutoAnswer(
+                localRole = role,
+                enabled =
+                    PriorityCallSettings.isEnabled(
+                        this
+                    ),
+                mode =
+                    StateStore.callMode(
+                        this
+                    ),
+                incomingCallPresent =
+                    callId != null,
+                activityVisible =
+                    activityResumed
+            )
         ) {
             return
         }
 
-        val callId =
-            StateStore.incomingCall(this)
-                ?: return
+        callId ?: return
 
         // This method is reached only while the Activity is started
         // (onStart/onNewIntent or its registered state receiver).
