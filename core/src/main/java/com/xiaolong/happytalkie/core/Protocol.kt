@@ -20,6 +20,7 @@ object Protocol {
     const val CAPABILITY_PHONE = "happytalkie_phone"
     const val CAPABILITY_WATCH = "happytalkie_watch"
     const val ACTION_STATE_CHANGED = "com.xiaolong.happytalkie.STATE_CHANGED"
+    const val EXTRA_OPEN_TALK_INBOX = "happytalkie.open_talk_inbox"
 
     const val CALL_TIMEOUT_MS = 20_000L
     const val RECONNECT_GRACE_MS = 15_000L
