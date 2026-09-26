@@ -115,6 +115,8 @@ class MainActivity : HappyTalkyActivity() {
                     onSpeakerToggle = ::toggleSpeaker,
                     onPriorityCall = ::requestPriorityCall,
                     onSendText = ::sendText,
+                    onTextVisible =
+                        ::markTextMessagesRead,
                     onTalkStart = ::beginTalk,
                     onTalkFinish = ::finishTalk,
                     onTalkCancel = ::cancelTalk,
@@ -186,6 +188,7 @@ fun HappyTalkyPhoneScreen(
     onSpeakerToggle: () -> Unit,
     onPriorityCall: () -> Unit = {},
     onSendText: (String) -> Unit = {},
+    onTextVisible: () -> Unit = {},
     onTalkStart: () -> Unit,
     onTalkFinish: () -> Unit,
     onTalkCancel: () -> Unit,
@@ -271,6 +274,14 @@ fun HappyTalkyPhoneScreen(
             listState.scrollToItem(
                 itemCount - 1
             )
+        }
+    }
+
+    LaunchedEffect(
+        state.unreadTextCount
+    ) {
+        if (state.unreadTextCount > 0) {
+            onTextVisible()
         }
     }
 
