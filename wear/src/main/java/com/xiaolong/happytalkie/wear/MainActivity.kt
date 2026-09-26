@@ -111,43 +111,15 @@ fun WearHome(
                     )
                 }
 
-                Text(
-                    text = callHint(state),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF95A4B9),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.width(138.dp),
-                )
             }
 
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 2.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(
-                    text =
-                        when {
-                            !state.talkEnabled -> "TALK after call"
-                            state.recording -> "Release to send"
-                            else -> "Hold"
-                        },
-                    style = MaterialTheme.typography.labelSmall,
-                    color =
-                        if (state.talkEnabled) Color(0xFF9BAABD)
-                        else Color(0xFF657286),
-                )
-
-                TalkEdgeButton(
-                    state = state,
-                    onStart = onTalkStart,
-                    onFinish = onTalkFinish,
-                    onCancel = onTalkCancel,
-                )
-            }
+            TalkEdgeButton(
+                state = state,
+                onStart = onTalkStart,
+                onFinish = onTalkFinish,
+                onCancel = onTalkCancel,
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
         }
     }
 }
@@ -316,14 +288,15 @@ private fun TalkEdgeButton(
     onStart: () -> Unit,
     onFinish: () -> Unit,
     onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val recording = state.recording
 
     EdgeButton(
         onClick = {},
         enabled = state.talkEnabled,
-        modifier = Modifier
-            .width(146.dp)
+        modifier = modifier
+            .width(142.dp)
             .semantics {
                 role = Role.Button
                 contentDescription =
@@ -360,29 +333,31 @@ private fun TalkEdgeButton(
             disabledContentColor = Color(0xFF75849A),
         ),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            Icon(
-                imageVector =
-                    if (recording) {
-                        Icons.Rounded.Stop
-                    } else {
-                        Icons.Rounded.Mic
-                    },
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-            )
-            Spacer(Modifier.size(5.dp))
+        if (recording) {
             Text(
-                text =
-                    if (recording) "SEND"
-                    else "TALK",
+                text = "SEND",
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
             )
+        } else {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Mic,
+                    contentDescription = null,
+                    modifier = Modifier.size(17.dp),
+                )
+                Spacer(Modifier.size(4.dp))
+                Text(
+                    text = "TALK",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }
@@ -431,19 +406,4 @@ private fun wearCallLabel(state: HappyTalkieUiState): String =
         CallVisualState.RECONNECTING -> "END"
         CallVisualState.READY ->
             if (state.callEnabled) "CALL" else "CALL"
-    }
-
-private fun callHint(state: HappyTalkieUiState): String =
-    when (state.callState) {
-        CallVisualState.LIVE -> "Live audio"
-        CallVisualState.INCOMING -> "Phone is calling"
-        CallVisualState.OUTGOING -> "Waiting for answer"
-        CallVisualState.CONNECTING -> "Connecting audio"
-        CallVisualState.RECONNECTING -> "Trying another route"
-        CallVisualState.READY ->
-            if (state.callEnabled) {
-                "Call ready"
-            } else {
-                "Use TALK instead"
-            }
     }
