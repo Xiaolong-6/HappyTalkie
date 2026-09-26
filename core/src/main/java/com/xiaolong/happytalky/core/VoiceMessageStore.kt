@@ -140,14 +140,18 @@ object VoiceMessageStore {
             .take(limit)
 
     fun unreadCount(context: Context): Int =
-        list(
-            context,
-            limit = Int.MAX_VALUE
-        ).count {
-            it.direction ==
-                VoiceDirection.INCOMING &&
-                !it.isRead
-        }
+        directory(context)
+            .listFiles()
+            .orEmpty()
+            .mapNotNull(::parseName)
+            .count {
+                it.direction ==
+                    VoiceDirection.INCOMING &&
+                    readAt(
+                        context,
+                        it.id
+                    ) == null
+            }
 
     fun markRead(
         context: Context,
@@ -283,10 +287,15 @@ object VoiceMessageStore {
             .apply()
     }
 
-    private fun parse(
-        context: Context,
+    private data class ParsedName(
+        val createdAt: Long,
+        val direction: VoiceDirection,
+        val id: String
+    )
+
+    private fun parseName(
         file: File
-    ): VoiceMessage? {
+    ): ParsedName? {
         if (
             !file.isFile ||
             file.extension.lowercase() !=
@@ -347,22 +356,37 @@ object VoiceMessageStore {
             return null
         }
 
-        return VoiceMessage(
-            id = id,
+        return ParsedName(
             createdAt = createdAt,
             direction = direction,
+            id = id
+        )
+    }
+
+    private fun parse(
+        context: Context,
+        file: File
+    ): VoiceMessage? {
+        val parsed =
+            parseName(file)
+                ?: return null
+
+        return VoiceMessage(
+            id = parsed.id,
+            createdAt = parsed.createdAt,
+            direction = parsed.direction,
             file = file,
             durationMs = durationMs(file),
             readAt =
                 if (
-                    direction ==
+                    parsed.direction ==
                         VoiceDirection.OUTGOING
                 ) {
-                    createdAt
+                    parsed.createdAt
                 } else {
                     readAt(
                         context,
-                        id
+                        parsed.id
                     )
                 }
         )
