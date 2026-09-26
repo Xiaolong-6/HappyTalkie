@@ -5,11 +5,11 @@ object Protocol {
     const val CALL_RING = "$BASE/call/ring"
     const val CALL_ANSWER = "$BASE/call/answer"
     const val CALL_END = "$BASE/call/end"
+    const val CALL_AUDIO_PREFIX = "$BASE/call/audio/"
     const val VOICE_PREFIX = "$BASE/voice/"
 
     const val KEY_ID = "id"
     const val KEY_ORIGIN = "origin"
-    const val KEY_CALL_ID = "callId"
     const val KEY_CREATED_AT = "createdAt"
     const val KEY_AUDIO = "audio"
 
@@ -18,4 +18,6 @@ object Protocol {
 
     const val CALL_TIMEOUT_MS = 20_000L
     const val MAX_RECORDING_MS = 60_000
+
+    const val AUDIO_SAMPLE_RATE = 16_000
 }
