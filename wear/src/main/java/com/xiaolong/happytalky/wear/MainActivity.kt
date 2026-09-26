@@ -369,7 +369,7 @@ fun WearHome(
     }
 
     if (showInbox) {
-        WearTalkInbox(
+        WearInbox(
             messages = state.messages,
             callHistory = state.callHistory,
             timeline = state.timeline,
@@ -479,7 +479,7 @@ private fun WearHomePage(
                     onCall = onCall,
                 )
 
-                TalkInboxButton(
+                InboxButton(
                     unread =
                         state.unreadVoiceCount +
                             state.unreadTextCount,
@@ -746,7 +746,7 @@ private fun PrimaryCallAction(
 }
 
 @Composable
-private fun TalkInboxButton(
+private fun InboxButton(
     unread: Int,
     onClick: () -> Unit,
 ) {
@@ -976,7 +976,7 @@ private fun TalkHoldButton(
 }
 
 @Composable
-fun WearTalkInbox(
+fun WearInbox(
     messages: List<VoiceMessage>,
     callHistory: List<CallHistoryEntry> =
         emptyList(),
