@@ -2,27 +2,25 @@ package com.xiaolong.happytalkie.wear
 
 import android.os.Bundle
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.CallEnd
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.CloudOff
+import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.NetworkCell
-import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -44,13 +42,13 @@ import androidx.wear.compose.material3.ButtonDefaults
 import androidx.wear.compose.material3.EdgeButton
 import androidx.wear.compose.material3.Icon
 import androidx.wear.compose.material3.MaterialTheme
+import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.Text
 import com.xiaolong.happytalkie.core.CallVisualState
 import com.xiaolong.happytalkie.core.HappyTalkieActivity
 import com.xiaolong.happytalkie.core.HappyTalkieUiState
 import com.xiaolong.happytalkie.core.PeerConnectionState
 import com.xiaolong.happytalkie.core.PeerRoute
-import com.xiaolong.happytalkie.core.VoiceMessage
 
 class MainActivity : HappyTalkieActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -80,46 +78,50 @@ fun WearHome(
     onTalkFinish: () -> Unit,
     onTalkCancel: () -> Unit,
 ) {
+    val listState = rememberLazyListState()
+
     AppScaffold(
         containerColor = Color.Black,
         contentColor = Color.White,
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black)
-        ) {
-            Column(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .width(154.dp)
-                    .padding(top = 26.dp),
+        ScreenScaffold(
+            scrollState = listState,
+            scrollIndicator = null,
+            edgeButton = {
+                TalkEdgeButton(
+                    state = state,
+                    onStart = onTalkStart,
+                    onFinish = onTalkFinish,
+                    onCancel = onTalkCancel,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+        ) { contentPadding ->
+            LazyColumn(
+                state = listState,
+                contentPadding = contentPadding,
+                modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(7.dp),
             ) {
-                RouteStatus(state)
-
-                if (state.callState == CallVisualState.INCOMING) {
-                    IncomingActions(
-                        onAnswer = onCall,
-                        onDecline = onDecline,
-                    )
-                } else {
-                    PrimaryCallAction(
-                        state = state,
-                        onCall = onCall,
-                    )
+                item {
+                    RouteStatus(state)
                 }
 
+                item {
+                    if (state.callState == CallVisualState.INCOMING) {
+                        IncomingActions(
+                            onAnswer = onCall,
+                            onDecline = onDecline,
+                        )
+                    } else {
+                        PrimaryCallAction(
+                            state = state,
+                            onCall = onCall,
+                        )
+                    }
+                }
             }
-
-            TalkEdgeButton(
-                state = state,
-                onStart = onTalkStart,
-                onFinish = onTalkFinish,
-                onCancel = onTalkCancel,
-                modifier = Modifier.align(Alignment.BottomCenter),
-            )
         }
     }
 }
@@ -296,7 +298,6 @@ private fun TalkEdgeButton(
         onClick = {},
         enabled = state.talkEnabled,
         modifier = modifier
-            .width(142.dp)
             .semantics {
                 role = Role.Button
                 contentDescription =
@@ -404,6 +405,5 @@ private fun wearCallLabel(state: HappyTalkieUiState): String =
         CallVisualState.OUTGOING -> "CANCEL"
         CallVisualState.CONNECTING -> "END"
         CallVisualState.RECONNECTING -> "END"
-        CallVisualState.READY ->
-            if (state.callEnabled) "CALL" else "CALL"
+        CallVisualState.READY -> "CALL"
     }
