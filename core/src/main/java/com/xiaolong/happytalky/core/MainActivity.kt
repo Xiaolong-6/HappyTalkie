@@ -38,6 +38,10 @@ data class HappyTalkyUiState(
     val speakerOn: Boolean = false,
     val peerName: String = "Watch",
     val peerCapabilities: Set<String> = emptySet(),
+    val peerPriorityCallsAllowed: Boolean = false,
+    val localPriorityCallsAllowed: Boolean = false,
+    val priorityOfferAvailable: Boolean = false,
+    val callMode: CallMode = CallMode.NORMAL,
     val peerConnection: PeerConnectionState = PeerConnectionState.UNKNOWN,
     val peerRoute: PeerRoute = PeerRoute.UNKNOWN,
     val messages: List<VoiceMessage> = emptyList(),
@@ -61,6 +65,7 @@ abstract class HappyTalkyActivity : ComponentActivity() {
     private var networkCallbackRegistered = false
     private var recordingTimeout: Runnable? = null
     private var callTimeout: Runnable? = null
+    private var priorityOfferRefresh: Runnable? = null
 
     private val stateReceiver =
         object : BroadcastReceiver() {
@@ -69,6 +74,7 @@ abstract class HappyTalkyActivity : ComponentActivity() {
                 intent: Intent?
             ) {
                 refreshUiState()
+                maybeAutoAnswerPriorityCall()
             }
         }
 
@@ -110,6 +116,7 @@ abstract class HappyTalkyActivity : ComponentActivity() {
         setIntent(intent)
         updateIncomingPresentation()
         refreshUiState()
+        maybeAutoAnswerPriorityCall()
     }
 
     override fun onStart() {
@@ -149,6 +156,8 @@ abstract class HappyTalkyActivity : ComponentActivity() {
 
         refreshPeerRoute()
         refreshUiState()
+        schedulePriorityOfferRefresh()
+        maybeAutoAnswerPriorityCall()
     }
 
     override fun onStop() {
@@ -174,6 +183,10 @@ abstract class HappyTalkyActivity : ComponentActivity() {
         callTimeout?.let(handler::removeCallbacks)
         recordingTimeout = null
         callTimeout = null
+        priorityOfferRefresh?.let(
+            handler::removeCallbacks
+        )
+        priorityOfferRefresh = null
 
         if (recording) {
             recorder.cancel()
@@ -216,6 +229,82 @@ abstract class HappyTalkyActivity : ComponentActivity() {
             Protocol.CALL_DECLINE,
             callId
         ) { }
+    }
+
+    protected fun requestPriorityCall() {
+        if (
+            role != EndpointRole.PHONE
+        ) {
+            return
+        }
+
+        val callId =
+            StateStore.outgoingCall(this)
+                ?: return
+
+        if (!priorityOfferIsAvailable()) {
+            return
+        }
+
+        StateStore.setStatus(
+            this,
+            "Requesting priority call…"
+        )
+        refreshUiState()
+
+        transport.sendSignal(
+            Protocol.CALL_PRIORITY,
+            callId
+        ) { sent ->
+            if (
+                StateStore.outgoingCall(this) !=
+                    callId
+            ) {
+                return@sendSignal
+            }
+
+            if (sent) {
+                StateStore.setCallMode(
+                    this,
+                    CallMode.PRIORITY
+                )
+                StateStore.setStatus(
+                    this,
+                    "Priority call requested…"
+                )
+            } else {
+                StateStore.setStatus(
+                    this,
+                    "Priority call unavailable · still ringing"
+                )
+            }
+            refreshUiState()
+        }
+    }
+
+    protected fun setPriorityCallsEnabled(
+        enabled: Boolean
+    ) {
+        if (
+            role != EndpointRole.WATCH
+        ) {
+            return
+        }
+
+        PriorityCallSettings.setEnabled(
+            this,
+            enabled
+        )
+        transport.publishDeviceInfo()
+        StateStore.setStatus(
+            this,
+            if (enabled) {
+                "Priority calls allowed"
+            } else {
+                "Priority calls disabled"
+            }
+        )
+        refreshUiState()
     }
 
     protected fun beginTalk() {
@@ -484,10 +573,19 @@ abstract class HappyTalkyActivity : ComponentActivity() {
         val peer = peerName()
 
         StateStore.setCallInitiator(this, true)
+        StateStore.setCallMode(
+            this,
+            CallMode.NORMAL
+        )
+        StateStore.setOutgoingStartedAt(
+            this,
+            System.currentTimeMillis()
+        )
         StateStore.setOutgoingCall(this, callId)
         StateStore.setStatus(this, "Calling $peer…")
         LiveCallService.start(this)
         refreshUiState()
+        schedulePriorityOfferRefresh()
 
         transport.sendSignal(
             Protocol.CALL_RING,
@@ -567,6 +665,7 @@ abstract class HappyTalkyActivity : ComponentActivity() {
     ) {
         callTimeout?.let(handler::removeCallbacks)
         callTimeout = null
+        cancelPriorityOfferRefresh()
 
         CallHistoryStore.append(
             this,
@@ -587,6 +686,7 @@ abstract class HappyTalkyActivity : ComponentActivity() {
 
     private fun answerCall(callId: String) {
         AlertController.stop(this)
+        cancelPriorityOfferRefresh()
 
         StateStore.setIncomingCall(this, null)
         StateStore.setCallInitiator(this, false)
@@ -634,6 +734,7 @@ abstract class HappyTalkyActivity : ComponentActivity() {
     private fun endCall(callId: String) {
         callTimeout?.let(handler::removeCallbacks)
         callTimeout = null
+        cancelPriorityOfferRefresh()
 
         val direction =
             if (StateStore.callInitiator(this)) {
@@ -674,6 +775,9 @@ abstract class HappyTalkyActivity : ComponentActivity() {
         val route = StateStore.peerRoute(this)
         val live = LiveCallAudio.isRunning()
         val peer = peerName()
+        val peerInfo = peerInfo()
+        val callMode =
+            StateStore.callMode(this)
 
         val visualState =
             when {
@@ -750,8 +854,19 @@ abstract class HappyTalkyActivity : ComponentActivity() {
                         LiveCallAudio.isSpeakerEnabled(this),
                 peerName = peer,
                 peerCapabilities =
-                    peerInfo()?.capabilities
+                    peerInfo?.capabilities
                         .orEmpty(),
+                peerPriorityCallsAllowed =
+                    peerInfo
+                        ?.priorityAutoAnswerEnabled ==
+                        true,
+                localPriorityCallsAllowed =
+                    role == EndpointRole.WATCH &&
+                        PriorityCallSettings
+                            .isEnabled(this),
+                priorityOfferAvailable =
+                    priorityOfferIsAvailable(),
+                callMode = callMode,
                 peerConnection = connection,
                 peerRoute = route,
                 messages =
@@ -774,6 +889,123 @@ abstract class HappyTalkyActivity : ComponentActivity() {
                         limit = 60
                     )
             )
+    }
+
+    private fun priorityOfferIsAvailable(): Boolean {
+        if (
+            role != EndpointRole.PHONE ||
+            StateStore.callMode(this) ==
+                CallMode.PRIORITY
+        ) {
+            return false
+        }
+
+        val outgoing =
+            StateStore.outgoingCall(this)
+                ?: return false
+        if (outgoing.isBlank()) {
+            return false
+        }
+
+        val startedAt =
+            StateStore.outgoingStartedAt(
+                this
+            )
+        if (
+            startedAt <= 0L ||
+            System.currentTimeMillis() -
+                startedAt <
+                Protocol.PRIORITY_OFFER_DELAY_MS
+        ) {
+            return false
+        }
+
+        val peer =
+            peerInfo()
+                ?: return false
+
+        return peer.capabilities.contains(
+            Protocol.CAPABILITY_PRIORITY_CALL_V1
+        ) &&
+            peer.priorityAutoAnswerEnabled
+    }
+
+    private fun schedulePriorityOfferRefresh() {
+        cancelPriorityOfferRefresh()
+
+        if (
+            role != EndpointRole.PHONE ||
+            StateStore.outgoingCall(this) ==
+                null
+        ) {
+            return
+        }
+
+        val elapsed =
+            System.currentTimeMillis() -
+                StateStore.outgoingStartedAt(
+                    this
+                )
+        val delay =
+            (
+                Protocol.PRIORITY_OFFER_DELAY_MS -
+                    elapsed
+                ).coerceAtLeast(0L)
+
+        if (delay == 0L) {
+            refreshUiState()
+            return
+        }
+
+        priorityOfferRefresh =
+            Runnable {
+                priorityOfferRefresh = null
+                refreshUiState()
+            }.also {
+                handler.postDelayed(
+                    it,
+                    delay
+                )
+            }
+    }
+
+    private fun cancelPriorityOfferRefresh() {
+        priorityOfferRefresh?.let(
+            handler::removeCallbacks
+        )
+        priorityOfferRefresh = null
+    }
+
+    private fun maybeAutoAnswerPriorityCall() {
+        if (
+            role != EndpointRole.WATCH ||
+            !PriorityCallSettings.isEnabled(
+                this
+            ) ||
+            StateStore.callMode(this) !=
+                CallMode.PRIORITY
+        ) {
+            return
+        }
+
+        val callId =
+            StateStore.incomingCall(this)
+                ?: return
+
+        // This method is reached only while the Activity is started
+        // (onStart/onNewIntent or its registered state receiver).
+        // That visibility gate is intentional: priority CALL must never
+        // turn the microphone into a silent background listener.
+        handler.post {
+            if (
+                StateStore.incomingCall(this) ==
+                    callId &&
+                StateStore.callMode(this) ==
+                    CallMode.PRIORITY
+            ) {
+                answerCall(callId)
+            }
+        }
     }
 
     private fun hasAnyCallState(): Boolean =
