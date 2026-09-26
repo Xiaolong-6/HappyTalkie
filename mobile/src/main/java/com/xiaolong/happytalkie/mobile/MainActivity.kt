@@ -28,7 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Bluetooth
+import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.CallEnd
 import androidx.compose.material.icons.rounded.Cloud
@@ -370,7 +370,7 @@ private fun ConnectionStrip(state: HappyTalkieUiState) {
 
 private fun routeIcon(route: PeerRoute): ImageVector =
     when (route) {
-        PeerRoute.NEARBY_DIRECT -> Icons.Rounded.Bluetooth
+        PeerRoute.NEARBY_DIRECT -> Icons.Rounded.Link
         PeerRoute.REMOTE_WIFI -> Icons.Rounded.Wifi
         PeerRoute.REMOTE_CELLULAR -> Icons.Rounded.NetworkCell
         PeerRoute.REMOTE_INTERNET -> Icons.Rounded.Cloud
@@ -381,7 +381,7 @@ private fun routeIcon(route: PeerRoute): ImageVector =
 
 private fun routeLabel(route: PeerRoute): String =
     when (route) {
-        PeerRoute.NEARBY_DIRECT -> "Bluetooth"
+        PeerRoute.NEARBY_DIRECT -> "Nearby · direct"
         PeerRoute.REMOTE_WIFI -> "Remote · Wi‑Fi"
         PeerRoute.REMOTE_CELLULAR -> "Remote · Cellular"
         PeerRoute.REMOTE_INTERNET -> "Remote connection"
@@ -399,7 +399,7 @@ private fun routeRecommendation(state: HappyTalkieUiState): String =
             "CALL unavailable · TALK will wait and deliver later"
 
         state.peerRoute == PeerRoute.NEARBY_DIRECT ->
-            "Best route for CALL · TALK also available"
+            "Direct phone/watch link · best route for CALL"
 
         state.peerConnection == PeerConnectionState.CONNECTED ->
             "CALL available · TALK is safer on an unstable link"
