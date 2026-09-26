@@ -7,7 +7,7 @@ Its primary child-facing communication actions are:
 - **CALL** — synchronous live two-way voice when the current phone/watch route is suitable for streaming.
 - **TALK** — hold to record and release to send a persistent voice message. TALK remains the fallback when a live CALL is unavailable.
 
-The shared conversation model also supports secondary text messages so voice, calls, and text can live in one timeline.
+The shared conversation model is prepared for secondary text messages so voice, calls, and text can share one timeline when text UI/transport lands.
 
 ## Why two modes?
 
