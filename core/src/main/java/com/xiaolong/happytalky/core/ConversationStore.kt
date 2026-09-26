@@ -132,6 +132,28 @@ internal interface ConversationDao {
 
     @Query(
         """
+        SELECT COUNT(*) FROM conversation_items
+        WHERE type = 'TEXT'
+          AND direction = 'INCOMING'
+          AND readAt IS NULL
+        """
+    )
+    fun unreadTextCount(): Int
+
+    @Query(
+        """
+        UPDATE conversation_items
+        SET readAt = :readAt,
+            deliveryState = 'READ'
+        WHERE type = 'TEXT'
+          AND direction = 'INCOMING'
+          AND readAt IS NULL
+        """
+    )
+    fun markAllTextRead(readAt: Long): Int
+
+    @Query(
+        """
         UPDATE conversation_items
         SET readAt = :readAt,
             deliveryState = 'READ'
@@ -299,6 +321,20 @@ object ConversationStore {
         context: Context
     ): Int =
         dao(context).unreadVoiceCount()
+
+    fun unreadTextCount(
+        context: Context
+    ): Int =
+        dao(context).unreadTextCount()
+
+    fun markAllTextRead(
+        context: Context,
+        readAt: Long =
+            System.currentTimeMillis()
+    ): Int =
+        dao(context).markAllTextRead(
+            readAt
+        )
 
     internal fun markVoiceRead(
         context: Context,
