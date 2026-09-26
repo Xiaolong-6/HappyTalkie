@@ -251,11 +251,26 @@ private fun AppHeader(state: HappyTalkieUiState) {
 @Composable
 private fun StatusPill(state: HappyTalkieUiState) {
     val (dot, container) = when (state.callState) {
-        CallVisualState.LIVE -> Color(0xFF67E6A0) to Color(0xFF123B2D)
-        CallVisualState.INCOMING -> Color(0xFF67E6A0) to Color(0xFF123B2D)
-        CallVisualState.OUTGOING, CallVisualState.CONNECTING ->
+        CallVisualState.LIVE,
+        CallVisualState.INCOMING ->
+            Color(0xFF67E6A0) to Color(0xFF123B2D)
+
+        CallVisualState.OUTGOING,
+        CallVisualState.CONNECTING,
+        CallVisualState.RECONNECTING ->
             Color(0xFFFFD35A) to Color(0xFF423719)
-        CallVisualState.READY -> Color(0xFF67E6A0) to Color(0xFF13253A)
+
+        CallVisualState.READY ->
+            when (state.peerConnection) {
+                PeerConnectionState.CONNECTED ->
+                    Color(0xFF67E6A0) to Color(0xFF13253A)
+                PeerConnectionState.RECONNECTING ->
+                    Color(0xFFFFD35A) to Color(0xFF423719)
+                PeerConnectionState.DISCONNECTED ->
+                    Color(0xFFFF6B79) to Color(0xFF451E29)
+                PeerConnectionState.UNKNOWN ->
+                    Color(0xFF8C9BB0) to Color(0xFF202B3E)
+            }
     }
 
     Surface(
@@ -263,7 +278,10 @@ private fun StatusPill(state: HappyTalkieUiState) {
         color = container,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 11.dp, vertical = 8.dp),
+            modifier = Modifier.padding(
+                horizontal = 11.dp,
+                vertical = 8.dp,
+            ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
@@ -287,8 +305,107 @@ private fun statusShortLabel(state: HappyTalkieUiState): String =
         CallVisualState.INCOMING -> "Incoming"
         CallVisualState.OUTGOING -> "Calling"
         CallVisualState.CONNECTING -> "Connecting"
+        CallVisualState.RECONNECTING -> "Reconnecting"
         CallVisualState.READY ->
-            if (state.status.contains("offline", true)) "Offline" else "Ready"
+            when (state.peerConnection) {
+                PeerConnectionState.CONNECTED -> "Ready"
+                PeerConnectionState.RECONNECTING -> "Reconnecting"
+                PeerConnectionState.DISCONNECTED -> "Offline"
+                PeerConnectionState.UNKNOWN -> "Checking"
+            }
+    }
+
+@Composable
+private fun ConnectionStrip(state: HappyTalkieUiState) {
+    val routeColor =
+        when (state.peerRoute) {
+            PeerRoute.NEARBY_BLUETOOTH -> Color(0xFF83B9FF)
+            PeerRoute.REMOTE_WIFI -> Color(0xFF70D7FF)
+            PeerRoute.REMOTE_CELLULAR -> Color(0xFF8DD7A7)
+            PeerRoute.REMOTE_INTERNET -> Color(0xFFB8C7DD)
+            PeerRoute.RECONNECTING -> Color(0xFFFFD35A)
+            PeerRoute.OFFLINE -> Color(0xFFFF8190)
+            PeerRoute.UNKNOWN -> Color(0xFF8C9BB0)
+        }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.62f),
+        border = BorderStroke(
+            1.dp,
+            routeColor.copy(alpha = 0.22f),
+        ),
+    ) {
+        Row(
+            modifier = Modifier.padding(
+                horizontal = 14.dp,
+                vertical = 11.dp,
+            ),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = routeIcon(state.peerRoute),
+                contentDescription = null,
+                tint = routeColor,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.width(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = routeLabel(state.peerRoute),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = routeRecommendation(state),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+private fun routeIcon(route: PeerRoute): ImageVector =
+    when (route) {
+        PeerRoute.NEARBY_BLUETOOTH -> Icons.Rounded.Bluetooth
+        PeerRoute.REMOTE_WIFI -> Icons.Rounded.Wifi
+        PeerRoute.REMOTE_CELLULAR -> Icons.Rounded.NetworkCell
+        PeerRoute.REMOTE_INTERNET -> Icons.Rounded.Cloud
+        PeerRoute.RECONNECTING -> Icons.Rounded.Cloud
+        PeerRoute.OFFLINE -> Icons.Rounded.CloudOff
+        PeerRoute.UNKNOWN -> Icons.Rounded.Cloud
+    }
+
+private fun routeLabel(route: PeerRoute): String =
+    when (route) {
+        PeerRoute.NEARBY_BLUETOOTH -> "Bluetooth"
+        PeerRoute.REMOTE_WIFI -> "Remote · Wi‑Fi"
+        PeerRoute.REMOTE_CELLULAR -> "Remote · Cellular"
+        PeerRoute.REMOTE_INTERNET -> "Remote connection"
+        PeerRoute.RECONNECTING -> "Reconnecting"
+        PeerRoute.OFFLINE -> "Offline"
+        PeerRoute.UNKNOWN -> "Checking connection"
+    }
+
+private fun routeRecommendation(state: HappyTalkieUiState): String =
+    when {
+        state.callState == CallVisualState.RECONNECTING ->
+            "Keeping the call alive while the route changes"
+
+        state.peerConnection == PeerConnectionState.DISCONNECTED ->
+            "CALL unavailable · TALK will wait and deliver later"
+
+        state.peerRoute == PeerRoute.NEARBY_BLUETOOTH ->
+            "Best route for CALL · TALK also available"
+
+        state.peerConnection == PeerConnectionState.CONNECTED ->
+            "CALL available · TALK is safer on an unstable link"
+
+        else ->
+            "Checking whether CALL is available"
     }
 
 @Composable
