@@ -67,7 +67,7 @@ class MainActivity : HappyTalkieActivity() {
 }
 
 @Composable
-private fun WearHome(
+fun WearHome(
     state: HappyTalkieUiState,
     onCall: () -> Unit,
     onTalkStart: () -> Unit,
