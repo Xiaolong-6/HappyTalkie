@@ -319,7 +319,7 @@ private fun statusShortLabel(state: HappyTalkieUiState): String =
 private fun ConnectionStrip(state: HappyTalkieUiState) {
     val routeColor =
         when (state.peerRoute) {
-            PeerRoute.NEARBY_BLUETOOTH -> Color(0xFF83B9FF)
+            PeerRoute.NEARBY_DIRECT -> Color(0xFF83B9FF)
             PeerRoute.REMOTE_WIFI -> Color(0xFF70D7FF)
             PeerRoute.REMOTE_CELLULAR -> Color(0xFF8DD7A7)
             PeerRoute.REMOTE_INTERNET -> Color(0xFFB8C7DD)
@@ -370,7 +370,7 @@ private fun ConnectionStrip(state: HappyTalkieUiState) {
 
 private fun routeIcon(route: PeerRoute): ImageVector =
     when (route) {
-        PeerRoute.NEARBY_BLUETOOTH -> Icons.Rounded.Bluetooth
+        PeerRoute.NEARBY_DIRECT -> Icons.Rounded.Bluetooth
         PeerRoute.REMOTE_WIFI -> Icons.Rounded.Wifi
         PeerRoute.REMOTE_CELLULAR -> Icons.Rounded.NetworkCell
         PeerRoute.REMOTE_INTERNET -> Icons.Rounded.Cloud
@@ -381,7 +381,7 @@ private fun routeIcon(route: PeerRoute): ImageVector =
 
 private fun routeLabel(route: PeerRoute): String =
     when (route) {
-        PeerRoute.NEARBY_BLUETOOTH -> "Bluetooth"
+        PeerRoute.NEARBY_DIRECT -> "Bluetooth"
         PeerRoute.REMOTE_WIFI -> "Remote · Wi‑Fi"
         PeerRoute.REMOTE_CELLULAR -> "Remote · Cellular"
         PeerRoute.REMOTE_INTERNET -> "Remote connection"
@@ -398,7 +398,7 @@ private fun routeRecommendation(state: HappyTalkieUiState): String =
         state.peerConnection == PeerConnectionState.DISCONNECTED ->
             "CALL unavailable · TALK will wait and deliver later"
 
-        state.peerRoute == PeerRoute.NEARBY_BLUETOOTH ->
+        state.peerRoute == PeerRoute.NEARBY_DIRECT ->
             "Best route for CALL · TALK also available"
 
         state.peerConnection == PeerConnectionState.CONNECTED ->
