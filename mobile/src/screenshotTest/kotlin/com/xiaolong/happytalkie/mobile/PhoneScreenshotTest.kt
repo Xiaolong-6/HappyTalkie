@@ -5,6 +5,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.android.tools.screenshot.PreviewTest
 import com.xiaolong.happytalkie.core.CallVisualState
 import com.xiaolong.happytalkie.core.HappyTalkieUiState
+import com.xiaolong.happytalkie.core.PeerConnectionState
+import com.xiaolong.happytalkie.core.PeerRoute
 
 private const val PHONE_BACKGROUND = 0xFF050A16
 
@@ -24,13 +26,18 @@ fun PhoneReadyScreenshot() {
                 status = "Ready",
                 callState = CallVisualState.READY,
                 peerName = "Watch",
+                peerConnection = PeerConnectionState.CONNECTED,
+                peerRoute = PeerRoute.NEARBY_BLUETOOTH,
             ),
             onCall = {},
+            onDecline = {},
             onSpeakerToggle = {},
             onTalkStart = {},
             onTalkFinish = {},
             onTalkCancel = {},
             onPlay = {},
+            onDelete = {},
+            onClear = {},
         )
     }
 }
@@ -50,16 +57,21 @@ fun PhoneCallingScreenshot() {
             state = HappyTalkieUiState(
                 status = "Calling Watch…",
                 callState = CallVisualState.OUTGOING,
-                callEnabled = false,
+                callEnabled = true,
                 talkEnabled = false,
                 peerName = "Watch",
+                peerConnection = PeerConnectionState.CONNECTED,
+                peerRoute = PeerRoute.NEARBY_BLUETOOTH,
             ),
             onCall = {},
+            onDecline = {},
             onSpeakerToggle = {},
             onTalkStart = {},
             onTalkFinish = {},
             onTalkCancel = {},
             onPlay = {},
+            onDelete = {},
+            onClear = {},
         )
     }
 }
@@ -82,13 +94,18 @@ fun PhoneRecordingScreenshot() {
                 recording = true,
                 talkEnabled = true,
                 peerName = "Watch",
+                peerConnection = PeerConnectionState.CONNECTED,
+                peerRoute = PeerRoute.NEARBY_BLUETOOTH,
             ),
             onCall = {},
+            onDecline = {},
             onSpeakerToggle = {},
             onTalkStart = {},
             onTalkFinish = {},
             onTalkCancel = {},
             onPlay = {},
+            onDelete = {},
+            onClear = {},
         )
     }
 }
