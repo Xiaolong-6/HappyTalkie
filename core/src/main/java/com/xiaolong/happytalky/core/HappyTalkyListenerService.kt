@@ -492,20 +492,31 @@ class HappyTalkyListenerService : WearableListenerService() {
                 this
             )
 
-        if (
-            active != null ||
-            outgoing != null ||
-            (
-                incoming != null &&
-                incoming != callId
-            )
+        when (
+            PriorityCallPolicy
+                .requestDisposition(
+                    requestedCallId = callId,
+                    incomingCallId = incoming,
+                    outgoingCallId = outgoing,
+                    activeCallId = active
+                )
         ) {
-            DataLayerTransport(this)
-                .sendSignal(
-                    Protocol.CALL_BUSY,
-                    callId
-                ) { }
-            return
+            PriorityRequestDisposition
+                .IGNORE_ALREADY_ACTIVE ->
+                return
+
+            PriorityRequestDisposition
+                .REJECT_BUSY -> {
+                DataLayerTransport(this)
+                    .sendSignal(
+                        Protocol.CALL_BUSY,
+                        callId
+                    ) { }
+                return
+            }
+
+            PriorityRequestDisposition.APPLY ->
+                Unit
         }
 
         StateStore.setCallInitiator(
