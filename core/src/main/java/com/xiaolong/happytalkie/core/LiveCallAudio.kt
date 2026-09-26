@@ -132,19 +132,15 @@ object LiveCallAudio {
         starting.set(true)
 
         val appContext = context.applicationContext
-        val nodeClient = Wearable.getNodeClient(appContext)
-        val channelClient = Wearable.getChannelClient(appContext)
+        val channelClient =
+            Wearable.getChannelClient(appContext)
 
-        nodeClient.connectedNodes
-            .addOnSuccessListener { nodes ->
-                val node =
-                    nodes.firstOrNull { it.isNearby }
-                        ?: nodes.firstOrNull()
-
+        DataLayerTransport(appContext)
+            .findReachablePeer { node ->
                 if (node == null) {
                     starting.set(false)
                     callback(false)
-                    return@addOnSuccessListener
+                    return@findReachablePeer
                 }
 
                 channelClient.openChannel(
@@ -152,7 +148,8 @@ object LiveCallAudio {
                     Protocol.CALL_AUDIO_PREFIX + callId
                 ).addOnSuccessListener { opened ->
                     executor.execute {
-                        val attached = attach(appContext, opened)
+                        val attached =
+                            attach(appContext, opened)
                         starting.set(false)
                         callback(attached)
                     }
@@ -160,10 +157,6 @@ object LiveCallAudio {
                     starting.set(false)
                     callback(false)
                 }
-            }
-            .addOnFailureListener {
-                starting.set(false)
-                callback(false)
             }
     }
 
