@@ -3,6 +3,7 @@ package com.xiaolong.happytalky.mobile
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.tools.screenshot.PreviewTest
+import com.xiaolong.happytalky.core.CallMode
 import com.xiaolong.happytalky.core.CallVisualState
 import com.xiaolong.happytalky.core.HappyTalkyUiState
 import com.xiaolong.happytalky.core.PeerConnectionState
@@ -118,6 +119,52 @@ fun PhoneCallingScreenshot() {
                 status = "Calling Watch…",
                 callState = CallVisualState.OUTGOING,
                 talkEnabled = false,
+            ),
+        dark = true,
+    )
+}
+
+
+@PreviewTest
+@Preview(
+    name = "Phone priority offer",
+    widthDp = 412,
+    heightDp = 915,
+    showBackground = true,
+)
+@Composable
+fun PhonePriorityOfferScreenshot() {
+    PhoneShot(
+        state =
+            readyState().copy(
+                status = "Ringing Watch…",
+                callState = CallVisualState.OUTGOING,
+                talkEnabled = false,
+                priorityOfferAvailable = true,
+                peerPriorityCallsAllowed = true,
+            ),
+        dark = true,
+    )
+}
+
+@PreviewTest
+@Preview(
+    name = "Phone priority requested",
+    widthDp = 412,
+    heightDp = 915,
+    showBackground = true,
+)
+@Composable
+fun PhonePriorityRequestedScreenshot() {
+    PhoneShot(
+        state =
+            readyState().copy(
+                status = "Priority call requested…",
+                callState = CallVisualState.OUTGOING,
+                talkEnabled = false,
+                priorityOfferAvailable = false,
+                peerPriorityCallsAllowed = true,
+                callMode = CallMode.PRIORITY,
             ),
         dark = true,
     )

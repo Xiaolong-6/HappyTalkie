@@ -78,6 +78,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.xiaolong.happytalky.core.CallMode
 import com.xiaolong.happytalky.core.CallVisualState
 import com.xiaolong.happytalky.core.HappyTalkyActivity
 import com.xiaolong.happytalky.core.HappyTalkyUiState
@@ -98,6 +99,7 @@ class MainActivity : HappyTalkyActivity() {
                     onCall = ::handleCallAction,
                     onDecline = ::declineIncomingCall,
                     onSpeakerToggle = ::toggleSpeaker,
+                    onPriorityCall = ::requestPriorityCall,
                     onTalkStart = ::beginTalk,
                     onTalkFinish = ::finishTalk,
                     onTalkCancel = ::cancelTalk,
@@ -167,6 +169,7 @@ fun HappyTalkyPhoneScreen(
     onCall: () -> Unit,
     onDecline: () -> Unit,
     onSpeakerToggle: () -> Unit,
+    onPriorityCall: () -> Unit = {},
     onTalkStart: () -> Unit,
     onTalkFinish: () -> Unit,
     onTalkCancel: () -> Unit,
@@ -258,6 +261,8 @@ fun HappyTalkyPhoneScreen(
                 onDecline = onDecline,
                 onSpeakerToggle =
                     onSpeakerToggle,
+                onPriorityCall =
+                    onPriorityCall,
                 onTalkStart =
                     onTalkStart,
                 onTalkFinish =
@@ -928,6 +933,7 @@ private fun ConversationActions(
     onCall: () -> Unit,
     onDecline: () -> Unit,
     onSpeakerToggle: () -> Unit,
+    onPriorityCall: () -> Unit,
     onTalkStart: () -> Unit,
     onTalkFinish: () -> Unit,
     onTalkCancel: () -> Unit,
@@ -1090,19 +1096,42 @@ private fun ConversationActions(
                             ),
                     )
 
-                    HoldTalkAction(
-                        state = state,
-                        onStart =
-                            onTalkStart,
-                        onFinish =
-                            onTalkFinish,
-                        onCancel =
-                            onTalkCancel,
-                        modifier =
-                            Modifier.weight(
-                                1.35f
-                            ),
-                    )
+                    if (
+                        state.callState ==
+                            CallVisualState.OUTGOING &&
+                        state.priorityOfferAvailable
+                    ) {
+                        ActionButton(
+                            text = "PRIORITY",
+                            icon =
+                                Icons.Rounded.Call,
+                            enabled = true,
+                            container =
+                                Color(0xFFFFA000),
+                            content =
+                                Color(0xFF221500),
+                            onClick =
+                                onPriorityCall,
+                            modifier =
+                                Modifier.weight(
+                                    1.35f
+                                ),
+                        )
+                    } else {
+                        HoldTalkAction(
+                            state = state,
+                            onStart =
+                                onTalkStart,
+                            onFinish =
+                                onTalkFinish,
+                            onCancel =
+                                onTalkCancel,
+                            modifier =
+                                Modifier.weight(
+                                    1.35f
+                                ),
+                        )
+                    }
                 }
             }
         }
@@ -1415,16 +1444,37 @@ private fun currentCallText(
             "${state.peerName} is calling"
 
         CallVisualState.OUTGOING ->
-            "Calling ${state.peerName}"
+            if (
+                state.callMode ==
+                    CallMode.PRIORITY
+            ) {
+                "Priority call to ${state.peerName}"
+            } else {
+                "Calling ${state.peerName}"
+            }
 
         CallVisualState.CONNECTING ->
-            "Connecting live audio"
+            if (
+                state.callMode ==
+                    CallMode.PRIORITY
+            ) {
+                "Connecting priority call"
+            } else {
+                "Connecting live audio"
+            }
 
         CallVisualState.RECONNECTING ->
             "Reconnecting call"
 
         CallVisualState.LIVE ->
-            "Live call with ${state.peerName}"
+            if (
+                state.callMode ==
+                    CallMode.PRIORITY
+            ) {
+                "Priority call with ${state.peerName}"
+            } else {
+                "Live call with ${state.peerName}"
+            }
 
         CallVisualState.READY ->
             ""
@@ -1496,6 +1546,7 @@ private fun PhoneMessengerPreview() {
             onCall = {},
             onDecline = {},
             onSpeakerToggle = {},
+            onPriorityCall = {},
             onTalkStart = {},
             onTalkFinish = {},
             onTalkCancel = {},

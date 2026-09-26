@@ -24,6 +24,8 @@ class HappyTalkyListenerService : WearableListenerService() {
             Protocol.CALL_CANCEL -> receiveCancel(callId)
             Protocol.CALL_BUSY -> receiveBusy(callId)
             Protocol.CALL_END -> receiveEnd(callId)
+            Protocol.CALL_PRIORITY ->
+                receivePriority(callId)
         }
     }
 
@@ -241,7 +243,12 @@ class HappyTalkyListenerService : WearableListenerService() {
                                             .KEY_CAPABILITIES
                                     )
                                         ?.toSet()
-                                        .orEmpty()
+                                        .orEmpty(),
+                                priorityAutoAnswerEnabled =
+                                    map.getBoolean(
+                                        Protocol
+                                            .KEY_PRIORITY_AUTO_ANSWER
+                                    )
                             )
 
                         PeerInfoStore.save(
@@ -370,6 +377,10 @@ class HappyTalkyListenerService : WearableListenerService() {
         }
 
         StateStore.setCallInitiator(this, false)
+        StateStore.setCallMode(
+            this,
+            CallMode.NORMAL
+        )
         StateStore.setIncomingCall(this, callId)
         StateStore.setPeerConnection(
             this,
@@ -379,6 +390,79 @@ class HappyTalkyListenerService : WearableListenerService() {
         StateStore.setStatus(this, "Incoming call")
         AlertController.startIncomingCall(this, callId)
         EventBus.notifyStateChanged(this)
+    }
+
+    private fun receivePriority(
+        callId: String
+    ) {
+        if (
+            EndpointRole.fromContext(this) !=
+                EndpointRole.WATCH
+        ) {
+            return
+        }
+
+        if (
+            !PriorityCallSettings.isEnabled(
+                this
+            )
+        ) {
+            return
+        }
+
+        val incoming =
+            StateStore.incomingCall(
+                this
+            )
+        val active =
+            StateStore.activeCall(
+                this
+            )
+        val outgoing =
+            StateStore.outgoingCall(
+                this
+            )
+
+        if (
+            active != null ||
+            outgoing != null ||
+            (
+                incoming != null &&
+                incoming != callId
+            )
+        ) {
+            DataLayerTransport(this)
+                .sendSignal(
+                    Protocol.CALL_BUSY,
+                    callId
+                ) { }
+            return
+        }
+
+        StateStore.setCallInitiator(
+            this,
+            false
+        )
+        StateStore.setCallMode(
+            this,
+            CallMode.PRIORITY
+        )
+        StateStore.setIncomingCall(
+            this,
+            callId
+        )
+        StateStore.setStatus(
+            this,
+            "Priority call"
+        )
+        AlertController.startIncomingCall(
+            this,
+            callId,
+            priority = true
+        )
+        EventBus.notifyStateChanged(
+            this
+        )
     }
 
     private fun receiveAnswer(callId: String) {

@@ -8,6 +8,7 @@ object Protocol {
     const val CALL_CANCEL = "$BASE/call/cancel"
     const val CALL_BUSY = "$BASE/call/busy"
     const val CALL_END = "$BASE/call/end"
+    const val CALL_PRIORITY = "$BASE/call/priority"
     const val CALL_AUDIO_PREFIX = "$BASE/call/audio/"
     const val VOICE_PREFIX = "$BASE/voice/"
     const val DEVICE_INFO_PREFIX = "$BASE/device-info/"
@@ -22,11 +23,13 @@ object Protocol {
     const val KEY_APP_VERSION = "appVersion"
     const val KEY_PROTOCOL_VERSION = "protocolVersion"
     const val KEY_CAPABILITIES = "capabilities"
+    const val KEY_PRIORITY_AUTO_ANSWER = "priorityAutoAnswer"
 
     const val CAPABILITY_TALK_V1 = "talk_v1"
     const val CAPABILITY_CALL_V1 = "call_v1"
     const val CAPABILITY_DEVICE_INFO_V1 = "device_info_v1"
     const val CAPABILITY_CONVERSATION_V1 = "conversation_v1"
+    const val CAPABILITY_PRIORITY_CALL_V1 = "priority_call_v1"
 
     const val META_ROLE = "happytalky.role"
     const val CAPABILITY_PHONE = "happytalky_phone"
@@ -35,6 +38,7 @@ object Protocol {
     const val EXTRA_OPEN_TALK_INBOX = "happytalky.open_talk_inbox"
 
     const val CALL_TIMEOUT_MS = 20_000L
+    const val PRIORITY_OFFER_DELAY_MS = 5_000L
     const val RECONNECT_GRACE_MS = 15_000L
     const val RECONNECT_RETRY_MS = 1_500L
     const val MAX_RECORDING_MS = 60_000

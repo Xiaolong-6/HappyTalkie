@@ -60,4 +60,25 @@ class CallHistoryEntryTest {
             peer.shortLabel()
         )
     }
+    @Test
+    fun priorityCallLabelsAreExplicit() {
+        val completed =
+            CallHistoryEntry(
+                id = "priority",
+                callId = "priority-call",
+                occurredAt = 0L,
+                direction =
+                    CallDirection.OUTGOING,
+                outcome =
+                    CallOutcome.COMPLETED,
+                durationMs = 15_000L,
+                mode = CallMode.PRIORITY,
+            )
+
+        assertEquals(
+            "Priority call · 0:15",
+            completed.shortLabel()
+        )
+    }
+
 }

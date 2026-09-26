@@ -204,6 +204,10 @@ class DataLayerTransport(context: Context) {
                 info.capabilities.sorted()
             )
         )
+        request.dataMap.putBoolean(
+            Protocol.KEY_PRIORITY_AUTO_ANSWER,
+            info.priorityAutoAnswerEnabled
+        )
 
         dataClient.putDataItem(
             request.asPutDataRequest()

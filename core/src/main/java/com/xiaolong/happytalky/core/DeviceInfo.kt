@@ -11,7 +11,8 @@ data class DeviceInfo(
     val model: String,
     val appVersion: String,
     val protocolVersion: Int,
-    val capabilities: Set<String>
+    val capabilities: Set<String>,
+    val priorityAutoAnswerEnabled: Boolean = false
 ) {
     fun displayLabel(): String {
         val roleLabel =
@@ -124,7 +125,16 @@ object LocalDeviceIdentity {
                         Protocol
                             .CAPABILITY_CONVERSATION_V1
                     )
-                }
+                    add(
+                        Protocol
+                            .CAPABILITY_PRIORITY_CALL_V1
+                    )
+                },
+            priorityAutoAnswerEnabled =
+                role == EndpointRole.WATCH &&
+                    PriorityCallSettings.isEnabled(
+                        context
+                    )
         )
     }
 }
@@ -168,6 +178,10 @@ object PeerInfoStore {
             .putStringSet(
                 "$prefix.capabilities",
                 info.capabilities
+            )
+            .putBoolean(
+                "$prefix.priorityAutoAnswer",
+                info.priorityAutoAnswerEnabled
             )
             .apply()
     }
@@ -247,7 +261,12 @@ object PeerInfoStore {
                     emptySet()
                 )
                     ?.toSet()
-                    .orEmpty()
+                    .orEmpty(),
+            priorityAutoAnswerEnabled =
+                prefs.getBoolean(
+                    "$prefix.priorityAutoAnswer",
+                    false
+                )
         )
     }
 
@@ -331,5 +350,37 @@ object PeerInfoStore {
             ?.contains(
                 capability
             ) == true
+    }
+}
+
+object PriorityCallSettings {
+    private const val PREFS =
+        "happytalky_priority_call"
+    private const val KEY_ENABLED =
+        "auto_answer_enabled"
+
+    fun isEnabled(context: Context): Boolean =
+        context.getSharedPreferences(
+            PREFS,
+            Context.MODE_PRIVATE
+        ).getBoolean(
+            KEY_ENABLED,
+            false
+        )
+
+    fun setEnabled(
+        context: Context,
+        enabled: Boolean
+    ) {
+        context.getSharedPreferences(
+            PREFS,
+            Context.MODE_PRIVATE
+        )
+            .edit()
+            .putBoolean(
+                KEY_ENABLED,
+                enabled
+            )
+            .apply()
     }
 }

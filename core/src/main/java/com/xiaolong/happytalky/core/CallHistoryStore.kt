@@ -60,37 +60,77 @@ data class CallHistoryEntry(
         when (outcome) {
             CallOutcome.COMPLETED ->
                 if (durationMs > 0L) {
-                    "Call · ${displayDuration()}"
+                    if (mode == CallMode.PRIORITY) {
+                        "Priority call · ${displayDuration()}"
+                    } else {
+                        "Call · ${displayDuration()}"
+                    }
+                } else if (
+                    mode == CallMode.PRIORITY
+                ) {
+                    "Priority call ended"
                 } else {
                     "Call ended"
                 }
 
             CallOutcome.DECLINED_BY_ME ->
-                "Declined call"
+                if (mode == CallMode.PRIORITY) {
+                    "Declined priority call"
+                } else {
+                    "Declined call"
+                }
 
             CallOutcome.DECLINED_BY_PEER ->
-                "Call declined"
+                if (mode == CallMode.PRIORITY) {
+                    "Priority call declined"
+                } else {
+                    "Call declined"
+                }
 
             CallOutcome.NO_ANSWER ->
-                "No answer"
+                if (mode == CallMode.PRIORITY) {
+                    "Priority call · no answer"
+                } else {
+                    "No answer"
+                }
 
             CallOutcome.MISSED ->
-                "Missed call"
+                if (mode == CallMode.PRIORITY) {
+                    "Missed priority call"
+                } else {
+                    "Missed call"
+                }
 
             CallOutcome.CANCELLED_BY_ME ->
-                "Cancelled call"
+                if (mode == CallMode.PRIORITY) {
+                    "Cancelled priority call"
+                } else {
+                    "Cancelled call"
+                }
 
             CallOutcome.CANCELLED_BY_PEER ->
-                "Caller cancelled"
+                if (mode == CallMode.PRIORITY) {
+                    "Priority caller cancelled"
+                } else {
+                    "Caller cancelled"
+                }
 
             CallOutcome.BUSY ->
                 "Busy"
 
             CallOutcome.FAILED ->
-                "Call failed"
+                if (mode == CallMode.PRIORITY) {
+                    "Priority call failed"
+                } else {
+                    "Call failed"
+                }
 
             CallOutcome.DISCONNECTED ->
-                "Call disconnected"
+                if (mode == CallMode.PRIORITY) {
+                    "Priority call disconnected"
+                } else {
+                    "Call disconnected"
+                }
         }
 }
 
@@ -111,7 +151,8 @@ object CallHistoryStore {
         startedAt: Long = 0L,
         endedAt: Long =
             System.currentTimeMillis(),
-        mode: CallMode = CallMode.NORMAL
+        mode: CallMode =
+            StateStore.callMode(context)
     ): CallHistoryEntry {
         ensureLegacyMigrated(context)
 

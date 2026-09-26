@@ -7,6 +7,7 @@ import com.android.tools.screenshot.PreviewTest
 import com.xiaolong.happytalky.core.CallDirection
 import com.xiaolong.happytalky.core.CallHistoryEntry
 import com.xiaolong.happytalky.core.CallOutcome
+import com.xiaolong.happytalky.core.CallMode
 import com.xiaolong.happytalky.core.CallVisualState
 import com.xiaolong.happytalky.core.HappyTalkyUiState
 import com.xiaolong.happytalky.core.PeerConnectionState
@@ -103,6 +104,37 @@ fun WatchIncomingScreenshot() {
                 status = "Phone is calling",
                 callState = CallVisualState.INCOMING,
                 peerName = "Phone",
+                peerConnection = PeerConnectionState.CONNECTED,
+                peerRoute = PeerRoute.NEARBY_DIRECT,
+            ),
+            onCall = {},
+            onDecline = {},
+            onTalkStart = {},
+            onTalkFinish = {},
+            onTalkCancel = {},
+            onPlay = {},
+        )
+    }
+}
+
+
+@PreviewTest
+@Preview(
+    name = "Watch priority incoming",
+    device = WATCH_DEVICE,
+    showBackground = true,
+    backgroundColor = WATCH_BACKGROUND,
+)
+@Composable
+fun WatchPriorityIncomingScreenshot() {
+    MaterialTheme {
+        WearHome(
+            state = HappyTalkyUiState(
+                status = "Priority call",
+                callState = CallVisualState.INCOMING,
+                callMode = CallMode.PRIORITY,
+                localPriorityCallsAllowed = true,
+                peerName = "Phone · Pixel 10 Pro",
                 peerConnection = PeerConnectionState.CONNECTED,
                 peerRoute = PeerRoute.NEARBY_DIRECT,
             ),
@@ -254,6 +286,7 @@ fun WatchTalkInboxScreenshot() {
             callHistory = watchCallHistory,
             unreadCount = 1,
             peerName = "Phone",
+            priorityCallsEnabled = true,
             onBack = {},
             onPlay = {},
         )

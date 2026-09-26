@@ -62,6 +62,21 @@ Signaling uses transient `MessageClient` paths:
 - `/happytalky/call/cancel`
 - `/happytalky/call/busy`
 - `/happytalky/call/end`
+- `/happytalky/call/priority`
+
+### Priority CALL
+
+Priority CALL is an explicit escalation layered on top of an ordinary ringing CALL.
+
+- Watch support is advertised through `priority_call_v1`.
+- Watch auto-answer permission defaults **off** and is published in device-info separately from protocol support.
+- Phone never shows the Priority action unless the Watch both supports the protocol and currently advertises that opt-in.
+- The Priority action appears only after the ordinary call has rung for at least 5 seconds.
+- Priority CALL reuses the existing call ID; it does not create a parallel session.
+- On Watch, receipt of a Priority request changes the call mode and launches the same visible incoming-call presentation.
+- Auto-answer runs only after the Watch Activity is actually resumed/visible. A background service never starts microphone capture silently.
+- If Android does not surface the Watch Activity, the call remains visibly ringing and can still be answered manually.
+- CALL history stores `NORMAL` versus `PRIORITY` so escalated calls remain auditable.
 
 The intended lifecycle is:
 
@@ -98,7 +113,7 @@ Audio parameters:
 - acoustic echo cancellation when available
 - noise suppression when available
 
-Phone starts on the system-selected communication route. Speaker is an explicit user toggle. Wear requests its built-in communication speaker when available.
+Phone starts on the system-selected communication route. Speaker is an explicit user toggle. Wear requests its built-in communication speaker when available. Priority CALL uses the same audio path after answer; it changes escalation/answer policy, not transport or microphone behavior.
 
 A foreground service keeps ringing/live-call state alive in the background and exposes Cancel/End from the ongoing notification.
 
@@ -190,6 +205,7 @@ Compose Material 3 follows a voice-messenger information architecture:
 - long-press any TALK to enter multi-selection; the temporary top bar provides select-all and delete;
 - current CALL state appears inside the conversation timeline instead of occupying a permanent dashboard card;
 - bottom action bar owns the two primary actions: CALL and press-and-hold TALK;
+- during an eligible unanswered outgoing CALL, the TALK-side action temporarily becomes **PRIORITY** after the delay;
 - incoming CALL temporarily replaces the bottom actions with Decline / Answer;
 - live CALL replaces the right action with the Speaker toggle;
 - light/dark ColorSchemes follow the Android system theme while keeping the HappyTalky brand blue stable.
@@ -206,7 +222,9 @@ Wear Material 3 presents a shorter wrist-first loop:
 - Inbox supports touch scrolling and the watch rotary/crown;
 - unread incoming TALK is counted and bold/highlighted in chronological history, and loses emphasis after playback completes;
 - each TALK row can be swiped left to reveal Delete;
-- recent CALL history is shown below TALK history, and the latest CALL is summarized on the home screen.
+- recent CALL history is shown below TALK history, and the latest CALL is summarized on the home screen;
+- Inbox exposes the explicit **Priority calls** opt-in; enabling it republishes Watch device-info immediately;
+- priority incoming presentation is visually labelled before the resumed foreground UI performs auto-answer.
 
 Bulk history management and secondary explanation stay on the phone.
 
@@ -220,6 +238,8 @@ CI renders Compose screenshot previews for:
 - recording;
 - offline;
 - live;
-- reconnecting.
+- reconnecting;
+- phone Priority offer/requested;
+- Watch Priority incoming and Priority setting.
 
 Phone previews use a 412 x 915 dp surface. Wear previews use a 192 dp round device specification.
