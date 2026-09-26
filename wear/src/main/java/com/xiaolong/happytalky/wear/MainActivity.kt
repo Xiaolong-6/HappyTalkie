@@ -1256,7 +1256,7 @@ fun WearTalkInbox(
                         Alignment.BottomCenter
                     )
                     .padding(
-                        bottom = 10.dp
+                        bottom = 24.dp
                     ),
             )
         }
@@ -1422,8 +1422,8 @@ private fun WearTextComposer(
             }
         },
         modifier = modifier
-            .width(132.dp)
-            .height(34.dp),
+            .width(120.dp)
+            .height(30.dp),
         colors =
             CardDefaults.cardColors(
                 containerColor =
@@ -1457,7 +1457,7 @@ private fun WearTextComposer(
                 style =
                     MaterialTheme
                         .typography
-                        .labelMedium,
+                        .labelSmall,
                 color =
                     if (enabled) {
                         Color.White
