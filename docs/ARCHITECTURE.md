@@ -240,7 +240,7 @@ Wear Material 3 presents a shorter wrist-first loop:
 - Inbox supports touch scrolling and the watch rotary/crown;
 - unread incoming TALK is counted and bold/highlighted in chronological history, and loses emphasis after playback completes;
 - TEXT, TALK and CALL rows are interleaved by timestamp; TALK rows can be swiped left to reveal Delete;
-- recent CALL history is shown below TALK history, and the latest CALL is summarized on the home screen;
+- persisted CALL events are interleaved with TEXT/TALK by timestamp, while the latest CALL is still summarized on the home screen;
 - Inbox exposes the explicit **Priority calls** opt-in; enabling it republishes Watch device-info immediately;
 - priority incoming presentation is visually labelled before the resumed foreground UI performs auto-answer;
 - a fixed compact Message composer launches the system RemoteInput/IME with emoji and dictation support.
