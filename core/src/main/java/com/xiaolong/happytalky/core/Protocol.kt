@@ -11,12 +11,14 @@ object Protocol {
     const val CALL_PRIORITY = "$BASE/call/priority"
     const val CALL_AUDIO_PREFIX = "$BASE/call/audio/"
     const val VOICE_PREFIX = "$BASE/voice/"
+    const val TEXT_PREFIX = "$BASE/text/"
     const val DEVICE_INFO_PREFIX = "$BASE/device-info/"
 
     const val KEY_ID = "id"
     const val KEY_ORIGIN = "origin"
     const val KEY_CREATED_AT = "createdAt"
     const val KEY_AUDIO = "audio"
+    const val KEY_TEXT = "text"
     const val KEY_ROLE = "role"
     const val KEY_MANUFACTURER = "manufacturer"
     const val KEY_MODEL = "model"
@@ -30,6 +32,7 @@ object Protocol {
     const val CAPABILITY_DEVICE_INFO_V1 = "device_info_v1"
     const val CAPABILITY_CONVERSATION_V1 = "conversation_v1"
     const val CAPABILITY_PRIORITY_CALL_V1 = "priority_call_v1"
+    const val CAPABILITY_TEXT_V1 = "text_v1"
 
     const val META_ROLE = "happytalky.role"
     const val CAPABILITY_PHONE = "happytalky_phone"
@@ -42,6 +45,7 @@ object Protocol {
     const val RECONNECT_GRACE_MS = 15_000L
     const val RECONNECT_RETRY_MS = 1_500L
     const val MAX_RECORDING_MS = 60_000
+    const val MAX_TEXT_LENGTH = 500
 
     const val AUDIO_SAMPLE_RATE = 16_000
 }
