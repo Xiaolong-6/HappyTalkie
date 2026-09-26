@@ -261,6 +261,75 @@ class HappyTalkyListenerService : WearableListenerService() {
                     }
 
                     path.startsWith(
+                        Protocol.MESSAGE_PREFIX
+                    ) -> {
+                        val map =
+                            DataMapItem
+                                .fromDataItem(item)
+                                .dataMap
+                        val origin =
+                            map.getString(
+                                Protocol.KEY_ORIGIN
+                            )
+                        if (
+                            origin ==
+                                role.wireValue
+                        ) {
+                            return@forEach
+                        }
+
+                        val textId =
+                            map.getString(
+                                Protocol.KEY_ID
+                            )
+                                ?: path
+                                    .substringAfterLast(
+                                        '/'
+                                    )
+                        val createdAt =
+                            map.getLong(
+                                Protocol
+                                    .KEY_CREATED_AT
+                            )
+                        val text =
+                            map.getString(
+                                Protocol.KEY_TEXT
+                            )
+                                ?: return@forEach
+
+                        val inserted =
+                            TextMessageStore
+                                .saveIncoming(
+                                    this,
+                                    textId,
+                                    createdAt,
+                                    text
+                                )
+                                ?: return@forEach
+
+                        Tasks.await(
+                            dataClient
+                                .deleteDataItems(
+                                    item.uri
+                                )
+                        )
+
+                        if (inserted) {
+                            StateStore.setStatus(
+                                this,
+                                "New text message"
+                            )
+                            AlertController
+                                .postTextNotification(
+                                    this
+                                )
+                            EventBus.notifyStateChanged(
+                                this
+                            )
+                        }
+                    }
+
+                    path.startsWith(
                         Protocol.VOICE_PREFIX
                     ) -> {
                         val map =
@@ -423,20 +492,31 @@ class HappyTalkyListenerService : WearableListenerService() {
                 this
             )
 
-        if (
-            active != null ||
-            outgoing != null ||
-            (
-                incoming != null &&
-                incoming != callId
-            )
+        when (
+            PriorityCallPolicy
+                .requestDisposition(
+                    requestedCallId = callId,
+                    incomingCallId = incoming,
+                    outgoingCallId = outgoing,
+                    activeCallId = active
+                )
         ) {
-            DataLayerTransport(this)
-                .sendSignal(
-                    Protocol.CALL_BUSY,
-                    callId
-                ) { }
-            return
+            PriorityRequestDisposition
+                .IGNORE_ALREADY_ACTIVE ->
+                return
+
+            PriorityRequestDisposition
+                .REJECT_BUSY -> {
+                DataLayerTransport(this)
+                    .sendSignal(
+                        Protocol.CALL_BUSY,
+                        callId
+                    ) { }
+                return
+            }
+
+            PriorityRequestDisposition.APPLY ->
+                Unit
         }
 
         StateStore.setCallInitiator(

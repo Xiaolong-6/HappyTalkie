@@ -5,6 +5,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.android.tools.screenshot.PreviewTest
 import com.xiaolong.happytalky.core.CallMode
 import com.xiaolong.happytalky.core.CallVisualState
+import com.xiaolong.happytalky.core.ConversationDirection
+import com.xiaolong.happytalky.core.ConversationItem
+import com.xiaolong.happytalky.core.ConversationItemType
+import com.xiaolong.happytalky.core.DeliveryState
 import com.xiaolong.happytalky.core.HappyTalkyUiState
 import com.xiaolong.happytalky.core.PeerConnectionState
 import com.xiaolong.happytalky.core.PeerRoute
@@ -37,6 +41,54 @@ private val sampleMessages =
         ),
     )
 
+
+private val sampleConversation =
+    listOf(
+        ConversationItem(
+            id = "in-1",
+            type = ConversationItemType.VOICE,
+            direction = ConversationDirection.INCOMING,
+            createdAt = 1_760_000_000_000L,
+            deliveryState = DeliveryState.DELIVERED,
+            audioFileName = "in-1.m4a",
+            durationMs = 8_000L,
+        ),
+        ConversationItem(
+            id = "text-in",
+            type = ConversationItemType.TEXT,
+            direction = ConversationDirection.INCOMING,
+            createdAt = 1_760_000_030_000L,
+            deliveryState = DeliveryState.DELIVERED,
+            text = "Dinner is ready ❤️",
+        ),
+        ConversationItem(
+            id = "out-1",
+            type = ConversationItemType.VOICE,
+            direction = ConversationDirection.OUTGOING,
+            createdAt = 1_760_000_060_000L,
+            deliveryState = DeliveryState.QUEUED,
+            audioFileName = "out-1.m4a",
+            durationMs = 12_000L,
+        ),
+        ConversationItem(
+            id = "text-out",
+            type = ConversationItemType.TEXT,
+            direction = ConversationDirection.OUTGOING,
+            createdAt = 1_760_000_090_000L,
+            deliveryState = DeliveryState.QUEUED,
+            text = "Coming! 👍",
+        ),
+        ConversationItem(
+            id = "in-2",
+            type = ConversationItemType.VOICE,
+            direction = ConversationDirection.INCOMING,
+            createdAt = 1_760_000_120_000L,
+            deliveryState = DeliveryState.DELIVERED,
+            audioFileName = "in-2.m4a",
+            durationMs = 5_000L,
+        ),
+    )
+
 private fun readyState(
     messages: List<VoiceMessage> = sampleMessages,
 ) =
@@ -48,6 +100,7 @@ private fun readyState(
         peerName = "Watch",
         peerConnection = PeerConnectionState.CONNECTED,
         peerRoute = PeerRoute.NEARBY_DIRECT,
+        textEnabled = true,
         messages = messages,
     )
 
@@ -100,6 +153,26 @@ fun PhoneLightConversationScreenshot() {
 fun PhoneDarkConversationScreenshot() {
     PhoneShot(
         state = readyState(),
+        dark = true,
+    )
+}
+
+
+@PreviewTest
+@Preview(
+    name = "Phone mixed conversation",
+    widthDp = 412,
+    heightDp = 915,
+    showBackground = true,
+)
+@Composable
+fun PhoneMixedConversationScreenshot() {
+    PhoneShot(
+        state =
+            readyState().copy(
+                timeline =
+                    sampleConversation
+            ),
         dark = true,
     )
 }

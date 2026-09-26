@@ -8,6 +8,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,13 +41,17 @@ import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.NetworkCell
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Send
+import androidx.compose.material.icons.rounded.SentimentSatisfiedAlt
 import androidx.compose.material.icons.rounded.VolumeOff
 import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -59,6 +65,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,17 +80,25 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.xiaolong.happytalky.core.CallHistoryEntry
 import com.xiaolong.happytalky.core.CallMode
 import com.xiaolong.happytalky.core.CallVisualState
+import com.xiaolong.happytalky.core.ConversationDirection
+import com.xiaolong.happytalky.core.ConversationItem
+import com.xiaolong.happytalky.core.ConversationItemType
+import com.xiaolong.happytalky.core.DeliveryState
 import com.xiaolong.happytalky.core.HappyTalkyActivity
 import com.xiaolong.happytalky.core.HappyTalkyUiState
 import com.xiaolong.happytalky.core.PeerConnectionState
 import com.xiaolong.happytalky.core.PeerRoute
+import com.xiaolong.happytalky.core.Protocol
+import com.xiaolong.happytalky.core.TextMessageStore
 import com.xiaolong.happytalky.core.VoiceDirection
 import com.xiaolong.happytalky.core.VoiceMessage
 
@@ -100,6 +115,9 @@ class MainActivity : HappyTalkyActivity() {
                     onDecline = ::declineIncomingCall,
                     onSpeakerToggle = ::toggleSpeaker,
                     onPriorityCall = ::requestPriorityCall,
+                    onSendText = ::sendText,
+                    onTextVisible =
+                        ::markTextMessagesRead,
                     onTalkStart = ::beginTalk,
                     onTalkFinish = ::finishTalk,
                     onTalkCancel = ::cancelTalk,
@@ -170,6 +188,8 @@ fun HappyTalkyPhoneScreen(
     onDecline: () -> Unit,
     onSpeakerToggle: () -> Unit,
     onPriorityCall: () -> Unit = {},
+    onSendText: (String) -> Unit = {},
+    onTextVisible: () -> Unit = {},
     onTalkStart: () -> Unit,
     onTalkFinish: () -> Unit,
     onTalkCancel: () -> Unit,
@@ -181,10 +201,66 @@ fun HappyTalkyPhoneScreen(
         mutableStateOf(emptySet<String>())
     }
 
+    LaunchedEffect(
+        state.unreadTextCount
+    ) {
+        if (state.unreadTextCount > 0) {
+            onTextVisible()
+        }
+    }
+
     val messages =
         remember(state.messages) {
             state.messages.sortedBy {
                 it.createdAt
+            }
+        }
+    val voiceById =
+        remember(messages) {
+            messages.associateBy {
+                it.id
+            }
+        }
+    val callById =
+        remember(state.callHistory) {
+            state.callHistory.associateBy {
+                it.id
+            }
+        }
+    val timeline =
+        remember(
+            state.timeline,
+            messages
+        ) {
+            if (state.timeline.isNotEmpty()) {
+                state.timeline.sortedBy {
+                    it.createdAt
+                }
+            } else {
+                messages.map {
+                    ConversationItem(
+                        id = it.id,
+                        type =
+                            ConversationItemType.VOICE,
+                        direction =
+                            if (
+                                it.direction ==
+                                    VoiceDirection.INCOMING
+                            ) {
+                                ConversationDirection.INCOMING
+                            } else {
+                                ConversationDirection.OUTGOING
+                            },
+                        createdAt = it.createdAt,
+                        readAt = it.readAt,
+                        deliveryState =
+                            it.deliveryState,
+                        audioFileName =
+                            it.file.name,
+                        durationMs =
+                            it.durationMs
+                    )
+                }
             }
         }
 
@@ -196,17 +272,25 @@ fun HappyTalkyPhoneScreen(
             CallVisualState.READY
 
     LaunchedEffect(
-        messages.size,
+        timeline.size,
         state.callState
     ) {
         val itemCount =
-            messages.size +
+            timeline.size +
                 if (hasCallEvent) 1 else 0
 
         if (itemCount > 0) {
             listState.scrollToItem(
                 itemCount - 1
             )
+        }
+    }
+
+    LaunchedEffect(
+        state.unreadTextCount
+    ) {
+        if (state.unreadTextCount > 0) {
+            onTextVisible()
         }
     }
 
@@ -263,6 +347,8 @@ fun HappyTalkyPhoneScreen(
                     onSpeakerToggle,
                 onPriorityCall =
                     onPriorityCall,
+                onSendText =
+                    onSendText,
                 onTalkStart =
                     onTalkStart,
                 onTalkFinish =
@@ -273,7 +359,9 @@ fun HappyTalkyPhoneScreen(
         },
     ) { innerPadding ->
         ConversationTimeline(
-            messages = messages,
+            timeline = timeline,
+            voiceById = voiceById,
+            callById = callById,
             peerName = state.peerName,
             state = state,
             selectedIds = selectedIds,
@@ -483,7 +571,9 @@ private fun SelectionHeader(
 
 @Composable
 private fun ConversationTimeline(
-    messages: List<VoiceMessage>,
+    timeline: List<ConversationItem>,
+    voiceById: Map<String, VoiceMessage>,
+    callById: Map<String, CallHistoryEntry>,
     peerName: String,
     state: HappyTalkyUiState,
     selectedIds: Set<String>,
@@ -508,7 +598,7 @@ private fun ConversationTimeline(
         verticalArrangement =
             Arrangement.spacedBy(8.dp),
     ) {
-        if (messages.isEmpty()) {
+        if (timeline.isEmpty()) {
             item {
                 EmptyConversation(
                     peerName = peerName
@@ -517,24 +607,49 @@ private fun ConversationTimeline(
         }
 
         items(
-            items = messages,
+            items = timeline,
             key = { it.id },
-        ) { message ->
-            VoiceBubble(
-                message = message,
-                peerName = peerName,
-                selected =
-                    message.id in
-                        selectedIds,
-                onTap = {
-                    onMessageTap(message)
-                },
-                onLongPress = {
-                    onMessageLongPress(
-                        message
+        ) { item ->
+            when (item.type) {
+                ConversationItemType.VOICE -> {
+                    voiceById[item.id]
+                        ?.let { message ->
+                            VoiceBubble(
+                                message = message,
+                                peerName = peerName,
+                                selected =
+                                    message.id in
+                                        selectedIds,
+                                onTap = {
+                                    onMessageTap(
+                                        message
+                                    )
+                                },
+                                onLongPress = {
+                                    onMessageLongPress(
+                                        message
+                                    )
+                                },
+                            )
+                        }
+                }
+
+                ConversationItemType.TEXT -> {
+                    TextBubble(
+                        item = item,
+                        peerName = peerName
                     )
-                },
-            )
+                }
+
+                ConversationItemType.CALL -> {
+                    callById[item.id]
+                        ?.let {
+                            HistoricalCallEvent(
+                                entry = it
+                            )
+                        }
+                }
+            }
         }
 
         if (
@@ -589,7 +704,7 @@ private fun EmptyConversation(
 
         Text(
             text =
-                "No TALK messages yet",
+                "No messages yet",
             style =
                 MaterialTheme
                     .typography
@@ -602,7 +717,7 @@ private fun EmptyConversation(
 
         Text(
             text =
-                "Hold TALK to send a voice message to $peerName.",
+                "Hold TALK or send a message to $peerName.",
             style =
                 MaterialTheme
                     .typography
@@ -865,6 +980,244 @@ private fun bubbleTextColor(
     }
 
 @Composable
+private fun TextBubble(
+    item: ConversationItem,
+    peerName: String
+) {
+    val outgoing =
+        item.direction ==
+            ConversationDirection.OUTGOING
+    val text =
+        item.text
+            ?: return
+
+    Row(
+        modifier =
+            Modifier.fillMaxWidth(),
+        horizontalArrangement =
+            if (outgoing) {
+                Arrangement.End
+            } else {
+                Arrangement.Start
+            },
+    ) {
+        Column(
+            horizontalAlignment =
+                if (outgoing) {
+                    Alignment.End
+                } else {
+                    Alignment.Start
+                },
+            modifier =
+                Modifier.widthIn(
+                    max = 300.dp
+                ),
+        ) {
+            if (!outgoing) {
+                Text(
+                    text = peerName,
+                    style =
+                        MaterialTheme
+                            .typography
+                            .labelSmall,
+                    color =
+                        MaterialTheme
+                            .colorScheme
+                            .onSurfaceVariant,
+                    modifier =
+                        Modifier.padding(
+                            start = 8.dp,
+                            bottom = 3.dp,
+                        ),
+                )
+            }
+
+            Surface(
+                shape =
+                    RoundedCornerShape(
+                        topStart = 20.dp,
+                        topEnd = 20.dp,
+                        bottomStart =
+                            if (outgoing) {
+                                20.dp
+                            } else {
+                                6.dp
+                            },
+                        bottomEnd =
+                            if (outgoing) {
+                                6.dp
+                            } else {
+                                20.dp
+                            },
+                    ),
+                color =
+                    if (outgoing) {
+                        BrandBlue
+                    } else {
+                        MaterialTheme
+                            .colorScheme
+                            .surfaceVariant
+                    },
+            ) {
+                Column(
+                    modifier =
+                        Modifier.padding(
+                            horizontal = 13.dp,
+                            vertical = 9.dp,
+                        ),
+                ) {
+                    Text(
+                        text = text,
+                        style =
+                            MaterialTheme
+                                .typography
+                                .bodyLarge,
+                        color =
+                            if (outgoing) {
+                                Color.White
+                            } else {
+                                MaterialTheme
+                                    .colorScheme
+                                    .onSurface
+                            },
+                    )
+
+                    Spacer(
+                        Modifier.height(3.dp)
+                    )
+
+                    Text(
+                        text =
+                            textMeta(item),
+                        style =
+                            MaterialTheme
+                                .typography
+                                .labelSmall,
+                        color =
+                            if (outgoing) {
+                                Color.White.copy(
+                                    alpha = 0.7f
+                                )
+                            } else {
+                                MaterialTheme
+                                    .colorScheme
+                                    .onSurfaceVariant
+                            },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HistoricalCallEvent(
+    entry: CallHistoryEntry
+) {
+    Row(
+        modifier =
+            Modifier.fillMaxWidth(),
+        horizontalArrangement =
+            Arrangement.Center,
+    ) {
+        Surface(
+            shape = CircleShape,
+            color =
+                MaterialTheme
+                    .colorScheme
+                    .surfaceVariant,
+        ) {
+            Row(
+                modifier =
+                    Modifier.padding(
+                        horizontal = 12.dp,
+                        vertical = 7.dp,
+                    ),
+                verticalAlignment =
+                    Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector =
+                        Icons.Rounded.Call,
+                    contentDescription = null,
+                    modifier =
+                        Modifier.size(15.dp),
+                    tint =
+                        if (
+                            entry.mode ==
+                                CallMode.PRIORITY
+                        ) {
+                            Color(0xFFFFA000)
+                        } else {
+                            MaterialTheme
+                                .colorScheme
+                                .onSurfaceVariant
+                        },
+                )
+                Spacer(
+                    Modifier.width(6.dp)
+                )
+                Text(
+                    text =
+                        entry.shortLabel() +
+                            " · " +
+                            entry.displayTime(),
+                    style =
+                        MaterialTheme
+                            .typography
+                            .labelMedium,
+                    color =
+                        MaterialTheme
+                            .colorScheme
+                            .onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+private fun textMeta(
+    item: ConversationItem
+): String {
+    val time =
+        java.text.SimpleDateFormat(
+            "HH:mm",
+            java.util.Locale.getDefault()
+        ).format(
+            java.util.Date(
+                item.createdAt
+            )
+        )
+
+    if (
+        item.direction !=
+            ConversationDirection.OUTGOING
+    ) {
+        return time
+    }
+
+    val state =
+        when (item.deliveryState) {
+            DeliveryState.LOCAL ->
+                "Saved"
+
+            DeliveryState.QUEUED ->
+                "Queued"
+
+            DeliveryState.SENT ->
+                "Sent"
+
+            DeliveryState.DELIVERED ->
+                "Delivered"
+
+            DeliveryState.READ ->
+                "Read"
+        }
+
+    return "$state · $time"
+}
+
+@Composable
 private fun ActiveCallEvent(
     state: HappyTalkyUiState
 ) {
@@ -934,208 +1287,317 @@ private fun ConversationActions(
     onDecline: () -> Unit,
     onSpeakerToggle: () -> Unit,
     onPriorityCall: () -> Unit,
+    onSendText: (String) -> Unit,
     onTalkStart: () -> Unit,
     onTalkFinish: () -> Unit,
     onTalkCancel: () -> Unit,
 ) {
     Surface(
+        modifier =
+            Modifier.navigationBarsPadding(),
         color =
             MaterialTheme
                 .colorScheme
                 .surface,
         shadowElevation = 8.dp,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(
-                    horizontal = 12.dp,
-                    vertical = 10.dp,
-                ),
-            horizontalArrangement =
-                Arrangement.spacedBy(
-                    10.dp
-                ),
-            verticalAlignment =
-                Alignment.CenterVertically,
-        ) {
-            when (
-                state.callState
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        horizontal = 12.dp,
+                        vertical = 10.dp,
+                    ),
+                horizontalArrangement =
+                    Arrangement.spacedBy(
+                        10.dp
+                    ),
+                verticalAlignment =
+                    Alignment.CenterVertically,
             ) {
-                CallVisualState.INCOMING -> {
-                    ActionButton(
-                        text = "DECLINE",
-                        icon =
-                            Icons.Rounded
-                                .CallEnd,
-                        enabled = true,
-                        container =
-                            CallRed,
-                        onClick =
-                            onDecline,
-                        modifier =
-                            Modifier.weight(
-                                1f
-                            ),
-                    )
-
-                    ActionButton(
-                        text = "ANSWER",
-                        icon =
-                            Icons.Rounded
-                                .Call,
-                        enabled = true,
-                        container =
-                            CallGreen,
-                        onClick =
-                            onCall,
-                        modifier =
-                            Modifier.weight(
-                                1f
-                            ),
-                    )
-                }
-
-                CallVisualState.LIVE -> {
-                    ActionButton(
-                        text = "END",
-                        icon =
-                            Icons.Rounded
-                                .CallEnd,
-                        enabled = true,
-                        container =
-                            CallRed,
-                        onClick =
-                            onCall,
-                        modifier =
-                            Modifier.weight(
-                                1f
-                            ),
-                    )
-
-                    ActionButton(
-                        text =
-                            if (
-                                state
-                                    .speakerOn
-                            ) {
-                                "SPEAKER ON"
-                            } else {
-                                "SPEAKER"
-                            },
-                        icon =
-                            if (
-                                state
-                                    .speakerOn
-                            ) {
-                                Icons.Rounded
-                                    .VolumeUp
-                            } else {
-                                Icons.Rounded
-                                    .VolumeOff
-                            },
-                        enabled = true,
-                        container =
-                            MaterialTheme
-                                .colorScheme
-                                .surfaceVariant,
-                        content =
-                            MaterialTheme
-                                .colorScheme
-                                .onSurface,
-                        onClick =
-                            onSpeakerToggle,
-                        modifier =
-                            Modifier.weight(
-                                1f
-                            ),
-                    )
-                }
-
-                else -> {
-                    ActionButton(
-                        text =
-                            callActionLabel(
-                                state
-                            ),
-                        icon =
-                            if (
-                                state.callState ==
-                                    CallVisualState
-                                        .READY
-                            ) {
-                                Icons.Rounded
-                                    .Call
-                            } else {
-                                Icons.Rounded
-                                    .CallEnd
-                            },
-                        enabled =
-                            state
-                                .callEnabled,
-                        container =
-                            if (
-                                state.callState ==
-                                    CallVisualState
-                                        .READY
-                            ) {
-                                MaterialTheme
-                                    .colorScheme
-                                    .primary
-                            } else {
-                                MaterialTheme
-                                    .colorScheme
-                                    .error
-                            },
-                        onClick =
-                            onCall,
-                        modifier =
-                            Modifier.weight(
-                                1f
-                            ),
-                    )
-
-                    if (
-                        state.callState ==
-                            CallVisualState.OUTGOING &&
-                        state.priorityOfferAvailable
-                    ) {
+                when (
+                    state.callState
+                ) {
+                    CallVisualState.INCOMING -> {
                         ActionButton(
-                            text = "PRIORITY",
+                            text = "DECLINE",
                             icon =
-                                Icons.Rounded.Call,
+                                Icons.Rounded
+                                    .CallEnd,
                             enabled = true,
                             container =
-                                Color(0xFFFFA000),
-                            content =
-                                Color(0xFF221500),
+                                CallRed,
                             onClick =
-                                onPriorityCall,
+                                onDecline,
                             modifier =
                                 Modifier.weight(
-                                    1.35f
+                                    1f
                                 ),
                         )
-                    } else {
-                        HoldTalkAction(
-                            state = state,
-                            onStart =
-                                onTalkStart,
-                            onFinish =
-                                onTalkFinish,
-                            onCancel =
-                                onTalkCancel,
+    
+                        ActionButton(
+                            text = "ANSWER",
+                            icon =
+                                Icons.Rounded
+                                    .Call,
+                            enabled = true,
+                            container =
+                                CallGreen,
+                            onClick =
+                                onCall,
                             modifier =
                                 Modifier.weight(
-                                    1.35f
+                                    1f
                                 ),
                         )
                     }
+    
+                    CallVisualState.LIVE -> {
+                        ActionButton(
+                            text = "END",
+                            icon =
+                                Icons.Rounded
+                                    .CallEnd,
+                            enabled = true,
+                            container =
+                                CallRed,
+                            onClick =
+                                onCall,
+                            modifier =
+                                Modifier.weight(
+                                    1f
+                                ),
+                        )
+    
+                        ActionButton(
+                            text =
+                                if (
+                                    state
+                                        .speakerOn
+                                ) {
+                                    "SPEAKER ON"
+                                } else {
+                                    "SPEAKER"
+                                },
+                            icon =
+                                if (
+                                    state
+                                        .speakerOn
+                                ) {
+                                    Icons.Rounded
+                                        .VolumeUp
+                                } else {
+                                    Icons.Rounded
+                                        .VolumeOff
+                                },
+                            enabled = true,
+                            container =
+                                MaterialTheme
+                                    .colorScheme
+                                    .surfaceVariant,
+                            content =
+                                MaterialTheme
+                                    .colorScheme
+                                    .onSurface,
+                            onClick =
+                                onSpeakerToggle,
+                            modifier =
+                                Modifier.weight(
+                                    1f
+                                ),
+                        )
+                    }
+    
+                    else -> {
+                        ActionButton(
+                            text =
+                                callActionLabel(
+                                    state
+                                ),
+                            icon =
+                                if (
+                                    state.callState ==
+                                        CallVisualState
+                                            .READY
+                                ) {
+                                    Icons.Rounded
+                                        .Call
+                                } else {
+                                    Icons.Rounded
+                                        .CallEnd
+                                },
+                            enabled =
+                                state
+                                    .callEnabled,
+                            container =
+                                if (
+                                    state.callState ==
+                                        CallVisualState
+                                            .READY
+                                ) {
+                                    MaterialTheme
+                                        .colorScheme
+                                        .primary
+                                } else {
+                                    MaterialTheme
+                                        .colorScheme
+                                        .error
+                                },
+                            onClick =
+                                onCall,
+                            modifier =
+                                Modifier.weight(
+                                    1f
+                                ),
+                        )
+    
+                        if (
+                            state.callState ==
+                                CallVisualState.OUTGOING &&
+                            state.priorityOfferAvailable
+                        ) {
+                            ActionButton(
+                                text = "PRIORITY",
+                                icon =
+                                    Icons.Rounded.Call,
+                                enabled = true,
+                                container =
+                                    Color(0xFFFFA000),
+                                content =
+                                    Color(0xFF221500),
+                                onClick =
+                                    onPriorityCall,
+                                modifier =
+                                    Modifier.weight(
+                                        1.35f
+                                    ),
+                            )
+                        } else {
+                            HoldTalkAction(
+                                state = state,
+                                onStart =
+                                    onTalkStart,
+                                onFinish =
+                                    onTalkFinish,
+                                onCancel =
+                                    onTalkCancel,
+                                modifier =
+                                    Modifier.weight(
+                                        1.35f
+                                    ),
+                            )
+                        }
+                    }
                 }
             }
+            PhoneTextComposer(
+                enabled = state.textEnabled,
+                onSend = onSendText,
+            )
         }
     }
+}
+
+@Composable
+private fun PhoneTextComposer(
+    enabled: Boolean,
+    onSend: (String) -> Unit,
+) {
+    var draft by rememberSaveable {
+        mutableStateOf("")
+    }
+
+    fun submit() {
+        val value =
+            draft.trim()
+        if (
+            !enabled ||
+            value.isEmpty()
+        ) {
+            return
+        }
+
+        onSend(value)
+        draft = ""
+    }
+
+    OutlinedTextField(
+        value = draft,
+        onValueChange = {
+            draft =
+                TextMessageStore.limit(
+                    it
+                )
+        },
+        enabled = enabled,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                start = 12.dp,
+                end = 12.dp,
+                bottom = 10.dp,
+            ),
+        singleLine = true,
+        shape =
+            RoundedCornerShape(
+                18.dp
+            ),
+        placeholder = {
+            Text(
+                if (enabled) {
+                    "Message…"
+                } else {
+                    "Update peer for text"
+                }
+            )
+        },
+        keyboardOptions =
+            KeyboardOptions(
+                imeAction =
+                    ImeAction.Send
+            ),
+        keyboardActions =
+            KeyboardActions(
+                onSend = {
+                    submit()
+                }
+            ),
+        trailingIcon = {
+            if (draft.isNotBlank()) {
+                IconButton(
+                    onClick = {
+                        submit()
+                    },
+                    enabled = enabled,
+                ) {
+                    Icon(
+                        imageVector =
+                            Icons.Rounded.Send,
+                        contentDescription =
+                            "Send message",
+                    )
+                }
+            } else {
+                IconButton(
+                    onClick = {
+                        if (enabled) {
+                            draft = "😊"
+                        }
+                    },
+                    enabled = enabled,
+                ) {
+                    Icon(
+                        imageVector =
+                            Icons.Rounded
+                                .SentimentSatisfiedAlt,
+                        contentDescription =
+                            "Add emoji",
+                    )
+                }
+            }
+        },
+    )
 }
 
 @Composable

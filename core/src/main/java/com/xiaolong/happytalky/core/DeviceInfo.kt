@@ -129,6 +129,10 @@ object LocalDeviceIdentity {
                         Protocol
                             .CAPABILITY_PRIORITY_CALL_V1
                     )
+                    add(
+                        Protocol
+                            .CAPABILITY_TEXT_V1
+                    )
                 },
             priorityAutoAnswerEnabled =
                 role == EndpointRole.WATCH &&

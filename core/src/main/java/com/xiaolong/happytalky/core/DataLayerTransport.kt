@@ -225,6 +225,61 @@ class DataLayerTransport(context: Context) {
             }
     }
 
+    fun queueText(
+        item: ConversationItem,
+        role: EndpointRole,
+        callback: (Boolean) -> Unit
+    ) {
+        val text =
+            item.text
+                ?.takeIf {
+                    it.isNotBlank()
+                }
+                ?: run {
+                    callback(false)
+                    return
+                }
+
+        val mapRequest =
+            PutDataMapRequest.create(
+                Protocol.MESSAGE_PREFIX +
+                    item.id
+            )
+
+        mapRequest.dataMap.putString(
+            Protocol.KEY_ID,
+            item.id
+        )
+        mapRequest.dataMap.putString(
+            Protocol.KEY_ORIGIN,
+            role.wireValue
+        )
+        mapRequest.dataMap.putLong(
+            Protocol.KEY_CREATED_AT,
+            item.createdAt
+        )
+        mapRequest.dataMap.putString(
+            Protocol.KEY_TEXT,
+            text
+        )
+
+        dataClient.putDataItem(
+            mapRequest
+                .asPutDataRequest()
+                .setUrgent()
+        )
+            .addOnSuccessListener {
+                mainHandler.post {
+                    callback(true)
+                }
+            }
+            .addOnFailureListener {
+                mainHandler.post {
+                    callback(false)
+                }
+            }
+    }
+
     fun queueVoice(
         message: VoiceMessage,
         role: EndpointRole,

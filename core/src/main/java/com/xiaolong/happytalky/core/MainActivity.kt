@@ -41,6 +41,8 @@ data class HappyTalkyUiState(
     val peerPriorityCallsAllowed: Boolean = false,
     val localPriorityCallsAllowed: Boolean = false,
     val priorityOfferAvailable: Boolean = false,
+    val textEnabled: Boolean = false,
+    val unreadTextCount: Int = 0,
     val callMode: CallMode = CallMode.NORMAL,
     val peerConnection: PeerConnectionState = PeerConnectionState.UNKNOWN,
     val peerRoute: PeerRoute = PeerRoute.UNKNOWN,
@@ -317,6 +319,100 @@ abstract class HappyTalkyActivity : ComponentActivity() {
             }
         )
         refreshUiState()
+    }
+
+    protected fun sendText(
+        rawText: String
+    ) {
+        if (
+            !peerSupports(
+                Protocol.CAPABILITY_TEXT_V1
+            )
+        ) {
+            StateStore.setStatus(
+                this,
+                "Peer app does not support text yet"
+            )
+            refreshUiState()
+            return
+        }
+
+        val text =
+            TextMessageStore.normalize(
+                rawText
+            )
+                ?: return
+        val saved =
+            TextMessageStore.saveOutgoing(
+                this,
+                text
+            )
+
+        val peerConnected =
+            StateStore.peerConnection(this) ==
+                PeerConnectionState.CONNECTED
+
+        StateStore.setStatus(
+            this,
+            if (peerConnected) {
+                "Sending text…"
+            } else {
+                "Saving text for delivery…"
+            }
+        )
+        refreshUiState()
+
+        transport.queueText(
+            saved,
+            role
+        ) { accepted ->
+            val state =
+                when {
+                    !accepted ->
+                        DeliveryState.LOCAL
+
+                    peerConnected ->
+                        DeliveryState.SENT
+
+                    else ->
+                        DeliveryState.QUEUED
+                }
+
+            ConversationStore.updateDeliveryState(
+                this,
+                saved.id,
+                state
+            )
+            StateStore.setStatus(
+                this,
+                when (state) {
+                    DeliveryState.SENT ->
+                        "Text sent"
+
+                    DeliveryState.QUEUED ->
+                        "Text queued · will sync when connected"
+
+                    else ->
+                        "Text saved locally · retry later"
+                }
+            )
+            refreshUiState()
+        }
+    }
+
+    protected fun markTextMessagesRead() {
+        val changed =
+            TextMessageStore.markAllRead(
+                this
+            )
+
+        if (changed > 0) {
+            AlertController
+                .refreshMessageNotification(
+                    this
+                )
+            refreshUiState()
+        }
     }
 
     protected fun beginTalk() {
@@ -878,13 +974,23 @@ abstract class HappyTalkyActivity : ComponentActivity() {
                             .isEnabled(this),
                 priorityOfferAvailable =
                     priorityOfferIsAvailable(),
+                textEnabled =
+                    peerInfo?.capabilities
+                        ?.contains(
+                            Protocol
+                                .CAPABILITY_TEXT_V1
+                        ) == true,
+                unreadTextCount =
+                    TextMessageStore.unreadCount(
+                        this
+                    ),
                 callMode = callMode,
                 peerConnection = connection,
                 peerRoute = route,
                 messages =
                     VoiceMessageStore.list(
                         this,
-                        limit = 30
+                        limit = 60
                     ),
                 unreadVoiceCount =
                     VoiceMessageStore.unreadCount(
@@ -893,7 +999,7 @@ abstract class HappyTalkyActivity : ComponentActivity() {
                 callHistory =
                     CallHistoryStore.list(
                         this,
-                        limit = 30
+                        limit = 60
                     ),
                 timeline =
                     ConversationStore.timeline(
@@ -1023,8 +1129,7 @@ abstract class HappyTalkyActivity : ComponentActivity() {
 
         callId ?: return
 
-        // This method is reached only while the Activity is started
-        // (onStart/onNewIntent or its registered state receiver).
+        // The policy requires this Activity to be resumed/visible.
         // That visibility gate is intentional: priority CALL must never
         // turn the microphone into a silent background listener.
         handler.post {
