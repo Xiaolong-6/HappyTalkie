@@ -1,4 +1,4 @@
-package com.xiaolong.happytalkie.core
+package com.xiaolong.happytalky.core
 
 import android.Manifest
 import android.app.Notification
@@ -20,8 +20,8 @@ import android.os.Vibrator
 import android.os.VibratorManager
 
 object AlertController {
-    private const val CALL_CHANNEL = "happytalkie_calls_v2"
-    private const val VOICE_CHANNEL = "happytalkie_voice_v1"
+    private const val CALL_CHANNEL = "happytalky_calls_v2"
+    private const val VOICE_CHANNEL = "happytalky_voice_v1"
     private const val CALL_NOTIFICATION_ID = 1001
     private const val VOICE_NOTIFICATION_ID = 1002
 
@@ -81,7 +81,7 @@ object AlertController {
         manager.notify(
             VOICE_NOTIFICATION_ID,
             baseBuilder(context, VOICE_CHANNEL)
-                .setContentTitle("HappyTalkie")
+                .setContentTitle("HappyTalky")
                 .setContentText("Voice message received · open TALK inbox")
                 .setContentIntent(
                     launcherPendingIntent(
@@ -115,7 +115,7 @@ object AlertController {
         )
 
         val builder = baseBuilder(context, CALL_CHANNEL)
-            .setContentTitle("HappyTalkie")
+            .setContentTitle("HappyTalky")
             .setContentText("Incoming call")
             .setCategory(Notification.CATEGORY_CALL)
             .setPriority(Notification.PRIORITY_MAX)
@@ -125,7 +125,7 @@ object AlertController {
 
         if (Build.VERSION.SDK_INT >= 31) {
             val caller = Person.Builder()
-                .setName("HappyTalkie")
+                .setName("HappyTalky")
                 .setImportant(true)
                 .build()
             builder.setStyle(
@@ -222,11 +222,11 @@ object AlertController {
         if (manager.getNotificationChannel(CALL_CHANNEL) == null) {
             val channel = NotificationChannel(
                 CALL_CHANNEL,
-                "HappyTalkie calls",
+                "HappyTalky calls",
                 NotificationManager.IMPORTANCE_HIGH
             )
             channel.description =
-                "Incoming HappyTalkie calls"
+                "Incoming HappyTalky calls"
             channel.setSound(null, null)
             channel.enableVibration(false)
             manager.createNotificationChannel(channel)
@@ -235,11 +235,11 @@ object AlertController {
         if (manager.getNotificationChannel(VOICE_CHANNEL) == null) {
             val channel = NotificationChannel(
                 VOICE_CHANNEL,
-                "HappyTalkie voice messages",
+                "HappyTalky voice messages",
                 NotificationManager.IMPORTANCE_DEFAULT
             )
             channel.description =
-                "HappyTalkie voice messages"
+                "HappyTalky voice messages"
             manager.createNotificationChannel(channel)
         }
     }
@@ -251,7 +251,7 @@ object AlertController {
 
         val lock = manager.newWakeLock(
             PowerManager.PARTIAL_WAKE_LOCK,
-            "HappyTalkie:IncomingCall"
+            "HappyTalky:IncomingCall"
         )
         lock.setReferenceCounted(false)
         runCatching {

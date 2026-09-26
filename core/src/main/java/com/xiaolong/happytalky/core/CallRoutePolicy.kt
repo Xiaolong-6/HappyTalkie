@@ -1,4 +1,4 @@
-package com.xiaolong.happytalkie.core
+package com.xiaolong.happytalky.core
 
 object CallRoutePolicy {
     fun canStartCall(

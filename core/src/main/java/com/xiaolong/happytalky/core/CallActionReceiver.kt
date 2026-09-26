@@ -1,4 +1,4 @@
-package com.xiaolong.happytalkie.core
+package com.xiaolong.happytalky.core
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -77,10 +77,10 @@ class CallActionReceiver : BroadcastReceiver() {
 
     companion object {
         const val ACTION_ANSWER =
-            "com.xiaolong.happytalkie.action.ANSWER_CALL"
+            "com.xiaolong.happytalky.action.ANSWER_CALL"
         const val ACTION_DECLINE =
-            "com.xiaolong.happytalkie.action.DECLINE_CALL"
+            "com.xiaolong.happytalky.action.DECLINE_CALL"
         const val ACTION_HANG_UP =
-            "com.xiaolong.happytalkie.action.HANG_UP"
+            "com.xiaolong.happytalky.action.HANG_UP"
     }
 }

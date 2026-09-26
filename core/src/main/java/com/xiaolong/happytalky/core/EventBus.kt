@@ -1,4 +1,4 @@
-package com.xiaolong.happytalkie.core
+package com.xiaolong.happytalky.core
 
 import android.content.Context
 import android.content.Intent
