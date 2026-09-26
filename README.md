@@ -7,7 +7,7 @@ Its primary child-facing communication actions are:
 - **CALL** — synchronous live two-way voice when the current phone/watch route is suitable for streaming.
 - **TALK** — hold to record and release to send a persistent voice message. TALK remains the fallback when a live CALL is unavailable.
 
-The shared conversation model is prepared for secondary text messages so voice, calls, and text can share one timeline when text UI/transport lands.
+Secondary **TEXT** messaging is also supported. Text, TALK voice messages and CALL events share one local conversation timeline on each endpoint.
 
 ## Why two modes?
 
@@ -19,6 +19,12 @@ TALK is asynchronous and privacy-preserving:
 - playback always requires a user action;
 - Data Layer DataItems/Assets can queue while a peer is temporarily unavailable and synchronize after connectivity returns;
 - saved TALK history can be replayed, selectively deleted, or cleared.
+
+## TEXT
+
+TEXT uses persistent Wear OS Data Layer DataItems, so a message can be written while the peer is temporarily unavailable and synchronize later. HappyTalky shows this state as **Queued**; it does not claim Delivered or Read until those states are actually acknowledged.
+
+Phone uses a normal Material 3 composer. Wear shows a compact Message composer in Inbox and delegates real entry to the Wear OS system RemoteInput experience, including dictation, emoji, quick replies and the configured IME.
 
 ## Connectivity
 
@@ -59,7 +65,7 @@ Phone and Watch share product state and communication logic, but not page layout
 - **Phone:** Jetpack Compose Material 3
 - **Wear:** Wear Compose Material 3, designed independently for a small round screen
 
-Wear prioritizes **route/status → CALL → TALK**, with a left-swipe Inbox for unread TALK, explicit playback/delete, crown scrolling, and recent CALL history. Incoming calls use a dedicated full-screen wrist UI when the OS permits it.
+Wear prioritizes **route/status → CALL → TALK**, with a left-swipe unified Inbox for TEXT/TALK/CALL, explicit TALK playback/delete, crown scrolling, and a fixed system-input Message composer. Incoming calls use a dedicated full-screen wrist UI when the OS permits it.
 
 Compose screenshot previews are rendered in CI so phone and 192 dp round-watch layouts can be visually reviewed before shipping APKs.
 
