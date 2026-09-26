@@ -33,7 +33,7 @@ TALK audio remains in app-private `voice-history` files. The first database acce
 
 The current Store APIs remain synchronous during this migration so the existing UI/state machine does not change behavior. A later UI pass can expose Room as Flow without changing the persisted schema.
 
-TEXT uses a stable UUID and is stored directly in Room. Outgoing text is initially `LOCAL`; once `DataClient.putDataItem()` accepts the persistent item it becomes `QUEUED`. HappyTalky does not label a message Delivered or Read without an explicit receiver acknowledgement.
+TEXT uses a stable UUID and is stored directly in Room. Outgoing text is initially `LOCAL`. If `DataClient.putDataItem()` accepts it while the peer is reachable, the UI may label the local send attempt `SENT`; if the peer is offline it remains `QUEUED` for later synchronization. Neither state claims remote receipt. HappyTalky does not label an outgoing message Delivered or Read without an explicit receiver acknowledgement.
 
 ## Companion discovery
 
