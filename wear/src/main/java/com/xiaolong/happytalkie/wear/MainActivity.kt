@@ -4,15 +4,15 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.CallEnd
@@ -42,7 +42,6 @@ import androidx.wear.compose.material3.ButtonDefaults
 import androidx.wear.compose.material3.EdgeButton
 import androidx.wear.compose.material3.Icon
 import androidx.wear.compose.material3.MaterialTheme
-import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.Text
 import com.xiaolong.happytalkie.core.CallVisualState
 import com.xiaolong.happytalkie.core.HappyTalkieActivity
@@ -78,50 +77,46 @@ fun WearHome(
     onTalkFinish: () -> Unit,
     onTalkCancel: () -> Unit,
 ) {
-    val listState = rememberLazyListState()
-
     AppScaffold(
         containerColor = Color.Black,
         contentColor = Color.White,
     ) {
-        ScreenScaffold(
-            scrollState = listState,
-            scrollIndicator = null,
-            edgeButton = {
-                TalkEdgeButton(
-                    state = state,
-                    onStart = onTalkStart,
-                    onFinish = onTalkFinish,
-                    onCancel = onTalkCancel,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            },
-        ) { contentPadding ->
-            LazyColumn(
-                state = listState,
-                contentPadding = contentPadding,
-                modifier = Modifier.fillMaxSize(),
+        Box(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .width(154.dp)
+                    .padding(top = 26.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(7.dp),
             ) {
-                item {
-                    RouteStatus(state)
-                }
+                RouteStatus(state)
 
-                item {
-                    if (state.callState == CallVisualState.INCOMING) {
-                        IncomingActions(
-                            onAnswer = onCall,
-                            onDecline = onDecline,
-                        )
-                    } else {
-                        PrimaryCallAction(
-                            state = state,
-                            onCall = onCall,
-                        )
-                    }
+                if (state.callState == CallVisualState.INCOMING) {
+                    IncomingActions(
+                        onAnswer = onCall,
+                        onDecline = onDecline,
+                    )
+                } else {
+                    PrimaryCallAction(
+                        state = state,
+                        onCall = onCall,
+                    )
                 }
             }
+
+            TalkEdgeButton(
+                state = state,
+                onStart = onTalkStart,
+                onFinish = onTalkFinish,
+                onCancel = onTalkCancel,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .width(142.dp)
+                    .padding(bottom = 4.dp),
+            )
         }
     }
 }
