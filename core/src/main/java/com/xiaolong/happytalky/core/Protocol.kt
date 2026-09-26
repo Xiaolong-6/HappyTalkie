@@ -11,7 +11,7 @@ object Protocol {
     const val CALL_PRIORITY = "$BASE/call/priority"
     const val CALL_AUDIO_PREFIX = "$BASE/call/audio/"
     const val VOICE_PREFIX = "$BASE/voice/"
-    const val TEXT_PREFIX = "$BASE/text/"
+    const val MESSAGE_PREFIX = "$BASE/message/"
     const val DEVICE_INFO_PREFIX = "$BASE/device-info/"
 
     const val KEY_ID = "id"
