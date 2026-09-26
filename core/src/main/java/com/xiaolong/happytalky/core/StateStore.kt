@@ -26,6 +26,7 @@ object StateStore {
     private const val KEY_OUTGOING = "outgoing_call"
     private const val KEY_ACTIVE = "active_call"
     private const val KEY_CALL_INITIATOR = "call_initiator"
+    private const val KEY_ACTIVE_STARTED_AT = "active_started_at"
     private const val KEY_PEER_CONNECTION = "peer_connection"
     private const val KEY_PEER_ROUTE = "peer_route"
     private const val KEY_RECONNECT_UNTIL = "reconnect_until"
@@ -66,6 +67,25 @@ object StateStore {
 
     fun setCallInitiator(context: Context, value: Boolean) {
         prefs(context).edit().putBoolean(KEY_CALL_INITIATOR, value).apply()
+    }
+
+    fun activeStartedAt(context: Context): Long =
+        prefs(context).getLong(
+            KEY_ACTIVE_STARTED_AT,
+            0L
+        )
+
+    fun setActiveStartedAt(
+        context: Context,
+        value: Long
+    ) {
+        prefs(context)
+            .edit()
+            .putLong(
+                KEY_ACTIVE_STARTED_AT,
+                value
+            )
+            .apply()
     }
 
     fun peerConnection(context: Context): PeerConnectionState {
@@ -119,6 +139,7 @@ object StateStore {
             .remove(KEY_OUTGOING)
             .remove(KEY_ACTIVE)
             .remove(KEY_CALL_INITIATOR)
+            .remove(KEY_ACTIVE_STARTED_AT)
             .remove(KEY_RECONNECT_UNTIL)
             .apply()
     }
