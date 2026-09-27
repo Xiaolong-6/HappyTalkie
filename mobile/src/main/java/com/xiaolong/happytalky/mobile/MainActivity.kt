@@ -1502,7 +1502,7 @@ private fun ConversationActions(
                                         .error
                                 },
                             content = if (state.callState == CallVisualState.READY)
-                                MaterialTheme.colorScheme.primary else Color.White,
+                                MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onError,
                             outlined = state.callState == CallVisualState.READY,
                             onClick = onCall,
                             modifier = Modifier.weight(1f),
@@ -1929,13 +1929,21 @@ private fun headerStatusText(
         when {
             state.callState ==
                 CallVisualState.RECONNECTING ->
-                "restoring call"
+                "Restoring call"
+
+            state.callState == CallVisualState.OUTGOING ->
+                if (state.callMode == CallMode.PRIORITY) "Priority requested" else "Calling…"
+
+            state.callState == CallVisualState.INCOMING -> "Incoming call"
+            state.callState == CallVisualState.CONNECTING -> "Connecting…"
+            state.callState == CallVisualState.LIVE -> "In call"
+            state.recording -> "Recording voice message"
 
             state.callEnabled ->
                 "Ready to call"
 
             state.talkEnabled ->
-                "Voice messages available"
+                "TALK available"
 
             else ->
                 "busy"
