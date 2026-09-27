@@ -39,7 +39,7 @@ The Wear build therefore:
 - keeps the dedicated in-app call screen when HappyTalky is already foregrounded;
 - publishes active Watch CALL as a Wear `OngoingActivity` for a one-tap return path.
 
-Priority auto-answer remains explicitly gated on the Watch activity being resumed/visible. It does not silently start microphone capture from background.
+The original v1 Priority path kept its foreground visibility gate. Current locked Priority behavior is documented in `ARCHITECTURE.md`: the locked request removes local decline/end controls, but Android's foreground microphone rule still means microphone capture begins only once the Watch activity is visible.
 
 ### Abnormal live-call DISCONNECTED outcome
 
