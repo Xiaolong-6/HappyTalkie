@@ -822,7 +822,14 @@ private fun PrimaryCallAction(
                     Color(0xFF7D8A9F)
                 },
         ),
-        modifier = Modifier.size(66.dp),
+        modifier =
+            if (lockedCall) {
+                Modifier
+                    .width(92.dp)
+                    .height(66.dp)
+            } else {
+                Modifier.size(66.dp)
+            },
     )
 }
 
@@ -2076,7 +2083,7 @@ private fun wearCallLabel(
         state.callState !=
             CallVisualState.READY
     ) {
-        "LOCK"
+        "LOCKED"
     } else {
         when (state.callState) {
             CallVisualState.LIVE -> "END"
