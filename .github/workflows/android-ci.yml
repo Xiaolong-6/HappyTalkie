@@ -175,3 +175,9 @@ jobs:
               --notes "Rolling debug build. PR builds are removed after merging into main; use debug-main after merge."
           fi
           gh release upload "$TAG" HappyTalky-phone-debug.apk HappyTalky-watch-debug.apk debug-dist.json --clobber
+          # Remove only the two old CI asset names, after both replacement APKs upload.
+          # Older workflows set labels but left these actual filenames unchanged.
+          jq -r --arg tag "$TAG" '.[][] | select(.tag_name == $tag) | .assets[] | select(.name == "mobile-debug.apk" or .name == "wear-debug.apk") | .id' releases.json |
+            while read -r asset_id; do
+              gh api --method DELETE "repos/$GH_REPO/releases/assets/$asset_id"
+            done
