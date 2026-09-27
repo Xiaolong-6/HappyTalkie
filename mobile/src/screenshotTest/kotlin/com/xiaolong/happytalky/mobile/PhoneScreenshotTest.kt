@@ -419,29 +419,35 @@ fun PhoneTextUnavailableScreenshot() {
 }
 
 @PreviewTest
-@Preview(name = "Phone priority opt-in help", widthDp = 360, heightDp = 800, showBackground = true)
+@Preview(name = "Phone priority unsupported help", widthDp = 360, heightDp = 800, showBackground = true)
 @Composable
 fun PhonePriorityHelpScreenshot() {
     HappyTalkyPhoneTheme(darkTheme = false) {
         PriorityCallOptions(
-            state = readyState().copy(peerCapabilities = setOf(com.xiaolong.happytalky.core.Protocol.CAPABILITY_PRIORITY_LOCKED_CALL_V1)),
-            onDismiss = {}, onPriorityCall = {},
+            state =
+                readyState().copy(
+                    peerCapabilities =
+                        emptySet(),
+                    priorityCallAvailable =
+                        false,
+                ),
+            onDismiss = {},
         )
     }
 }
 
 @PreviewTest
-@Preview(name = "Phone direct priority dialog", widthDp = 360, heightDp = 800, showBackground = true)
+@Preview(name = "Phone priority busy help", widthDp = 360, heightDp = 800, showBackground = true)
 @Composable
 fun PhonePriorityEscalationScreenshot() {
     HappyTalkyPhoneTheme(darkTheme = true) {
         PriorityCallOptions(
             state = readyState().copy(
                 peerCapabilities = setOf(com.xiaolong.happytalky.core.Protocol.CAPABILITY_PRIORITY_LOCKED_CALL_V1),
-                priorityCallAvailable = true,
-                callState = CallVisualState.READY,
+                priorityCallAvailable = false,
+                callState = CallVisualState.LIVE,
             ),
-            onDismiss = {}, onPriorityCall = {},
+            onDismiss = {},
         )
     }
 }
