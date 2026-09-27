@@ -369,7 +369,6 @@ fun WatchTalkInboxScreenshot() {
             unreadCount = 2,
             peerName = "Phone",
             textEnabled = true,
-            priorityCallsEnabled = true,
             onBack = {},
             onPlay = {},
         )
@@ -395,7 +394,6 @@ fun WatchMixedInboxScreenshot() {
             unreadCount = 2,
             peerName = "Phone · Pixel 10 Pro",
             textEnabled = true,
-            priorityCallsEnabled = true,
             onBack = {},
             onPlay = {},
         )
@@ -422,8 +420,7 @@ fun WatchTalkDeletedConfirmationScreenshot() {
                 unreadCount = 1,
                 peerName = "Phone",
                 textEnabled = true,
-                priorityCallsEnabled = true,
-                onBack = {},
+                    onBack = {},
                 onPlay = {},
             )
 
@@ -457,8 +454,7 @@ fun WatchMessageDeletedConfirmationScreenshot() {
                 unreadCount = 1,
                 peerName = "Phone",
                 textEnabled = true,
-                priorityCallsEnabled = true,
-                onBack = {},
+                    onBack = {},
                 onPlay = {},
             )
 
@@ -493,8 +489,7 @@ fun WatchCallDeletedConfirmationScreenshot() {
                 unreadCount = 1,
                 peerName = "Phone",
                 textEnabled = true,
-                priorityCallsEnabled = true,
-                onBack = {},
+                    onBack = {},
                 onPlay = {},
             )
 
