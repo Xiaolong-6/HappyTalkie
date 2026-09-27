@@ -1,4 +1,6 @@
-# Wear CALL / TALK follow-up closure
+# Historical: Wear CALL / TALK follow-up closure
+
+> Historical implementation/closure note. It records how an older follow-up was closed; it is not the canonical current behavior specification. Use [ARCHITECTURE.md](ARCHITECTURE.md), [DEPLOY.md](DEPLOY.md), and [UI_GUIDELINES.md](UI_GUIDELINES.md) for current behavior and validation.
 
 Baseline: current `main` after conversation, device-identity, Priority CALL, and TEXT/timeline work.
 
@@ -12,7 +14,7 @@ Closed by the unified conversation timeline.
 
 Wear now interleaves TEXT, TALK, and persisted CALL events by timestamp instead of hiding CALL history under a separate section.
 
-## Closed in this PR
+## Implemented state recorded at closure
 
 ### TALK swipe-delete confirmation
 
@@ -59,7 +61,7 @@ A pure outcome policy test covers:
 
 ## Validation
 
-Required before merging PR #9:
+Historical validation checklist used to close PR #9:
 
 - core unit tests;
 - Phone debug build;
