@@ -324,9 +324,15 @@ abstract class HappyTalkyActivity : ComponentActivity() {
     protected fun sendText(
         rawText: String
     ) {
+        val peerInfo =
+            peerInfo()
+        val connection =
+            StateStore.peerConnection(this)
+
         if (
-            !peerSupports(
-                Protocol.CAPABILITY_TEXT_V1
+            !TextCapabilityPolicy.canSend(
+                connection = connection,
+                peerInfo = peerInfo
             )
         ) {
             StateStore.setStatus(
@@ -975,11 +981,10 @@ abstract class HappyTalkyActivity : ComponentActivity() {
                 priorityOfferAvailable =
                     priorityOfferIsAvailable(),
                 textEnabled =
-                    peerInfo?.capabilities
-                        ?.contains(
-                            Protocol
-                                .CAPABILITY_TEXT_V1
-                        ) == true,
+                    TextCapabilityPolicy.canSend(
+                        connection = connection,
+                        peerInfo = peerInfo
+                    ),
                 unreadTextCount =
                     TextMessageStore.unreadCount(
                         this
