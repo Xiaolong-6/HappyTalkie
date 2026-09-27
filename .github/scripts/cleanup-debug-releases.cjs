@@ -27,6 +27,7 @@ module.exports = async function cleanup({ github, context, core }) {
         if (error.status !== 404) throw error;
       }
     }
+    if (!refs.some(ref => ref.ref === `refs/tags/${tag}`)) continue;
     try {
       await github.rest.git.deleteRef({ ...repo, ref: `tags/${tag}` });
     } catch (error) {

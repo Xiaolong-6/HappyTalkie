@@ -31,3 +31,5 @@ test('unknown PR is retained', async () => assert.deepEqual(await run({getError:
 test('lookup permission error propagates', async () => assert.rejects(run({getError:403})));
 test('only exact reserved tags match', async () => assert.deepEqual(await run({releases:[], tags:['debug-pr-13-backup','debug-pr-0','debug-pr-013']}), []));
 test('empty repository is a no-op', async () => assert.deepEqual(await run({releases:[],tags:[]}), []));
+
+test('release without a tag is removed without deleting an absent ref', async () => assert.deepEqual(await run({tags:[]}), ['release']));

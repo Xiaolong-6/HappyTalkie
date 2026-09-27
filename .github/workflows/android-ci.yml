@@ -122,6 +122,16 @@ jobs:
               const { data: ref } = await github.rest.git.getRef({ ...context.repo, ref: 'heads/main' });
               eligible = ref.object.sha === context.sha;
             }
+            const tag = context.eventName === 'pull_request' ? `debug-pr-${context.issue.number}` : 'debug-main';
+            try {
+              const { data: release } = await github.rest.repos.getReleaseByTag({ ...context.repo, tag });
+              if (!release.prerelease || release.draft || release.author?.login !== 'github-actions[bot]') {
+                core.warning(`Reserved tag ${tag} has a protected release; skipping publication.`);
+                eligible = false;
+              }
+            } catch (error) {
+              if (error.status !== 404) throw error;
+            }
             core.setOutput('eligible', String(eligible));
 
       - uses: actions/download-artifact@v4
