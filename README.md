@@ -50,7 +50,7 @@ CALL has an explicit lifecycle:
 6. reconnecting after a transient route change, when needed
 7. end
 
-Incoming CALL uses an actionable high-priority call notification and lock-screen/full-screen presentation where Android permits it. The caller can cancel while ringing. Either side can end an active call.
+Incoming CALL uses an actionable high-priority call notification. Phone may use lock-screen/full-screen presentation where Android permits it; Wear OS does not support full-screen intent notifications, so Watch relies on notification actions and the in-app call screen. Active Watch calls publish an Ongoing Activity return path. The caller can cancel while ringing. Either side can end an active call.
 
 A Watch can separately opt in to **Priority calls**. When enabled and advertised to the Phone, an unanswered ordinary call can expose a Priority action after 5 seconds. Priority never bypasses the Watch setting, and automatic answer is gated on the Watch Activity being visibly resumed before microphone capture starts.
 
@@ -65,7 +65,7 @@ Phone and Watch share product state and communication logic, but not page layout
 - **Phone:** Jetpack Compose Material 3
 - **Wear:** Wear Compose Material 3, designed independently for a small round screen
 
-Wear prioritizes **route/status → CALL → TALK**, with a left-swipe unified Inbox for TEXT/TALK/CALL, explicit TALK playback/delete, crown scrolling, and a fixed system-input Message composer. Incoming calls use a dedicated full-screen wrist UI when the OS permits it.
+Wear prioritizes **route/status → CALL → TALK**, with a left-swipe unified Inbox for TEXT/TALK/CALL, explicit TALK playback/delete with a short confirmation, crown scrolling, and a fixed system-input Message composer. Incoming calls stay actionable from the call notification; when HappyTalky is foregrounded, the dedicated wrist call UI is used.
 
 Compose screenshot previews are rendered in CI so phone and 192 dp round-watch layouts can be visually reviewed before shipping APKs.
 

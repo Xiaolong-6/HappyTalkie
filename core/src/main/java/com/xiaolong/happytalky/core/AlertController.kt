@@ -229,7 +229,7 @@ object AlertController {
             )
             .setContentText(
                 if (priority) {
-                    "Auto-answering when HappyTalky opens"
+                    "Open HappyTalky for priority call"
                 } else {
                     "Incoming call"
                 }
@@ -238,7 +238,17 @@ object AlertController {
             .setPriority(Notification.PRIORITY_MAX)
             .setOngoing(true)
             .setAutoCancel(false)
-            .setFullScreenIntent(open, true)
+
+        if (
+            !context.packageManager.hasSystemFeature(
+                PackageManager.FEATURE_WATCH
+            )
+        ) {
+            builder.setFullScreenIntent(
+                open,
+                true
+            )
+        }
 
         if (Build.VERSION.SDK_INT >= 31) {
             val caller = Person.Builder()

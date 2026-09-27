@@ -29,6 +29,8 @@ dependencies {
 
     api("com.google.android.gms:play-services-wearable:20.0.1")
     implementation("androidx.activity:activity:1.13.0")
+    implementation("androidx.core:core:1.19.1")
+    implementation("androidx.wear:wear-ongoing:1.1.0")
     implementation(composeBom)
     implementation("androidx.compose.runtime:runtime")
 

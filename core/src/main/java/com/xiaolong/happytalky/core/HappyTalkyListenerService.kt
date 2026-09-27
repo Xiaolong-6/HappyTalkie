@@ -23,7 +23,16 @@ class HappyTalkyListenerService : WearableListenerService() {
             Protocol.CALL_DECLINE -> receiveDecline(callId)
             Protocol.CALL_CANCEL -> receiveCancel(callId)
             Protocol.CALL_BUSY -> receiveBusy(callId)
-            Protocol.CALL_END -> receiveEnd(callId)
+            Protocol.CALL_END ->
+                receiveTerminal(
+                    callId,
+                    disconnected = false
+                )
+            Protocol.CALL_DISCONNECTED ->
+                receiveTerminal(
+                    callId,
+                    disconnected = true
+                )
             Protocol.CALL_PRIORITY ->
                 receivePriority(callId)
         }
@@ -618,11 +627,16 @@ class HappyTalkyListenerService : WearableListenerService() {
         EventBus.notifyStateChanged(this)
     }
 
-    private fun receiveEnd(callId: String) {
+    private fun receiveTerminal(
+        callId: String,
+        disconnected: Boolean
+    ) {
         val relevant =
             StateStore.activeCall(this) == callId ||
-            StateStore.incomingCall(this) == callId ||
-            StateStore.outgoingCall(this) == callId
+                StateStore.incomingCall(this) ==
+                    callId ||
+                StateStore.outgoingCall(this) ==
+                    callId
 
         if (!relevant) return
 
@@ -630,21 +644,28 @@ class HappyTalkyListenerService : WearableListenerService() {
             StateStore.activeCall(this) ==
                 callId
         val direction =
-            if (StateStore.callInitiator(this)) {
+            if (
+                StateStore.callInitiator(
+                    this
+                )
+            ) {
                 CallDirection.OUTGOING
             } else {
                 CallDirection.INCOMING
             }
+        val outcome =
+            CallSignalOutcomePolicy
+                .remoteTerminalOutcome(
+                    wasActive = wasActive,
+                    disconnected =
+                        disconnected
+                )
 
         CallHistoryStore.append(
             this,
             callId,
             direction,
-            if (wasActive) {
-                CallOutcome.COMPLETED
-            } else {
-                CallOutcome.CANCELLED_BY_PEER
-            },
+            outcome,
             startedAt =
                 if (wasActive) {
                     StateStore.activeStartedAt(
@@ -656,7 +677,14 @@ class HappyTalkyListenerService : WearableListenerService() {
         )
 
         StateStore.clearCallState(this)
-        StateStore.setStatus(this, "Call ended")
+        StateStore.setStatus(
+            this,
+            if (disconnected) {
+                "Call disconnected · TALK recommended"
+            } else {
+                "Call ended"
+            }
+        )
         AlertController.stop(this)
         LiveCallAudio.stop(this)
         LiveCallService.stop(this)

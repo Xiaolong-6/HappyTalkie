@@ -8,6 +8,7 @@ object Protocol {
     const val CALL_CANCEL = "$BASE/call/cancel"
     const val CALL_BUSY = "$BASE/call/busy"
     const val CALL_END = "$BASE/call/end"
+    const val CALL_DISCONNECTED = "$BASE/call/disconnected"
     const val CALL_PRIORITY = "$BASE/call/priority"
     const val CALL_AUDIO_PREFIX = "$BASE/call/audio/"
     const val VOICE_PREFIX = "$BASE/voice/"

@@ -1,6 +1,10 @@
 package com.xiaolong.happytalky.wear
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.wear.compose.material3.MaterialTheme
 import com.android.tools.screenshot.PreviewTest
@@ -363,6 +367,41 @@ fun WatchMixedInboxScreenshot() {
             onBack = {},
             onPlay = {},
         )
+    }
+}
+
+@PreviewTest
+@Preview(
+    name = "Watch TALK deleted confirmation",
+    device = WATCH_DEVICE,
+    showBackground = true,
+    backgroundColor = WATCH_BACKGROUND,
+)
+@Composable
+fun WatchTalkDeletedConfirmationScreenshot() {
+    MaterialTheme {
+        Box(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            WearInbox(
+                messages = watchMessages,
+                callHistory = watchCallHistory,
+                timeline = watchConversation,
+                unreadCount = 1,
+                peerName = "Phone",
+                textEnabled = true,
+                priorityCallsEnabled = true,
+                onBack = {},
+                onPlay = {},
+            )
+
+            WearDeleteConfirmation(
+                modifier =
+                    Modifier.align(
+                        Alignment.Center
+                    )
+            )
+        }
     }
 }
 
