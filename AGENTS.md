@@ -14,10 +14,17 @@
 
 Use JDK 17, compile SDK 37, AGP 9.1.1 and Gradle 9.3.1 (matching the checked-in build and CI configuration).
 
-Primary validation:
+Minimum behavior validation:
 
 ~~~text
+node --test .github/scripts/cleanup-debug-releases.test.cjs
 gradle :core:testDebugUnitTest :mobile:assembleDebug :wear:assembleDebug
+~~~
+
+For UI changes, also render the checked-in screenshot suite before considering the work complete:
+
+~~~text
+gradle :mobile:updateDebugScreenshotTest :wear:updateDebugScreenshotTest
 ~~~
 
 ## Change policy
@@ -26,3 +33,10 @@ For new protocol paths, keep them under `/happytalky`.
 Conversation metadata belongs in the shared Room timeline; large audio payloads stay in app-private files/Data Layer Assets.
 For voice DataItems, use unique paths so offline messages cannot overwrite one another.
 Any change to CALL/TALK state transitions should be tested on both roles because most behavior is intentionally shared in `core`.
+
+## Documentation policy
+
+- Treat `README.md`, `docs/ARCHITECTURE.md`, `docs/DEPLOY.md`, `docs/UI_GUIDELINES.md`, and `dist/README.md` as current-state documentation.
+- Keep PR-specific closure notes only as historical records and label them clearly; do not let old baseline commits or pre-merge checklists read like current requirements.
+- Update the relevant canonical document in the same change whenever protocol behavior, permissions, UI interaction, build/deploy steps, or release lifecycle changes.
+- For Android/Wear UI work, re-check current official Android documentation before implementation; do not assume a previously recorded library version is still the latest.
