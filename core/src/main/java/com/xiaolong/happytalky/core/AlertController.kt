@@ -40,40 +40,56 @@ object AlertController {
     fun startIncomingCall(
         context: Context,
         callId: String,
-        priority: Boolean = false
+        priority: Boolean = false,
+        locked: Boolean = false
     ) {
         val appContext = context.applicationContext
         stop(appContext)
         ensureChannels(appContext)
         postCallNotification(
             appContext,
-            priority
+            priority,
+            locked
         )
         acquireWakeLock(appContext)
         startRinging(appContext)
 
-        timeoutRunnable = Runnable {
-            if (StateStore.incomingCall(appContext) == callId) {
-                CallHistoryStore.append(
-                    appContext,
-                    callId,
-                    CallDirection.INCOMING,
-                    CallOutcome.MISSED,
-                    mode =
-                        StateStore.callMode(
-                            appContext
-                        )
+        if (!locked) {
+            timeoutRunnable = Runnable {
+                if (
+                    StateStore.incomingCall(
+                        appContext
+                    ) == callId
+                ) {
+                    CallHistoryStore.append(
+                        appContext,
+                        callId,
+                        CallDirection.INCOMING,
+                        CallOutcome.MISSED,
+                        mode =
+                            StateStore.callMode(
+                                appContext
+                            )
+                    )
+                    StateStore.setIncomingCall(
+                        appContext,
+                        null
+                    )
+                    StateStore.setStatus(
+                        appContext,
+                        "Missed call — hold TALK to reply"
+                    )
+                    EventBus.notifyStateChanged(
+                        appContext
+                    )
+                }
+                stop(appContext)
+            }.also {
+                handler.postDelayed(
+                    it,
+                    Protocol.CALL_TIMEOUT_MS
                 )
-                StateStore.setIncomingCall(appContext, null)
-                StateStore.setStatus(
-                    appContext,
-                    "Missed call — hold TALK to reply"
-                )
-                EventBus.notifyStateChanged(appContext)
             }
-            stop(appContext)
-        }.also {
-            handler.postDelayed(it, Protocol.CALL_TIMEOUT_MS)
         }
     }
 
@@ -205,7 +221,8 @@ object AlertController {
 
     private fun postCallNotification(
         context: Context,
-        priority: Boolean
+        priority: Boolean,
+        locked: Boolean
     ) {
         if (!canNotify(context)) return
 
@@ -247,7 +264,7 @@ object AlertController {
                 )
 
         if (isWatch) {
-            val notification =
+            val builder =
                 NotificationCompat.Builder(
                     context,
                     CALL_CHANNEL
@@ -257,7 +274,13 @@ object AlertController {
                             .sym_call_incoming
                     )
                     .setContentTitle(title)
-                    .setContentText(text)
+                    .setContentText(
+                        if (locked) {
+                            "Open HappyTalky · auto-connect"
+                        } else {
+                            text
+                        }
+                    )
                     .setContentIntent(open)
                     .setCategory(
                         NotificationCompat
@@ -273,6 +296,9 @@ object AlertController {
                     )
                     .setOngoing(true)
                     .setAutoCancel(false)
+
+            if (!locked) {
+                builder
                     .setTimeoutAfter(
                         Protocol.CALL_TIMEOUT_MS
                     )
@@ -296,11 +322,22 @@ object AlertController {
                             )
                             .build()
                     )
-                    .build()
+            } else {
+                builder.addAction(
+                    NotificationCompat.Action
+                        .Builder(
+                            android.R.drawable
+                                .sym_action_call,
+                            "Open",
+                            open
+                        )
+                        .build()
+                )
+            }
 
             manager.notify(
                 CALL_NOTIFICATION_ID,
-                notification
+                builder.build()
             )
             return
         }
@@ -332,13 +369,16 @@ object AlertController {
                 )
                 .setOngoing(true)
                 .setAutoCancel(false)
-                .setTimeoutAfter(
-                    Protocol.CALL_TIMEOUT_MS
-                )
                 .setFullScreenIntent(
                     open,
                     true
                 )
+
+        if (!locked) {
+            builder.setTimeoutAfter(
+                Protocol.CALL_TIMEOUT_MS
+            )
+        }
 
         if (Build.VERSION.SDK_INT >= 31) {
             val caller =
