@@ -18,6 +18,7 @@ import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import androidx.core.app.NotificationCompat
 
 object AlertController {
     // v4 intentionally recreates the call channel after the Wear incoming
@@ -209,91 +210,179 @@ object AlertController {
         if (!canNotify(context)) return
 
         val manager =
-            context.getSystemService(NotificationManager::class.java)
-                ?: return
+            context.getSystemService(
+                NotificationManager::class.java
+            ) ?: return
 
-        val open = launcherPendingIntent(context)
-        val answer = actionPendingIntent(
-            context,
-            CallActionReceiver.ACTION_ANSWER,
-            21
-        )
-        val decline = actionPendingIntent(
-            context,
-            CallActionReceiver.ACTION_DECLINE,
-            22
-        )
+        val open =
+            launcherPendingIntent(context)
+        val answer =
+            actionPendingIntent(
+                context,
+                CallActionReceiver.ACTION_ANSWER,
+                21
+            )
+        val decline =
+            actionPendingIntent(
+                context,
+                CallActionReceiver.ACTION_DECLINE,
+                22
+            )
+        val title =
+            if (priority) {
+                "PRIORITY CALL"
+            } else {
+                "Incoming call"
+            }
+        val text =
+            if (priority) {
+                "Open HappyTalky for priority call"
+            } else {
+                "HappyTalky"
+            }
+        val isWatch =
+            context.packageManager
+                .hasSystemFeature(
+                    PackageManager.FEATURE_WATCH
+                )
 
-        val builder = baseBuilder(context, CALL_CHANNEL)
-            .setContentTitle(
-                if (priority) {
-                    "Priority call"
-                } else {
-                    "HappyTalky"
-                }
-            )
-            .setContentText(
-                if (priority) {
-                    "Open HappyTalky for priority call"
-                } else {
-                    "Incoming call"
-                }
-            )
-            .setCategory(Notification.CATEGORY_CALL)
-            .setPriority(Notification.PRIORITY_MAX)
-            .setOngoing(true)
-            .setAutoCancel(false)
-            .setTimeoutAfter(
-                Protocol.CALL_TIMEOUT_MS
-            )
+        if (isWatch) {
+            val notification =
+                NotificationCompat.Builder(
+                    context,
+                    CALL_CHANNEL
+                )
+                    .setSmallIcon(
+                        android.R.drawable
+                            .sym_call_incoming
+                    )
+                    .setContentTitle(title)
+                    .setContentText(text)
+                    .setContentIntent(open)
+                    .setCategory(
+                        NotificationCompat
+                            .CATEGORY_CALL
+                    )
+                    .setPriority(
+                        NotificationCompat
+                            .PRIORITY_MAX
+                    )
+                    .setVisibility(
+                        NotificationCompat
+                            .VISIBILITY_PUBLIC
+                    )
+                    .setOngoing(true)
+                    .setAutoCancel(false)
+                    .setTimeoutAfter(
+                        Protocol.CALL_TIMEOUT_MS
+                    )
+                    .addAction(
+                        NotificationCompat.Action
+                            .Builder(
+                                android.R.drawable
+                                    .sym_action_call,
+                                "Answer",
+                                answer
+                            )
+                            .build()
+                    )
+                    .addAction(
+                        NotificationCompat.Action
+                            .Builder(
+                                android.R.drawable
+                                    .ic_menu_close_clear_cancel,
+                                "Decline",
+                                decline
+                            )
+                            .build()
+                    )
+                    .build()
 
-        if (
-            !context.packageManager.hasSystemFeature(
-                PackageManager.FEATURE_WATCH
+            manager.notify(
+                CALL_NOTIFICATION_ID,
+                notification
             )
-        ) {
-            builder.setFullScreenIntent(
-                open,
-                true
-            )
+            return
         }
 
-        if (Build.VERSION.SDK_INT >= 31) {
-            val caller = Person.Builder()
-                .setName(
+        val builder =
+            baseBuilder(
+                context,
+                CALL_CHANNEL
+            )
+                .setContentTitle(
                     if (priority) {
                         "Priority call"
                     } else {
                         "HappyTalky"
                     }
                 )
-                .setImportant(true)
-                .build()
-            builder.setStyle(
-                Notification.CallStyle.forIncomingCall(
-                    caller,
-                    decline,
-                    answer
+                .setContentText(
+                    if (priority) {
+                        "Open HappyTalky for priority call"
+                    } else {
+                        "Incoming call"
+                    }
                 )
+                .setCategory(
+                    Notification.CATEGORY_CALL
+                )
+                .setPriority(
+                    Notification.PRIORITY_MAX
+                )
+                .setOngoing(true)
+                .setAutoCancel(false)
+                .setTimeoutAfter(
+                    Protocol.CALL_TIMEOUT_MS
+                )
+                .setFullScreenIntent(
+                    open,
+                    true
+                )
+
+        if (Build.VERSION.SDK_INT >= 31) {
+            val caller =
+                Person.Builder()
+                    .setName(
+                        if (priority) {
+                            "Priority call"
+                        } else {
+                            "HappyTalky"
+                        }
+                    )
+                    .setImportant(true)
+                    .build()
+            builder.setStyle(
+                Notification.CallStyle
+                    .forIncomingCall(
+                        caller,
+                        decline,
+                        answer
+                    )
             )
         } else {
             builder.addAction(
                 Notification.Action.Builder(
-                    android.R.drawable.sym_action_call,
+                    android.R.drawable
+                        .sym_action_call,
                     "Answer",
                     answer
                 ).build()
             )
             builder.addAction(
                 Notification.Action.Builder(
-                    android.R.drawable.ic_menu_close_clear_cancel,
+                    android.R.drawable
+                        .ic_menu_close_clear_cancel,
                     "Decline",
                     decline
                 ).build()
             )
         }
 
-        manager.notify(CALL_NOTIFICATION_ID, builder.build())
+        manager.notify(
+            CALL_NOTIFICATION_ID,
+            builder.build()
+        )
     }
 
     private fun baseBuilder(
