@@ -10,6 +10,7 @@ object Protocol {
     const val CALL_END = "$BASE/call/end"
     const val CALL_DISCONNECTED = "$BASE/call/disconnected"
     const val CALL_PRIORITY = "$BASE/call/priority"
+    const val CALL_PRIORITY_LOCKED = "$BASE/call/priority-locked"
     const val CALL_AUDIO_PREFIX = "$BASE/call/audio/"
     const val VOICE_PREFIX = "$BASE/voice/"
     const val MESSAGE_PREFIX = "$BASE/message/"
@@ -34,6 +35,8 @@ object Protocol {
     const val CAPABILITY_DEVICE_INFO_V1 = "device_info_v1"
     const val CAPABILITY_CONVERSATION_V1 = "conversation_v1"
     const val CAPABILITY_PRIORITY_CALL_V1 = "priority_call_v1"
+    const val CAPABILITY_PRIORITY_LOCKED_CALL_V1 =
+        "priority_locked_call_v1"
     const val CAPABILITY_TEXT_V1 = "text_v1"
 
     const val META_ROLE = "happytalky.role"
