@@ -210,10 +210,6 @@ fun HappyTalkyPhoneScreen(
             onDismiss = {
                 showPriorityOptions = false
             },
-            onPriorityCall = {
-                showPriorityOptions = false
-                onPriorityCall()
-            },
         )
     }
     var selectedIds by remember {
@@ -320,7 +316,19 @@ fun HappyTalkyPhoneScreen(
             WindowInsets(0, 0, 0, 0),
         topBar = {
             if (selectedIds.isEmpty()) {
-                ConversationHeader(state, onPriorityOptions = { showPriorityOptions = true })
+                ConversationHeader(
+                    state = state,
+                    onPriorityAction = {
+                        if (
+                            state.priorityCallAvailable
+                        ) {
+                            onPriorityCall()
+                        } else {
+                            showPriorityOptions =
+                                true
+                        }
+                    },
+                )
             } else {
                 SelectionHeader(
                     selectedCount =
@@ -416,7 +424,7 @@ fun HappyTalkyPhoneScreen(
 @Composable
 private fun ConversationHeader(
     state: HappyTalkyUiState,
-    onPriorityOptions: () -> Unit,
+    onPriorityAction: () -> Unit,
 ) {
     Surface(
         color =
@@ -509,7 +517,9 @@ private fun ConversationHeader(
                     )
                 }
             }
-            TextButton(onClick = onPriorityOptions) {
+            TextButton(
+                onClick = onPriorityAction
+            ) {
                 Text(
                     "Priority\ncall",
                     style = MaterialTheme.typography.labelMedium,
@@ -2108,15 +2118,11 @@ private fun phoneCallLabel(entry: CallHistoryEntry): String {
 internal fun PriorityCallOptions(
     state: HappyTalkyUiState,
     onDismiss: () -> Unit,
-    onPriorityCall: () -> Unit,
 ) {
     val supported =
         Protocol
             .CAPABILITY_PRIORITY_LOCKED_CALL_V1 in
             state.peerCapabilities
-    val canStart =
-        state.priorityCallAvailable
-
     val explanation =
         when {
             state.priorityLocked &&
@@ -2167,30 +2173,10 @@ internal fun PriorityCallOptions(
             }
         },
         confirmButton = {
-            if (canStart) {
-                TextButton(
-                    onClick =
-                        onPriorityCall
-                ) {
-                    Text(
-                        "Start priority call"
-                    )
-                }
-            } else {
-                TextButton(
-                    onClick = onDismiss
-                ) {
-                    Text("Got it")
-                }
-            }
-        },
-        dismissButton = {
-            if (canStart) {
-                TextButton(
-                    onClick = onDismiss
-                ) {
-                    Text("Cancel")
-                }
+            TextButton(
+                onClick = onDismiss
+            ) {
+                Text("Got it")
             }
         },
     )
