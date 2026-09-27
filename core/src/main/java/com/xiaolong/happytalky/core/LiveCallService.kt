@@ -520,10 +520,6 @@ class LiveCallService : Service() {
                     NOTIFICATION_ID,
                     builder
                 )
-                    .setStaticIcon(
-                        android.R.drawable
-                            .sym_call_incoming
-                    )
                     .setTouchIntent(
                         pending
                     )
