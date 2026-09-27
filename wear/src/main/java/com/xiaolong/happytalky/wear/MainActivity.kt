@@ -1314,40 +1314,47 @@ fun WearInbox(
             )
 
             if (deleteConfirmationVisible) {
-                Box(
-                    modifier = Modifier
-                        .align(
+                WearDeleteConfirmation(
+                    modifier =
+                        Modifier.align(
                             Alignment.Center
                         )
-                        .zIndex(5f)
-                        .background(
-                            Color(0xFF173B2A),
-                            RoundedCornerShape(
-                                14.dp
-                            )
-                        )
-                        .padding(
-                            horizontal = 10.dp,
-                            vertical = 6.dp,
-                        ),
-                    contentAlignment =
-                        Alignment.Center,
-                ) {
-                    Text(
-                        text = "TALK deleted ✓",
-                        style =
-                            MaterialTheme
-                                .typography
-                                .labelMedium,
-                        color =
-                            Color(0xFFB9F6CA),
-                        fontWeight =
-                            FontWeight.Bold,
-                        maxLines = 1,
-                    )
-                }
+                )
             }
         }
+    }
+}
+
+@Composable
+internal fun WearDeleteConfirmation(
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .zIndex(5f)
+            .background(
+                Color(0xFF173B2A),
+                RoundedCornerShape(14.dp)
+            )
+            .padding(
+                horizontal = 10.dp,
+                vertical = 6.dp,
+            ),
+        contentAlignment =
+            Alignment.Center,
+    ) {
+        Text(
+            text = "TALK deleted ✓",
+            style =
+                MaterialTheme
+                    .typography
+                    .labelMedium,
+            color =
+                Color(0xFFB9F6CA),
+            fontWeight =
+                FontWeight.Bold,
+            maxLines = 1,
+        )
     }
 }
 
