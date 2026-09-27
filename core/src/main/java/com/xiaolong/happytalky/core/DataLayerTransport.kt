@@ -208,6 +208,10 @@ class DataLayerTransport(context: Context) {
             Protocol.KEY_PRIORITY_AUTO_ANSWER,
             info.priorityAutoAnswerEnabled
         )
+        request.dataMap.putLong(
+            Protocol.KEY_DEVICE_INFO_UPDATED_AT,
+            info.updatedAt
+        )
 
         dataClient.putDataItem(
             request.asPutDataRequest()
