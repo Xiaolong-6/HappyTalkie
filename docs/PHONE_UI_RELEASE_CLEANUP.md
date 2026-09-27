@@ -1,4 +1,6 @@
-# Phone conversation polish and debug release lifecycle
+# Historical: Phone conversation polish and debug release lifecycle
+
+> Historical implementation/closure note. It is retained for provenance, but its baseline commit and PR-specific wording are not current requirements. Use [ARCHITECTURE.md](ARCHITECTURE.md), [DEPLOY.md](DEPLOY.md), [UI_GUIDELINES.md](UI_GUIDELINES.md), and the root README for the current contract.
 
 Based on main `677a919` (includes PR #13's CALL/text/history fixes).
 
