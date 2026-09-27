@@ -29,6 +29,7 @@ object StateStore {
     private const val KEY_ACTIVE_STARTED_AT = "active_started_at"
     private const val KEY_OUTGOING_STARTED_AT = "outgoing_started_at"
     private const val KEY_CALL_MODE = "call_mode"
+    private const val KEY_PRIORITY_LOCKED = "priority_locked"
     private const val KEY_PEER_CONNECTION = "peer_connection"
     private const val KEY_PEER_ROUTE = "peer_route"
     private const val KEY_RECONNECT_UNTIL = "reconnect_until"
@@ -137,6 +138,25 @@ object StateStore {
             .apply()
     }
 
+    fun priorityLocked(context: Context): Boolean =
+        prefs(context).getBoolean(
+            KEY_PRIORITY_LOCKED,
+            false
+        )
+
+    fun setPriorityLocked(
+        context: Context,
+        locked: Boolean
+    ) {
+        prefs(context)
+            .edit()
+            .putBoolean(
+                KEY_PRIORITY_LOCKED,
+                locked
+            )
+            .apply()
+    }
+
     fun peerConnection(context: Context): PeerConnectionState {
         val raw = prefs(context).getString(KEY_PEER_CONNECTION, null)
         return runCatching {
@@ -191,6 +211,7 @@ object StateStore {
             .remove(KEY_ACTIVE_STARTED_AT)
             .remove(KEY_OUTGOING_STARTED_AT)
             .remove(KEY_CALL_MODE)
+            .remove(KEY_PRIORITY_LOCKED)
             .remove(KEY_RECONNECT_UNTIL)
             .apply()
     }
