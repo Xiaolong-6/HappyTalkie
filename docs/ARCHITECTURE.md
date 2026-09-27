@@ -73,8 +73,8 @@ Priority CALL is an explicit escalation layered on top of an ordinary ringing CA
 
 - Watch support is advertised through `priority_call_v1`.
 - Watch auto-answer permission defaults **off** and is published in device-info separately from protocol support.
-- Phone never shows the Priority action unless the Watch both supports the protocol and currently advertises that opt-in.
-- The Priority action appears only after the ordinary call has rung for at least 5 seconds.
+- Phone always shows a **Priority call** help/status entry in the conversation header. It explains missing support, Watch opt-in, the five-second delay, and the current availability. The escalation action is enabled only when Watch support and opt-in are confirmed.
+- The bottom Priority escalation action appears only after the ordinary call has rung for at least 5 seconds. The same action is available in the header dialog once eligible. Watch Inbox exposes a labelled **Priority calls / Auto-answer** switch.
 - Priority CALL reuses the existing call ID; it does not create a parallel session.
 - On Watch, receipt of a Priority request changes the call mode and launches the same visible incoming-call presentation.
 - Auto-answer runs only after the Watch Activity is actually resumed/visible. A background service never starts microphone capture silently.

@@ -48,6 +48,7 @@ import androidx.compose.material.icons.rounded.SentimentSatisfiedAlt
 import androidx.compose.material.icons.rounded.VolumeOff
 import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Wifi
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -202,6 +203,15 @@ fun HappyTalkyPhoneScreen(
     onDelete: (Set<String>) -> Unit,
     onClear: () -> Unit,
 ) {
+    var showPriorityOptions by rememberSaveable { mutableStateOf(false) }
+    if (showPriorityOptions) {
+        PriorityCallOptions(
+            state = state,
+            onDismiss = { showPriorityOptions = false },
+            onStartCall = { showPriorityOptions = false; onCall() },
+            onPriorityCall = { showPriorityOptions = false; onPriorityCall() },
+        )
+    }
     var selectedIds by remember {
         mutableStateOf(emptySet<String>())
     }
@@ -306,7 +316,7 @@ fun HappyTalkyPhoneScreen(
             WindowInsets(0, 0, 0, 0),
         topBar = {
             if (selectedIds.isEmpty()) {
-                ConversationHeader(state)
+                ConversationHeader(state, onPriorityOptions = { showPriorityOptions = true })
             } else {
                 SelectionHeader(
                     selectedCount =
@@ -401,7 +411,8 @@ fun HappyTalkyPhoneScreen(
 
 @Composable
 private fun ConversationHeader(
-    state: HappyTalkyUiState
+    state: HappyTalkyUiState,
+    onPriorityOptions: () -> Unit,
 ) {
     Surface(
         color =
@@ -493,6 +504,15 @@ private fun ConversationHeader(
                                 .Ellipsis,
                     )
                 }
+            }
+            TextButton(onClick = onPriorityOptions) {
+                Text(
+                    "Priority\ncall",
+                    style = MaterialTheme.typography.labelMedium,
+                    textAlign = TextAlign.Center,
+                    color = if (state.priorityOfferAvailable) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
@@ -2093,4 +2113,62 @@ private fun phoneCallLabel(entry: CallHistoryEntry): String {
         CallOutcome.DECLINED_BY_PEER -> prefix + "Peer declined"
         else -> entry.shortLabel()
     }
+}
+
+@Composable
+internal fun PriorityCallOptions(
+    state: HappyTalkyUiState,
+    onDismiss: () -> Unit,
+    onStartCall: () -> Unit,
+    onPriorityCall: () -> Unit,
+) {
+    val supported = Protocol.CAPABILITY_PRIORITY_CALL_V1 in state.peerCapabilities
+    val canStart = supported && state.peerPriorityCallsAllowed &&
+        state.callState == CallVisualState.READY && state.callEnabled && !state.recording
+    val explanation = when {
+        state.callMode == CallMode.PRIORITY ->
+            "Priority call requested. The watch answers when its call screen is visible."
+        state.peerConnection != PeerConnectionState.CONNECTED ->
+            "Connect your watch to check priority call availability."
+        !supported ->
+            "This watch has not reported priority call support. Update both apps and reconnect."
+        !state.peerPriorityCallsAllowed ->
+            "On your watch, open Inbox and turn on Priority calls · Auto-answer. Then call the watch normally."
+        state.priorityOfferAvailable ->
+            "The watch has not answered. You can now request auto-answer when its call screen is visible."
+        state.callState == CallVisualState.OUTGOING ->
+            "Wait 5 seconds after starting the call. The PRIORITY button then appears beside CANCEL."
+        state.callState != CallVisualState.READY || state.recording ->
+            "Finish the current call or recording before starting a priority call."
+        else ->
+            "Start a normal call. If it is unanswered after 5 seconds, tap PRIORITY to request auto-answer."
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Priority call") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(explanation)
+                Text(
+                    "Auto-answer must be enabled on the watch. If its call screen cannot open, the call keeps ringing for manual answer.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        confirmButton = {
+            if (state.priorityOfferAvailable) {
+                TextButton(onClick = onPriorityCall) { Text("Request priority call") }
+            } else if (canStart) {
+                TextButton(onClick = onStartCall) { Text("Start call") }
+            } else {
+                TextButton(onClick = onDismiss) { Text("Got it") }
+            }
+        },
+        dismissButton = {
+            if (state.priorityOfferAvailable || canStart) {
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+            }
+        },
+    )
 }

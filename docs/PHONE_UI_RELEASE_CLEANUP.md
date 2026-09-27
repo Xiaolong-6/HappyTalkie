@@ -13,6 +13,10 @@ Based on main `677a919` (includes PR #13's CALL/text/history fixes).
 - Replace an unavailable text field with a compact hint. Preserve PR #13's capability policy and keep draft text through temporary unavailability.
 - Add screenshot scenarios matching the supplied dense history, dark/compact display, large text, and unavailable composer.
 
+## Priority call discovery
+
+Phone header now always exposes **Priority call**. Its dialog explains whether Watch support is unknown, auto-answer is off, the call is still inside the five-second delay, or escalation is ready. Eligible users can start the ordinary call from the dialog and request priority after the existing delay. The Watch Inbox's tiny unlabelled ON/OFF control becomes a full-width, labelled auto-answer switch. Protocol, opt-in default, delay, and foreground-only auto-answer policy remain unchanged.
+
 ## Release policy
 
 See [debug distribution](../dist/README.md). PR APK downloads remain available under one rolling `debug-pr-N` release while the PR is open. Merge-triggered cleanup removes only reserved debug PR tags for merged same-repository PRs targeting main. Published non-prereleases and releases from other authors are protected. Formal versions and `debug-main` are never cleanup candidates.

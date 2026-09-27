@@ -408,3 +408,31 @@ fun PhoneTextUnavailableScreenshot() {
     PhoneShot(denseState().copy(textEnabled = false, callEnabled = false,
         peerConnection = PeerConnectionState.DISCONNECTED, peerRoute = PeerRoute.OFFLINE), dark = false)
 }
+
+@PreviewTest
+@Preview(name = "Phone priority opt-in help", widthDp = 360, heightDp = 800, showBackground = true)
+@Composable
+fun PhonePriorityHelpScreenshot() {
+    HappyTalkyPhoneTheme(darkTheme = false) {
+        PriorityCallOptions(
+            state = readyState().copy(peerCapabilities = setOf(com.xiaolong.happytalky.core.Protocol.CAPABILITY_PRIORITY_CALL_V1)),
+            onDismiss = {}, onStartCall = {}, onPriorityCall = {},
+        )
+    }
+}
+
+@PreviewTest
+@Preview(name = "Phone priority escalation dialog", widthDp = 360, heightDp = 800, showBackground = true)
+@Composable
+fun PhonePriorityEscalationScreenshot() {
+    HappyTalkyPhoneTheme(darkTheme = true) {
+        PriorityCallOptions(
+            state = readyState().copy(
+                peerCapabilities = setOf(com.xiaolong.happytalky.core.Protocol.CAPABILITY_PRIORITY_CALL_V1),
+                peerPriorityCallsAllowed = true, priorityOfferAvailable = true,
+                callState = CallVisualState.OUTGOING,
+            ),
+            onDismiss = {}, onStartCall = {}, onPriorityCall = {},
+        )
+    }
+}

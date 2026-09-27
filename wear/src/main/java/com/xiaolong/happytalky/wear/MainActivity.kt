@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.view.inputmethod.EditorInfo
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -51,6 +53,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -1169,68 +1172,32 @@ fun WearInbox(
                             )
                         }
 
-                        Box(
-                            modifier = Modifier
-                                .width(38.dp)
-                                .height(22.dp)
-                                .background(
-                                    Color(0xFF111A29),
-                                    RoundedCornerShape(
-                                        12.dp
-                                    )
-                                )
-                                .semantics {
-                                    role =
-                                        Role.Button
-                                    contentDescription =
-                                        if (
-                                            priorityCallsEnabled
-                                        ) {
-                                            "Disable priority calls"
-                                        } else {
-                                            "Enable priority calls"
-                                        }
-                                }
-                                .pointerInput(
-                                    priorityCallsEnabled
-                                ) {
-                                    detectTapGestures(
-                                        onTap = {
-                                            onPriorityCallsChanged(
-                                                !priorityCallsEnabled
-                                            )
-                                        }
-                                    )
-                                },
-                            contentAlignment =
-                                Alignment.Center,
-                        ) {
-                            Text(
-                                text =
-                                    if (
-                                        priorityCallsEnabled
-                                    ) {
-                                        "ON"
-                                    } else {
-                                        "OFF"
-                                    },
-                                style =
-                                    MaterialTheme
-                                        .typography
-                                        .labelSmall,
-                                fontWeight =
-                                    FontWeight.Bold,
-                                color =
-                                    if (
-                                        priorityCallsEnabled
-                                    ) {
-                                        Color(0xFFFFD35A)
-                                    } else {
-                                        Color(0xFF8E9AAF)
-                                    },
-                                maxLines = 1,
+                    }
+                }
+
+                item(key = "priority-call-setting") {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFF111A29))
+                            .toggleable(
+                                value = priorityCallsEnabled,
+                                role = Role.Switch,
+                                onValueChange = onPriorityCallsChanged,
                             )
-                        }
+                            .heightIn(min = 48.dp)
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Text("Priority calls", style = MaterialTheme.typography.labelMedium,
+                            color = Color.White)
+                        Text(
+                            if (priorityCallsEnabled) "Auto-answer · On" else "Auto-answer · Off",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (priorityCallsEnabled) Color(0xFFFFD35A) else Color(0xFF8E9AAF),
+                        )
                     }
                 }
 
