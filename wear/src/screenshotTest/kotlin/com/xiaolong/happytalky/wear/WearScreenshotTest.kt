@@ -182,8 +182,40 @@ fun WatchPriorityIncomingScreenshot() {
                 status = "Priority call",
                 callState = CallVisualState.INCOMING,
                 callMode = CallMode.PRIORITY,
-                localPriorityCallsAllowed = true,
+                priorityLocked = true,
                 peerName = "Phone · Pixel 10 Pro",
+                peerConnection = PeerConnectionState.CONNECTED,
+                peerRoute = PeerRoute.NEARBY_DIRECT,
+            ),
+            onCall = {},
+            onDecline = {},
+            onTalkStart = {},
+            onTalkFinish = {},
+            onTalkCancel = {},
+            onPlay = {},
+        )
+    }
+}
+
+@PreviewTest
+@Preview(
+    name = "Watch locked priority live",
+    device = WATCH_DEVICE,
+    showBackground = true,
+    backgroundColor = WATCH_BACKGROUND,
+)
+@Composable
+fun WatchLockedPriorityLiveScreenshot() {
+    MaterialTheme {
+        WearHome(
+            state = HappyTalkyUiState(
+                status = "Priority call with Phone",
+                callState = CallVisualState.LIVE,
+                callMode = CallMode.PRIORITY,
+                priorityLocked = true,
+                callEnabled = false,
+                talkEnabled = false,
+                peerName = "Phone",
                 peerConnection = PeerConnectionState.CONNECTED,
                 peerRoute = PeerRoute.NEARBY_DIRECT,
             ),
