@@ -7,19 +7,18 @@ enum class PriorityRequestDisposition {
 }
 
 object PriorityCallPolicy {
-    fun canOffer(
+    fun canRequestLocked(
         localRole: EndpointRole,
-        outgoingCallPresent: Boolean,
-        elapsedMs: Long,
-        peerSupportsPriority: Boolean,
-        peerAllowsAutoAnswer: Boolean
+        callInProgress: Boolean,
+        recording: Boolean,
+        peerConnected: Boolean,
+        peerSupportsLockedPriority: Boolean
     ): Boolean =
         localRole == EndpointRole.PHONE &&
-            outgoingCallPresent &&
-            elapsedMs >=
-                Protocol.PRIORITY_OFFER_DELAY_MS &&
-            peerSupportsPriority &&
-            peerAllowsAutoAnswer
+            !callInProgress &&
+            !recording &&
+            peerConnected &&
+            peerSupportsLockedPriority
 
     fun requestDisposition(
         requestedCallId: String,
@@ -49,14 +48,41 @@ object PriorityCallPolicy {
 
     fun canAutoAnswer(
         localRole: EndpointRole,
-        enabled: Boolean,
+        locked: Boolean,
+        legacyEnabled: Boolean,
         mode: CallMode,
         incomingCallPresent: Boolean,
         activityVisible: Boolean
     ): Boolean =
         localRole == EndpointRole.WATCH &&
-            enabled &&
             mode == CallMode.PRIORITY &&
             incomingCallPresent &&
-            activityVisible
+            activityVisible &&
+            (
+                locked ||
+                    legacyEnabled
+            )
+
+    fun canLocalTerminate(
+        localRole: EndpointRole,
+        locked: Boolean
+    ): Boolean =
+        !(
+            localRole == EndpointRole.WATCH &&
+                locked
+            )
+
+    fun acceptsPhoneCancelOnWatch(
+        localRole: EndpointRole,
+        locked: Boolean,
+        incomingMatches: Boolean,
+        activeMatches: Boolean
+    ): Boolean =
+        incomingMatches ||
+            (
+                localRole ==
+                    EndpointRole.WATCH &&
+                    locked &&
+                    activeMatches
+                )
 }

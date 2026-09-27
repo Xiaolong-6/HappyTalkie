@@ -50,6 +50,21 @@ class CallActionReceiver : BroadcastReceiver() {
     private fun decline(context: Context) {
         val callId = StateStore.incomingCall(context) ?: return
 
+        if (
+            !PriorityCallPolicy.canLocalTerminate(
+                localRole =
+                    EndpointRole.fromContext(
+                        context
+                    ),
+                locked =
+                    StateStore.priorityLocked(
+                        context
+                    )
+            )
+        ) {
+            return
+        }
+
         CallHistoryStore.append(
             context,
             callId,
@@ -66,6 +81,21 @@ class CallActionReceiver : BroadcastReceiver() {
     }
 
     private fun hangUp(context: Context) {
+        if (
+            !PriorityCallPolicy.canLocalTerminate(
+                localRole =
+                    EndpointRole.fromContext(
+                        context
+                    ),
+                locked =
+                    StateStore.priorityLocked(
+                        context
+                    )
+            )
+        ) {
+            return
+        }
+
         val active = StateStore.activeCall(context)
         val outgoing = StateStore.outgoingCall(context)
         val incoming = StateStore.incomingCall(context)

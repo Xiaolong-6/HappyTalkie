@@ -11,7 +11,7 @@ Secondary **TEXT** messaging is also supported. Text, TALK voice messages and CA
 
 ## Why two modes?
 
-CALL is for synchronous conversation. Signaling uses Wear OS Data Layer messages; after the receiver explicitly answers, HappyTalky opens a bidirectional Data Layer channel and streams microphone audio in both directions.
+CALL is for synchronous conversation. Normal CALL uses Wear OS Data Layer signaling and begins live audio after the receiver explicitly answers. Priority CALL uses a separate locked request described below; both modes use the same bidirectional Data Layer audio channel once connected.
 
 TALK is asynchronous and privacy-preserving:
 
@@ -50,9 +50,11 @@ CALL has an explicit lifecycle:
 6. reconnecting after a transient route change, when needed
 7. end
 
-Incoming CALL uses an actionable high-priority call notification. Phone may use lock-screen/full-screen presentation where Android permits it; Wear OS does not support full-screen intent notifications, so Watch relies on notification actions and the in-app call screen. Active Watch calls publish an Ongoing Activity return path. The caller can cancel while ringing. Either side can end an active call.
+Incoming normal CALL uses an actionable high-priority call notification. Phone may use lock-screen/full-screen presentation where Android permits it; Wear OS does not support full-screen intent notifications, so Watch relies on notification actions and the in-app call screen. Active Watch calls publish an Ongoing Activity return path. Either side can decline/cancel/end a normal CALL.
 
-A Watch can separately opt in to **Priority calls**. When enabled and advertised to the Phone, an unanswered ordinary call can expose a Priority action after 5 seconds. Priority never bypasses the Watch setting, and automatic answer is gated on the Watch Activity being visibly resumed before microphone capture starts.
+**Priority call** is a separate immediate parent-initiated request. It does not wait for an unanswered normal CALL and has no five-second escalation delay. A compatible Watch advertises `priority_locked_call_v1`; the Phone creates a fresh Priority call ID and sends the locked request directly. The Watch cannot decline the locked request or normally end the active Priority call from the app, notification, or foreground-service notification. The Phone can cancel while connection is pending and can end the connected call. Route loss or system failure can still terminate it.
+
+Android 14+ treats microphone access as a while-in-use permission. Therefore a background Data Layer receiver cannot legally start Watch microphone capture by itself. If HappyTalky is already visible on Watch, the locked Priority call auto-connects immediately. If the app is backgrounded, HappyTalky immediately stores the locked incoming state and posts a persistent high-priority notification; auto-connect occurs as soon as the Watch activity becomes foreground.
 
 Phone live calls include an explicit **Speaker** toggle. Phone audio does not force speaker mode by default. Wear uses its communication speaker route.
 

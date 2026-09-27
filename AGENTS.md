@@ -5,13 +5,14 @@
 - Keep the primary UI child-friendly: CALL and TALK only.
 - Text messaging is allowed as a secondary conversation capability; CALL and TALK remain the primary child-facing actions.
 - CALL is transient real-time signaling.
+- Locked Priority CALL is a direct Phone-to-Watch request: no ordinary-CALL delay, no Watch decline/end path, and no claim of background microphone capture that Android forbids.
 - TALK must support store-and-forward delivery when the peer is temporarily offline.
 - Phone and Wear OS apps must retain the same application ID and matching signatures.
 - Never commit signing private keys, tokens, passwords, or service credentials.
 
 ## Build
 
-Use JDK 17, Android SDK 36, AGP 8.13.2 and Gradle 8.13.
+Use JDK 17, compile SDK 37, AGP 9.1.1 and Gradle 9.3.1 (matching the checked-in build and CI configuration).
 
 Primary validation:
 

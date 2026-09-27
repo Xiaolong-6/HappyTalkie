@@ -7,6 +7,18 @@ import java.io.File
 
 object AudioPlayer {
     private var player: MediaPlayer? = null
+    private var playingPath: String? = null
+
+    /** Null means this file is not currently playing (including completion/error). */
+    @Synchronized
+    fun progressFor(file: File): Float? {
+        if (playingPath != file.absolutePath) return null
+        val current = player ?: return null
+        return runCatching {
+            if (!current.isPlaying || current.duration <= 0) null
+            else (current.currentPosition.toFloat() / current.duration).coerceIn(0f, 1f)
+        }.getOrNull()
+    }
 
     @Synchronized
     fun play(
@@ -18,6 +30,7 @@ object AudioPlayer {
         stop()
         val mediaPlayer = MediaPlayer()
         player = mediaPlayer
+        playingPath = file.absolutePath
 
         try {
             mediaPlayer.setAudioAttributes(
@@ -81,6 +94,7 @@ object AudioPlayer {
 
     @Synchronized
     fun stop() {
+        playingPath = null
         val current = player ?: return
         player = null
         runCatching {

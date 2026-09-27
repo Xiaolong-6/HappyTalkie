@@ -100,6 +100,13 @@ private fun readyState(
         peerName = "Watch",
         peerConnection = PeerConnectionState.CONNECTED,
         peerRoute = PeerRoute.NEARBY_DIRECT,
+        peerCapabilities =
+            setOf(
+                com.xiaolong.happytalky.core
+                    .Protocol
+                    .CAPABILITY_PRIORITY_LOCKED_CALL_V1
+            ),
+        priorityCallAvailable = true,
         textEnabled = true,
         messages = messages,
     )
@@ -200,7 +207,7 @@ fun PhoneCallingScreenshot() {
 
 @PreviewTest
 @Preview(
-    name = "Phone priority offer",
+    name = "Phone priority ready",
     widthDp = 412,
     heightDp = 915,
     showBackground = true,
@@ -210,11 +217,11 @@ fun PhonePriorityOfferScreenshot() {
     PhoneShot(
         state =
             readyState().copy(
-                status = "Ringing Watch…",
-                callState = CallVisualState.OUTGOING,
-                talkEnabled = false,
-                priorityOfferAvailable = true,
-                peerPriorityCallsAllowed = true,
+                status = "Ready",
+                callState =
+                    CallVisualState.READY,
+                priorityCallAvailable =
+                    true,
             ),
         dark = true,
     )
@@ -232,12 +239,14 @@ fun PhonePriorityRequestedScreenshot() {
     PhoneShot(
         state =
             readyState().copy(
-                status = "Priority call requested…",
-                callState = CallVisualState.OUTGOING,
+                status =
+                    "Priority call sent · waiting for Watch",
+                callState =
+                    CallVisualState.OUTGOING,
                 talkEnabled = false,
-                priorityOfferAvailable = false,
-                peerPriorityCallsAllowed = true,
+                priorityCallAvailable = false,
                 callMode = CallMode.PRIORITY,
+                priorityLocked = true,
             ),
         dark = true,
     )
@@ -359,4 +368,86 @@ fun PhoneCompactScreenshot() {
         state = readyState(),
         dark = false,
     )
+}
+
+private fun denseState(): HappyTalkyUiState {
+    val time = 1_760_000_000_000L
+    val calls = (0..3).map { index ->
+        com.xiaolong.happytalky.core.CallHistoryEntry(
+            id = "call-$index", callId = "session-$index", occurredAt = time + index * 1_000L,
+            direction = com.xiaolong.happytalky.core.CallDirection.OUTGOING,
+            outcome = if (index == 2) com.xiaolong.happytalky.core.CallOutcome.CANCELLED_BY_PEER
+                else com.xiaolong.happytalky.core.CallOutcome.CANCELLED_BY_ME,
+        )
+    }
+    return readyState().copy(
+        peerName = "Watch · Pixel Watch 4",
+        callHistory = calls,
+        timeline = calls.map { call ->
+            ConversationItem(id = call.id, type = ConversationItemType.CALL,
+                direction = ConversationDirection.OUTGOING, createdAt = call.occurredAt,
+                deliveryState = DeliveryState.DELIVERED)
+        } + listOf(
+            sampleConversation[2],
+            sampleConversation[1].copy(id = "emoji-1", text = "👍", createdAt = time + 120_000L),
+            sampleConversation[1].copy(id = "emoji-2", text = "👍", createdAt = time + 180_000L),
+        ),
+    )
+}
+
+@PreviewTest
+@Preview(name = "Phone dense history light", widthDp = 412, heightDp = 915, showBackground = true)
+@Composable
+fun PhoneDenseHistoryScreenshot() { PhoneShot(denseState(), dark = false) }
+
+@PreviewTest
+@Preview(name = "Phone dense history dark compact", widthDp = 360, heightDp = 800, showBackground = true)
+@Composable
+fun PhoneDenseHistoryDarkScreenshot() { PhoneShot(denseState(), dark = true) }
+
+@PreviewTest
+@Preview(name = "Phone large text", widthDp = 360, heightDp = 800, fontScale = 1.5f, showBackground = true)
+@Composable
+fun PhoneLargeTextScreenshot() { PhoneShot(denseState(), dark = false) }
+
+@PreviewTest
+@Preview(name = "Phone text unavailable", widthDp = 360, heightDp = 800, showBackground = true)
+@Composable
+fun PhoneTextUnavailableScreenshot() {
+    PhoneShot(denseState().copy(textEnabled = false, callEnabled = false,
+        peerConnection = PeerConnectionState.DISCONNECTED, peerRoute = PeerRoute.OFFLINE), dark = false)
+}
+
+@PreviewTest
+@Preview(name = "Phone priority unsupported help", widthDp = 360, heightDp = 800, showBackground = true)
+@Composable
+fun PhonePriorityHelpScreenshot() {
+    HappyTalkyPhoneTheme(darkTheme = false) {
+        PriorityCallOptions(
+            state =
+                readyState().copy(
+                    peerCapabilities =
+                        emptySet(),
+                    priorityCallAvailable =
+                        false,
+                ),
+            onDismiss = {},
+        )
+    }
+}
+
+@PreviewTest
+@Preview(name = "Phone priority busy help", widthDp = 360, heightDp = 800, showBackground = true)
+@Composable
+fun PhonePriorityEscalationScreenshot() {
+    HappyTalkyPhoneTheme(darkTheme = true) {
+        PriorityCallOptions(
+            state = readyState().copy(
+                peerCapabilities = setOf(com.xiaolong.happytalky.core.Protocol.CAPABILITY_PRIORITY_LOCKED_CALL_V1),
+                priorityCallAvailable = false,
+                callState = CallVisualState.LIVE,
+            ),
+            onDismiss = {},
+        )
+    }
 }

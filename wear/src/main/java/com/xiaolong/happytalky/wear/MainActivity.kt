@@ -37,6 +37,7 @@ import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.NetworkCell
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -152,8 +153,6 @@ class MainActivity : HappyTalkyActivity() {
                     onPlay = ::playMessage,
                     onDelete =
                         ::deleteConversationItems,
-                    onPriorityCallsChanged =
-                        ::setPriorityCallsEnabled,
                     onComposeText =
                         ::launchTextInput,
                     openInbox = openInboxRequested,
@@ -274,7 +273,6 @@ fun WearHome(
     onTalkCancel: () -> Unit,
     onPlay: (VoiceMessage) -> Unit,
     onDelete: (Set<String>) -> Unit = {},
-    onPriorityCallsChanged: (Boolean) -> Unit = {},
     onComposeText: () -> Unit = {},
     openInbox: Boolean = false,
     onInboxOpened: () -> Unit = {},
@@ -310,6 +308,8 @@ fun WearHome(
             priority =
                 state.callMode ==
                     CallMode.PRIORITY,
+            locked =
+                state.priorityLocked,
             onAnswer = onCall,
             onDecline = onDecline,
         )
@@ -329,10 +329,6 @@ fun WearHome(
                 state.textEnabled,
             onComposeText =
                 onComposeText,
-            priorityCallsEnabled =
-                state.localPriorityCallsAllowed,
-            onPriorityCallsChanged =
-                onPriorityCallsChanged,
             onBack = {
                 showInbox = false
             },
@@ -457,9 +453,17 @@ private fun WearHomePage(
 private fun WearIncomingCallScreen(
     peerName: String,
     priority: Boolean = false,
+    locked: Boolean = false,
     onAnswer: () -> Unit,
     onDecline: () -> Unit,
 ) {
+    if (locked) {
+        WearLockedPriorityIncomingScreen(
+            peerName = peerName
+        )
+        return
+    }
+
     AppScaffold(
         containerColor = Color.Black,
         contentColor = Color.White,
@@ -556,6 +560,96 @@ private fun WearIncomingCallScreen(
 }
 
 @Composable
+private fun WearLockedPriorityIncomingScreen(
+    peerName: String,
+) {
+    AppScaffold(
+        containerColor = Color.Black,
+        contentColor = Color.White,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(
+                    start = 18.dp,
+                    end = 18.dp,
+                    top = 26.dp,
+                    bottom = 18.dp,
+                ),
+            horizontalAlignment =
+                Alignment.CenterHorizontally,
+            verticalArrangement =
+                Arrangement.spacedBy(
+                    5.dp,
+                    Alignment.CenterVertically
+                ),
+        ) {
+            Text(
+                text = "PRIORITY CALL",
+                style =
+                    MaterialTheme
+                        .typography
+                        .labelMedium,
+                color =
+                    Color(0xFFFFD35A),
+                fontWeight =
+                    FontWeight.Bold,
+                maxLines = 1,
+            )
+
+            Text(
+                text = peerName,
+                style =
+                    MaterialTheme
+                        .typography
+                        .titleMedium,
+                fontWeight =
+                    FontWeight.Bold,
+                textAlign =
+                    TextAlign.Center,
+                maxLines = 2,
+                overflow =
+                    TextOverflow.Ellipsis,
+            )
+
+            Icon(
+                imageVector =
+                    Icons.Rounded.Call,
+                contentDescription = null,
+                modifier =
+                    Modifier.size(30.dp),
+                tint =
+                    Color(0xFF76DCA5),
+            )
+
+            Text(
+                text = "AUTO CONNECT",
+                style =
+                    MaterialTheme
+                        .typography
+                        .labelMedium,
+                color =
+                    Color(0xFFFFD35A),
+                fontWeight =
+                    FontWeight.Bold,
+                maxLines = 1,
+            )
+
+            Text(
+                text = "Phone ends call",
+                style =
+                    MaterialTheme
+                        .typography
+                        .labelSmall,
+                color =
+                    Color(0xFF8E9AAF),
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
 private fun CallCircleButton(
     text: String,
     icon: ImageVector,
@@ -637,59 +731,105 @@ private fun PrimaryCallAction(
     state: HappyTalkyUiState,
     onCall: () -> Unit,
 ) {
+    val lockedCall =
+        state.priorityLocked &&
+            state.callState !=
+                CallVisualState.READY
+
     val container =
-        when (state.callState) {
-            CallVisualState.LIVE,
-            CallVisualState.OUTGOING,
-            CallVisualState.CONNECTING,
-            CallVisualState.RECONNECTING ->
-                Color(0xFFD9485E)
+        if (lockedCall) {
+            Color(0xFFFFA000)
+        } else {
+            when (state.callState) {
+                CallVisualState.LIVE,
+                CallVisualState.OUTGOING,
+                CallVisualState.CONNECTING,
+                CallVisualState.RECONNECTING ->
+                    Color(0xFFD9485E)
 
-            CallVisualState.INCOMING ->
-                Color(0xFF1DAA6B)
+                CallVisualState.INCOMING ->
+                    Color(0xFF1DAA6B)
 
-            CallVisualState.READY ->
-                Color(0xFF176DFF)
+                CallVisualState.READY ->
+                    Color(0xFF176DFF)
+            }
         }
 
     Button(
         onClick = onCall,
-        enabled = state.callEnabled,
+        enabled =
+            state.callEnabled &&
+                !lockedCall,
         label = {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
+            if (lockedCall) {
                 Icon(
                     imageVector =
-                        when (state.callState) {
-                            CallVisualState.LIVE,
-                            CallVisualState.OUTGOING,
-                            CallVisualState.CONNECTING,
-                            CallVisualState.RECONNECTING ->
-                                Icons.Rounded.CallEnd
+                        Icons.Rounded.Lock,
+                    contentDescription =
+                        "Locked priority call · phone ends call",
+                    modifier =
+                        Modifier.size(26.dp),
+                )
+            } else {
+                Column(
+                    horizontalAlignment =
+                        Alignment.CenterHorizontally,
+                ) {
+                    Icon(
+                        imageVector =
+                            when (state.callState) {
+                                CallVisualState.LIVE,
+                                CallVisualState.OUTGOING,
+                                CallVisualState.CONNECTING,
+                                CallVisualState.RECONNECTING ->
+                                    Icons.Rounded.CallEnd
 
-                            CallVisualState.INCOMING,
-                            CallVisualState.READY ->
-                                Icons.Rounded.Call
-                        },
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                )
-                Text(
-                    text = wearCallLabel(state),
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                )
+                                CallVisualState.INCOMING,
+                                CallVisualState.READY ->
+                                    Icons.Rounded.Call
+                            },
+                        contentDescription = null,
+                        modifier =
+                            Modifier.size(20.dp),
+                    )
+                    Text(
+                        text =
+                            wearCallLabel(state),
+                        style =
+                            MaterialTheme
+                                .typography
+                                .labelMedium,
+                        fontWeight =
+                            FontWeight.SemiBold,
+                        maxLines = 1,
+                    )
+                }
             }
         },
         colors = ButtonDefaults.buttonColors(
             containerColor = container,
             contentColor = Color.White,
-            disabledContainerColor = Color(0xFF1C293C),
-            disabledContentColor = Color(0xFF7D8A9F),
+            disabledContainerColor =
+                if (lockedCall) {
+                    Color(0xFFFFA000)
+                } else {
+                    Color(0xFF1C293C)
+                },
+            disabledContentColor =
+                if (lockedCall) {
+                    Color(0xFF221500)
+                } else {
+                    Color(0xFF7D8A9F)
+                },
         ),
-        modifier = Modifier.size(66.dp),
+        modifier =
+            if (lockedCall) {
+                Modifier
+                    .width(92.dp)
+                    .height(66.dp)
+            } else {
+                Modifier.size(66.dp)
+            },
     )
 }
 
@@ -934,8 +1074,6 @@ fun WearInbox(
     peerName: String,
     textEnabled: Boolean = false,
     onComposeText: () -> Unit = {},
-    priorityCallsEnabled: Boolean = false,
-    onPriorityCallsChanged: (Boolean) -> Unit = {},
     onBack: () -> Unit,
     onPlay: (VoiceMessage) -> Unit,
     onDelete: (Set<String>) -> Unit = {},
@@ -1169,70 +1307,10 @@ fun WearInbox(
                             )
                         }
 
-                        Box(
-                            modifier = Modifier
-                                .width(38.dp)
-                                .height(22.dp)
-                                .background(
-                                    Color(0xFF111A29),
-                                    RoundedCornerShape(
-                                        12.dp
-                                    )
-                                )
-                                .semantics {
-                                    role =
-                                        Role.Button
-                                    contentDescription =
-                                        if (
-                                            priorityCallsEnabled
-                                        ) {
-                                            "Disable priority calls"
-                                        } else {
-                                            "Enable priority calls"
-                                        }
-                                }
-                                .pointerInput(
-                                    priorityCallsEnabled
-                                ) {
-                                    detectTapGestures(
-                                        onTap = {
-                                            onPriorityCallsChanged(
-                                                !priorityCallsEnabled
-                                            )
-                                        }
-                                    )
-                                },
-                            contentAlignment =
-                                Alignment.Center,
-                        ) {
-                            Text(
-                                text =
-                                    if (
-                                        priorityCallsEnabled
-                                    ) {
-                                        "ON"
-                                    } else {
-                                        "OFF"
-                                    },
-                                style =
-                                    MaterialTheme
-                                        .typography
-                                        .labelSmall,
-                                fontWeight =
-                                    FontWeight.Bold,
-                                color =
-                                    if (
-                                        priorityCallsEnabled
-                                    ) {
-                                        Color(0xFFFFD35A)
-                                    } else {
-                                        Color(0xFF8E9AAF)
-                                    },
-                                maxLines = 1,
-                            )
-                        }
                     }
                 }
+
+
 
                 if (
                     displayTimeline.isEmpty()
@@ -1997,12 +2075,22 @@ private fun wearRouteLabel(state: HappyTalkyUiState): String =
             "Checking"
     }
 
-private fun wearCallLabel(state: HappyTalkyUiState): String =
-    when (state.callState) {
-        CallVisualState.LIVE -> "END"
-        CallVisualState.INCOMING -> "ANSWER"
-        CallVisualState.OUTGOING -> "CANCEL"
-        CallVisualState.CONNECTING -> "END"
-        CallVisualState.RECONNECTING -> "END"
-        CallVisualState.READY -> "CALL"
+private fun wearCallLabel(
+    state: HappyTalkyUiState
+): String =
+    if (
+        state.priorityLocked &&
+        state.callState !=
+            CallVisualState.READY
+    ) {
+        "LOCKED"
+    } else {
+        when (state.callState) {
+            CallVisualState.LIVE -> "END"
+            CallVisualState.INCOMING -> "ANSWER"
+            CallVisualState.OUTGOING -> "CANCEL"
+            CallVisualState.CONNECTING -> "END"
+            CallVisualState.RECONNECTING -> "END"
+            CallVisualState.READY -> "CALL"
+        }
     }

@@ -65,23 +65,25 @@ Signaling uses transient `MessageClient` paths:
 - `/happytalky/call/busy`
 - `/happytalky/call/end`
 - `/happytalky/call/disconnected`
-- `/happytalky/call/priority`
+- `/happytalky/call/priority` (legacy escalation compatibility)
+- `/happytalky/call/priority-locked`
 
 ### Priority CALL
 
-Priority CALL is an explicit escalation layered on top of an ordinary ringing CALL.
+Locked Priority CALL is a separate immediate Phone-to-Watch request. It is not an escalation of an ordinary ringing CALL.
 
-- Watch support is advertised through `priority_call_v1`.
-- Watch auto-answer permission defaults **off** and is published in device-info separately from protocol support.
-- Phone never shows the Priority action unless the Watch both supports the protocol and currently advertises that opt-in.
-- The Priority action appears only after the ordinary call has rung for at least 5 seconds.
-- Priority CALL reuses the existing call ID; it does not create a parallel session.
-- On Watch, receipt of a Priority request changes the call mode and launches the same visible incoming-call presentation.
-- Auto-answer runs only after the Watch Activity is actually resumed/visible. A background service never starts microphone capture silently.
-- If Android does not surface the Watch Activity, the call remains visibly ringing and can still be answered manually.
-- CALL history stores `NORMAL` versus `PRIORITY` so escalated calls remain auditable.
+- New support is advertised through `priority_locked_call_v1`. The older `priority_call_v1` path is retained only for protocol compatibility with older builds.
+- Phone can start locked Priority only from an idle, CALL-capable route and only after the Watch advertises the new capability.
+- Starting Priority creates a fresh call ID and sends `/happytalky/call/priority-locked` immediately. It does not start a normal CALL first and has no delay.
+- Watch does not expose an opt-out switch for locked Priority.
+- A locked Priority incoming state has no Decline action and no ordinary missed-call timeout. The Watch call screen shows the locked state without NO/END controls.
+- Once connected, the Watch cannot normally terminate a locked Priority call through Compose UI, notification actions, `CallActionReceiver`, or the foreground-service notification. The Phone remains allowed to cancel a pending request or end an active call.
+- If Phone CANCEL races with Watch auto-answer, Watch accepts the Phone cancellation even after the local state has already moved from incoming to active.
+- Route failure, process/system failure, or reconnect timeout can still terminate the call and persist `DISCONNECTED`.
+- Android 14+ treats `RECORD_AUDIO` as a while-in-use permission. A Data Layer listener running while Watch is backgrounded therefore cannot lawfully start microphone capture by itself. When the Watch Activity is already resumed, locked Priority auto-answers immediately. Otherwise the locked incoming state and persistent high-priority notification are created immediately and auto-answer occurs when the Activity becomes foreground.
+- CALL history stores `PRIORITY` mode so these calls remain auditable.
 
-The intended lifecycle is:
+The normal CALL lifecycle remains:
 
 ~~~text
 READY
@@ -94,7 +96,20 @@ LIVE -> RECONNECTING -> LIVE
 LIVE/RECONNECTING -> ENDED | DISCONNECTED
 ~~~
 
-A live call never begins merely because a RING arrived. The receiving user must answer.
+Locked Priority adds a distinct path:
+
+~~~text
+READY
+  -> PRIORITY_LOCKED_WAITING
+  -> CONNECTING
+  -> LIVE
+
+PRIORITY_LOCKED_WAITING -> CANCELLED_BY_PHONE | BUSY | FAILED
+LIVE -> ENDED_BY_PHONE
+LIVE/CONNECTING -> RECONNECTING -> LIVE | DISCONNECTED
+~~~
+
+A normal CALL never becomes live merely because a RING arrived; the receiver must answer. Locked Priority is the explicit exception, subject to Android's foreground microphone rule above.
 
 After ANSWER, the initiator opens:
 
@@ -116,9 +131,9 @@ Audio parameters:
 - acoustic echo cancellation when available
 - noise suppression when available
 
-Phone starts on the system-selected communication route. Speaker is an explicit user toggle. Wear requests its built-in communication speaker when available. Priority CALL uses the same audio path after answer; it changes escalation/answer policy, not transport or microphone behavior.
+Phone starts on the system-selected communication route. Speaker is an explicit user toggle. Wear requests its built-in communication speaker when available. Priority CALL uses the same audio transport once connected; the locked policy changes call initiation and local termination rights, not PCM transport.
 
-A foreground service keeps outgoing/live-call state alive in the background and exposes Cancel/End from the ongoing notification. On Wear OS, active calls are also published as an `OngoingActivity` so the watch face/launcher can provide a one-tap return path.
+A foreground service keeps outgoing/live-call state alive in the background. Normal calls expose Cancel/End from the ongoing notification. An active locked Priority call on Watch deliberately omits End. On Wear OS, active calls are also published as an `OngoingActivity` so the watch face/launcher can provide a one-tap return path.
 
 ## Reconnection
 
@@ -159,9 +174,11 @@ Incoming CALL uses:
 - a dedicated Answer / Decline screen whenever the Wear activity is already foregrounded;
 - the same Answer/Decline actions in the foreground Compose UI.
 
-Wear OS does not support `setFullScreenIntent()` or the `USE_FULL_SCREEN_INTENT` permission, so the Wear build does not request that permission or attempt that notification path. Background incoming calls use a dedicated high-importance Wear notification channel with vibration plus an expandable `NotificationCompat` notification containing Answer / Decline actions; after answer, the live-call foreground service publishes an `OngoingActivity` return path. Priority auto-answer still requires the Watch activity to be resumed/visible and never starts microphone capture silently from background.
+Wear OS does not support `setFullScreenIntent()` or the `USE_FULL_SCREEN_INTENT` permission, so the Wear build does not request that permission or attempt that notification path. A normal background incoming call uses a dedicated high-importance Wear notification with Answer / Decline actions and the normal ring timeout.
 
-If the user does nothing, the ring times out rather than remaining active indefinitely. Final CALL outcomes are persisted locally, including completed duration, declined, missed/no-answer, cancelled, busy, failed, and disconnected cases.
+A locked Priority incoming call instead posts an ongoing high-priority notification with only an Open action. It has no local Decline action and no missed-call timeout. If HappyTalky is already foregrounded, the Watch immediately proceeds to auto-answer. If it is backgrounded, the request remains locked and visible until the Phone cancels, the user opens HappyTalky and auto-answer proceeds, or a genuine route/system failure terminates it. The app does not attempt to bypass Android's background microphone restrictions.
+
+Final CALL outcomes are persisted locally, including completed duration, declined, missed/no-answer, cancelled, busy, failed, and disconnected cases.
 
 ## TEXT
 
@@ -225,7 +242,7 @@ Compose Material 3 follows a voice-messenger information architecture:
 - long-press any TALK to enter multi-selection; the temporary top bar provides select-all and delete;
 - current CALL state appears inside the conversation timeline instead of occupying a permanent dashboard card;
 - bottom action area keeps CALL and press-and-hold TALK on the first row and a Message composer beneath them;
-- during an eligible unanswered outgoing CALL, the TALK-side action temporarily becomes **PRIORITY** after the delay;
+- the conversation header exposes **Priority call** as a direct action when the connected Watch advertises locked-Priority support; it creates a separate immediate request rather than escalating a normal CALL;
 - incoming CALL temporarily replaces the bottom actions with Decline / Answer;
 - live CALL replaces the right action with the Speaker toggle;
 - light/dark ColorSchemes follow the Android system theme while keeping the HappyTalky brand blue stable.
@@ -243,8 +260,8 @@ Wear Material 3 presents a shorter wrist-first loop:
 - unread incoming TALK is counted and bold/highlighted in chronological history, and loses emphasis after playback completes;
 - TEXT, TALK and CALL rows are interleaved by timestamp; every persisted row can be swiped left to reveal Delete, with a short type-specific confirmation. Deletion is local history management; TEXT/CALL deletion is not a remote recall operation, while TALK deletion also removes its local audio file;
 - persisted CALL events are interleaved with TEXT/TALK by timestamp, while the latest CALL is still summarized on the home screen;
-- Inbox exposes the explicit **Priority calls** opt-in; enabling it republishes Watch device-info immediately;
-- priority incoming presentation is visually labelled before the resumed foreground UI performs auto-answer;
+- locked Priority incoming presentation is visually distinct, exposes no Decline control, and auto-answers as soon as the Watch Activity is legally able to start microphone capture;
+- during an active locked Priority call the Watch shows the Priority state but no local END control;
 - a fixed compact Message composer launches the system RemoteInput/IME with emoji and dictation support.
 
 Bulk history management and secondary explanation stay on the phone.
@@ -260,8 +277,8 @@ CI renders Compose screenshot previews for:
 - offline;
 - live;
 - reconnecting;
-- phone Priority offer/requested;
-- Watch Priority incoming and Priority setting;
+- phone direct Priority ready/requested states and dialog;
+- Watch locked Priority incoming and locked live states;
 - Phone mixed TEXT/TALK conversation;
 - Watch mixed TEXT/TALK/CALL Inbox.
 

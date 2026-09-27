@@ -35,6 +35,11 @@ class HappyTalkyListenerService : WearableListenerService() {
                 )
             Protocol.CALL_PRIORITY ->
                 receivePriority(callId)
+
+            Protocol.CALL_PRIORITY_LOCKED ->
+                receiveLockedPriority(
+                    callId
+                )
         }
     }
 
@@ -464,6 +469,10 @@ class HappyTalkyListenerService : WearableListenerService() {
             this,
             CallMode.NORMAL
         )
+        StateStore.setPriorityLocked(
+            this,
+            false
+        )
         StateStore.setIncomingCall(this, callId)
         StateStore.setPeerConnection(
             this,
@@ -541,6 +550,10 @@ class HappyTalkyListenerService : WearableListenerService() {
             this,
             CallMode.PRIORITY
         )
+        StateStore.setPriorityLocked(
+            this,
+            false
+        )
         StateStore.setIncomingCall(
             this,
             callId
@@ -553,6 +566,95 @@ class HappyTalkyListenerService : WearableListenerService() {
             this,
             callId,
             priority = true
+        )
+        EventBus.notifyStateChanged(
+            this
+        )
+    }
+
+    private fun receiveLockedPriority(
+        callId: String
+    ) {
+        if (
+            EndpointRole.fromContext(this) !=
+                EndpointRole.WATCH
+        ) {
+            return
+        }
+
+        val incoming =
+            StateStore.incomingCall(
+                this
+            )
+        val active =
+            StateStore.activeCall(
+                this
+            )
+        val outgoing =
+            StateStore.outgoingCall(
+                this
+            )
+
+        when (
+            PriorityCallPolicy
+                .requestDisposition(
+                    requestedCallId =
+                        callId,
+                    incomingCallId =
+                        incoming,
+                    outgoingCallId =
+                        outgoing,
+                    activeCallId =
+                        active
+                )
+        ) {
+            PriorityRequestDisposition
+                .IGNORE_ALREADY_ACTIVE ->
+                return
+
+            PriorityRequestDisposition
+                .REJECT_BUSY -> {
+                DataLayerTransport(this)
+                    .sendSignal(
+                        Protocol.CALL_BUSY,
+                        callId
+                    ) { }
+                return
+            }
+
+            PriorityRequestDisposition.APPLY ->
+                Unit
+        }
+
+        StateStore.setCallInitiator(
+            this,
+            false
+        )
+        StateStore.setCallMode(
+            this,
+            CallMode.PRIORITY
+        )
+        StateStore.setPriorityLocked(
+            this,
+            true
+        )
+        StateStore.setIncomingCall(
+            this,
+            callId
+        )
+        StateStore.setPeerConnection(
+            this,
+            PeerConnectionState.CONNECTED
+        )
+        StateStore.setStatus(
+            this,
+            "Priority call · opening"
+        )
+        AlertController.startIncomingCall(
+            this,
+            callId,
+            priority = true,
+            locked = true
         )
         EventBus.notifyStateChanged(
             this
@@ -584,6 +686,14 @@ class HappyTalkyListenerService : WearableListenerService() {
     private fun receiveDecline(callId: String) {
         if (StateStore.outgoingCall(this) != callId) return
 
+        if (
+            EndpointRole.fromContext(this) ==
+                EndpointRole.PHONE &&
+            StateStore.priorityLocked(this)
+        ) {
+            return
+        }
+
         CallHistoryStore.append(
             this,
             callId,
@@ -599,16 +709,59 @@ class HappyTalkyListenerService : WearableListenerService() {
     }
 
     private fun receiveCancel(callId: String) {
-        if (StateStore.incomingCall(this) != callId) return
+        val incomingMatches =
+            StateStore.incomingCall(this) ==
+                callId
+        val lockedActiveMatches =
+            EndpointRole.fromContext(this) ==
+                EndpointRole.WATCH &&
+                StateStore.priorityLocked(
+                    this
+                ) &&
+                StateStore.activeCall(this) ==
+                    callId
+
+        if (
+            !PriorityCallPolicy
+                .acceptsPhoneCancelOnWatch(
+                    localRole =
+                        EndpointRole.fromContext(
+                            this
+                        ),
+                    locked =
+                        StateStore.priorityLocked(
+                            this
+                        ),
+                    incomingMatches =
+                        incomingMatches,
+                    activeMatches =
+                        StateStore.activeCall(
+                            this
+                        ) == callId
+                )
+        ) {
+            return
+        }
 
         CallHistoryStore.append(
             this,
             callId,
             CallDirection.INCOMING,
-            CallOutcome.CANCELLED_BY_PEER
+            CallOutcome.CANCELLED_BY_PEER,
+            startedAt =
+                if (lockedActiveMatches) {
+                    StateStore.activeStartedAt(
+                        this
+                    )
+                } else {
+                    0L
+                }
         )
         StateStore.clearCallState(this)
-        StateStore.setStatus(this, "Call cancelled")
+        StateStore.setStatus(
+            this,
+            "Priority call cancelled by phone"
+        )
         AlertController.stop(this)
         LiveCallAudio.stop(this)
         LiveCallService.stop(this)
@@ -644,6 +797,15 @@ class HappyTalkyListenerService : WearableListenerService() {
                     callId
 
         if (!relevant) return
+
+        if (
+            EndpointRole.fromContext(this) ==
+                EndpointRole.PHONE &&
+            StateStore.priorityLocked(this) &&
+            !disconnected
+        ) {
+            return
+        }
 
         val wasActive =
             StateStore.activeCall(this) ==
