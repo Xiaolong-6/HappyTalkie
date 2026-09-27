@@ -64,7 +64,7 @@ jobs:
 
       - name: Test and build
         shell: bash
-        run: gradle --no-daemon :core:testDebugUnitTest :mobile:assembleDebug :wear:assembleDebug
+        run: gradle --no-daemon :core:testDebugUnitTest :wear:testDebugUnitTest :mobile:assembleDebug :wear:assembleDebug
 
       - name: Render UI screenshot baselines
         shell: bash
