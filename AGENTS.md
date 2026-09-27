@@ -11,7 +11,7 @@
 
 ## Build
 
-Use JDK 17, Android SDK 36, AGP 8.13.2 and Gradle 8.13.
+Use JDK 17, compile SDK 37, AGP 9.1.1 and Gradle 9.3.1 (matching the checked-in build and CI configuration).
 
 Primary validation:
 

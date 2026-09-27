@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: android-ci-${{ github.ref }}
@@ -59,6 +59,9 @@ jobs:
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" --channel=3 "platforms;android-37.0" "build-tools;37.0.0"
 
+      - name: Test release cleanup policy
+        run: node --test .github/scripts/cleanup-debug-releases.test.cjs
+
       - name: Test and build
         shell: bash
         run: gradle --no-daemon :core:testDebugUnitTest :mobile:assembleDebug :wear:assembleDebug
@@ -95,42 +98,70 @@ jobs:
           path: wear/build/outputs/apk/debug/wear-debug.apk
           if-no-files-found: error
 
-      - name: Prepare debug dist metadata
-        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
-        shell: bash
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            TAG="debug-pr-${{ github.event.pull_request.number }}"
-          else
-            TAG="debug-main"
-          fi
+  publish:
+    needs: build
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+    concurrency:
+      group: debug-dist-lifecycle
+      cancel-in-progress: false
+    steps:
+      - name: Check whether this build is still current
+        id: gate
+        uses: actions/github-script@v7
+        with:
+          script: |
+            let eligible = true;
+            if (context.eventName === 'pull_request') {
+              const { data: pr } = await github.rest.pulls.get({ ...context.repo, pull_number: context.issue.number });
+              eligible = pr.state === 'open' && pr.head.sha === context.payload.pull_request.head.sha;
+            } else {
+              const { data: ref } = await github.rest.git.getRef({ ...context.repo, ref: 'heads/main' });
+              eligible = ref.object.sha === context.sha;
+            }
+            core.setOutput('eligible', String(eligible));
 
-          cat > debug-dist.json <<EOF
-          {
-            "tag": "$TAG",
-            "commit": "${{ github.sha }}",
-            "phone": "HappyTalky-phone-debug.apk",
-            "watch": "HappyTalky-watch-debug.apk",
-            "builtAt": "${{ github.event.repository.updated_at }}"
-          }
-          EOF
-          echo "DIST_TAG=$TAG" >> "$GITHUB_ENV"
+      - uses: actions/download-artifact@v4
+        if: steps.gate.outputs.eligible == 'true'
+        with:
+          name: HappyTalky-mobile-debug
+          path: phone
+      - uses: actions/download-artifact@v4
+        if: steps.gate.outputs.eligible == 'true'
+        with:
+          name: HappyTalky-wear-debug
+          path: watch
 
-      - name: Publish latest debug APK dist
-        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
-        shell: bash
+      - name: Publish rolling debug APKs
+        if: steps.gate.outputs.eligible == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BUILD_SHA: ${{ github.sha }}
+        shell: bash
         run: |
-          if ! gh release view "$DIST_TAG" >/dev/null 2>&1; then
-            gh release create "$DIST_TAG" \
-              --prerelease \
-              --title "HappyTalky $DIST_TAG" \
-              --notes "Automatically updated debug build. Phone and Wear APKs are built from the same commit."
+          set -euo pipefail
+          TAG="debug-main"
+          if [ -n "$PR_NUMBER" ]; then TAG="debug-pr-$PR_NUMBER"; fi
+          # Real filenames ensure the asset URL matches the documented APK name.
+          mv phone/mobile-debug.apk HappyTalky-phone-debug.apk
+          mv watch/wear-debug.apk HappyTalky-watch-debug.apk
+          jq -n --arg tag "$TAG" --arg commit "$BUILD_SHA" --arg builtAt "$(date -u +%FT%TZ)" \
+            '{tag:$tag, commit:$commit, phone:"HappyTalky-phone-debug.apk", watch:"HappyTalky-watch-debug.apk", builtAt:$builtAt}' > debug-dist.json
+          # These reserved rolling tags must point to the actual built commit.
+          gh api "repos/$GH_REPO/git/matching-refs/tags/$TAG" > tag-refs.json
+          if jq -e --arg ref "refs/tags/$TAG" 'any(.[]; .ref == $ref)' tag-refs.json >/dev/null; then
+            gh api --method PATCH "repos/$GH_REPO/git/refs/tags/$TAG" -f sha="$BUILD_SHA" -F force=true
+          else
+            gh api --method POST "repos/$GH_REPO/git/refs" -f ref="refs/tags/$TAG" -f sha="$BUILD_SHA"
           fi
-
-          gh release upload "$DIST_TAG" \
-            "mobile/build/outputs/apk/debug/mobile-debug.apk#HappyTalky-phone-debug.apk" \
-            "wear/build/outputs/apk/debug/wear-debug.apk#HappyTalky-watch-debug.apk" \
-            "debug-dist.json#debug-dist.json" \
-            --clobber
+          gh api --paginate "repos/$GH_REPO/releases?per_page=100" --slurp > releases.json
+          if ! jq -e --arg tag "$TAG" 'any(.[][]; .tag_name == $tag)' releases.json >/dev/null; then
+            gh release create "$TAG" --verify-tag --prerelease --title "HappyTalky $TAG" \
+              --notes "Rolling debug build. PR builds are removed after merging into main; use debug-main after merge."
+          fi
+          gh release upload "$TAG" HappyTalky-phone-debug.apk HappyTalky-watch-debug.apk debug-dist.json --clobber

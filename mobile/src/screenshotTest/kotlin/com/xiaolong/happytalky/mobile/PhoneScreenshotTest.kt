@@ -360,3 +360,51 @@ fun PhoneCompactScreenshot() {
         dark = false,
     )
 }
+
+private fun denseState(): HappyTalkyUiState {
+    val time = 1_760_000_000_000L
+    val calls = (0..3).map { index ->
+        com.xiaolong.happytalky.core.CallHistoryEntry(
+            id = "call-$index", callId = "session-$index", occurredAt = time + index * 1_000L,
+            direction = com.xiaolong.happytalky.core.CallDirection.OUTGOING,
+            outcome = if (index == 2) com.xiaolong.happytalky.core.CallOutcome.CANCELLED_BY_PEER
+                else com.xiaolong.happytalky.core.CallOutcome.CANCELLED_BY_ME,
+        )
+    }
+    return readyState().copy(
+        peerName = "Watch · Pixel Watch 4",
+        callHistory = calls,
+        timeline = calls.map { call ->
+            ConversationItem(id = call.id, type = ConversationItemType.CALL,
+                direction = ConversationDirection.OUTGOING, createdAt = call.occurredAt,
+                deliveryState = DeliveryState.DELIVERED)
+        } + listOf(
+            sampleConversation[2],
+            sampleConversation[1].copy(id = "emoji-1", text = "👍", createdAt = time + 120_000L),
+            sampleConversation[1].copy(id = "emoji-2", text = "👍", createdAt = time + 180_000L),
+        ),
+    )
+}
+
+@PreviewTest
+@Preview(name = "Phone dense history light", widthDp = 412, heightDp = 915, showBackground = true)
+@Composable
+fun PhoneDenseHistoryScreenshot() { PhoneShot(denseState(), dark = false) }
+
+@PreviewTest
+@Preview(name = "Phone dense history dark compact", widthDp = 360, heightDp = 800, showBackground = true)
+@Composable
+fun PhoneDenseHistoryDarkScreenshot() { PhoneShot(denseState(), dark = true) }
+
+@PreviewTest
+@Preview(name = "Phone large text", widthDp = 360, heightDp = 800, fontScale = 1.5f, showBackground = true)
+@Composable
+fun PhoneLargeTextScreenshot() { PhoneShot(denseState(), dark = false) }
+
+@PreviewTest
+@Preview(name = "Phone text unavailable", widthDp = 360, heightDp = 800, showBackground = true)
+@Composable
+fun PhoneTextUnavailableScreenshot() {
+    PhoneShot(denseState().copy(textEnabled = false, callEnabled = false,
+        peerConnection = PeerConnectionState.DISCONNECTED, peerRoute = PeerRoute.OFFLINE), dark = false)
+}

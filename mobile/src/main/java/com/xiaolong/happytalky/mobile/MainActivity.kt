@@ -1,8 +1,10 @@
 package com.xiaolong.happytalky.mobile
 
 import android.os.Bundle
+import kotlinx.coroutines.delay
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -27,7 +29,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -50,6 +52,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -86,8 +89,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.xiaolong.happytalky.core.AudioPlayer
 import com.xiaolong.happytalky.core.CallHistoryEntry
 import com.xiaolong.happytalky.core.CallMode
+import com.xiaolong.happytalky.core.CallOutcome
 import com.xiaolong.happytalky.core.CallVisualState
 import com.xiaolong.happytalky.core.ConversationDirection
 import com.xiaolong.happytalky.core.ConversationItem
@@ -362,7 +367,7 @@ fun HappyTalkyPhoneScreen(
             timeline = timeline,
             voiceById = voiceById,
             callById = callById,
-            peerName = state.peerName,
+            peerName = displayPeerName(state.peerName),
             state = state,
             selectedIds = selectedIds,
             listState = listState,
@@ -416,7 +421,7 @@ private fun ConversationHeader(
                 Alignment.CenterVertically,
         ) {
             Surface(
-                modifier = Modifier.size(42.dp),
+                modifier = Modifier.size(36.dp),
                 shape =
                     RoundedCornerShape(13.dp),
                 color = BrandBlue,
@@ -439,8 +444,10 @@ private fun ConversationHeader(
                     Modifier.weight(1f)
             ) {
                 Text(
-                    text = state.peerName,
-                    fontSize = 20.sp,
+                    text = displayPeerName(state.peerName),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontSize = 19.sp,
                     lineHeight = 23.sp,
                     fontWeight =
                         FontWeight.Bold,
@@ -596,7 +603,7 @@ private fun ConversationTimeline(
                 vertical = 16.dp,
             ),
         verticalArrangement =
-            Arrangement.spacedBy(8.dp),
+            Arrangement.spacedBy(5.dp),
     ) {
         if (timeline.isEmpty()) {
             item {
@@ -606,10 +613,15 @@ private fun ConversationTimeline(
             }
         }
 
-        items(
+        itemsIndexed(
             items = timeline,
-            key = { it.id },
-        ) { item ->
+            key = { _, item -> item.id },
+        ) { index, item ->
+            val previous = timeline.getOrNull(index - 1)
+            val showSender = item.direction == ConversationDirection.INCOMING &&
+                (previous == null || previous.type == ConversationItemType.CALL ||
+                    previous.direction != item.direction ||
+                    item.createdAt - previous.createdAt > 5 * 60_000L)
             when (item.type) {
                 ConversationItemType.VOICE -> {
                     voiceById[item.id]
@@ -617,6 +629,7 @@ private fun ConversationTimeline(
                             VoiceBubble(
                                 message = message,
                                 peerName = peerName,
+                                showSender = showSender,
                                 selected =
                                     message.id in
                                         selectedIds,
@@ -637,7 +650,8 @@ private fun ConversationTimeline(
                 ConversationItemType.TEXT -> {
                     TextBubble(
                         item = item,
-                        peerName = peerName
+                        peerName = peerName,
+                        showSender = showSender,
                     )
                 }
 
@@ -743,6 +757,7 @@ private fun EmptyConversation(
 private fun VoiceBubble(
     message: VoiceMessage,
     peerName: String,
+    showSender: Boolean,
     selected: Boolean,
     onTap: () -> Unit,
     onLongPress: () -> Unit,
@@ -752,6 +767,14 @@ private fun VoiceBubble(
     val outgoing =
         message.direction ==
             VoiceDirection.OUTGOING
+
+    var progress by remember(message.id) { mutableStateOf<Float?>(null) }
+    LaunchedEffect(message.file) {
+        while (true) {
+            progress = AudioPlayer.progressFor(message.file)
+            delay(150)
+        }
+    }
 
     Row(
         modifier =
@@ -775,7 +798,7 @@ private fun VoiceBubble(
                     max = 300.dp
                 ),
         ) {
-            if (!outgoing) {
+            if (showSender) {
                 Text(
                     text = peerName,
                     style =
@@ -874,13 +897,14 @@ private fun VoiceBubble(
                                 if (selected) {
                                     Icons.Rounded.Check
                                 } else {
-                                    Icons.Rounded.PlayArrow
+                                    if (progress != null) Icons.Rounded.VolumeUp
+                                    else Icons.Rounded.PlayArrow
                                 },
                             contentDescription =
                                 if (selected) {
                                     "Selected"
                                 } else {
-                                    "Play TALK"
+                                    if (progress != null) "Playing TALK; tap to restart" else "Play TALK"
                                 },
                             modifier =
                                 Modifier
@@ -908,7 +932,15 @@ private fun VoiceBubble(
                         Modifier.width(10.dp)
                     )
 
-                    Column {
+                    Column(modifier = Modifier.widthIn(min = 106.dp)) {
+                        LinearProgressIndicator(
+                            progress = { progress ?: 0f },
+                            modifier = Modifier.width(106.dp).height(3.dp),
+                            color = bubbleTextColor(outgoing, selected),
+                            trackColor = bubbleTextColor(outgoing, selected).copy(alpha = 0.2f),
+                            drawStopIndicator = {},
+                        )
+                        Spacer(Modifier.height(6.dp))
                         Text(
                             text =
                                 if (
@@ -982,7 +1014,8 @@ private fun bubbleTextColor(
 @Composable
 private fun TextBubble(
     item: ConversationItem,
-    peerName: String
+    peerName: String,
+    showSender: Boolean,
 ) {
     val outgoing =
         item.direction ==
@@ -990,6 +1023,8 @@ private fun TextBubble(
     val text =
         item.text
             ?: return
+
+    val emojiOnly = isEmojiReply(text)
 
     Row(
         modifier =
@@ -1013,7 +1048,7 @@ private fun TextBubble(
                     max = 300.dp
                 ),
         ) {
-            if (!outgoing) {
+            if (showSender) {
                 Text(
                     text = peerName,
                     style =
@@ -1051,7 +1086,9 @@ private fun TextBubble(
                             },
                     ),
                 color =
-                    if (outgoing) {
+                    if (emojiOnly) {
+                        Color.Transparent
+                    } else if (outgoing) {
                         BrandBlue
                     } else {
                         MaterialTheme
@@ -1068,12 +1105,14 @@ private fun TextBubble(
                 ) {
                     Text(
                         text = text,
+                        fontSize = if (emojiOnly) 32.sp else 16.sp,
+                        lineHeight = if (emojiOnly) 40.sp else 24.sp,
                         style =
                             MaterialTheme
                                 .typography
                                 .bodyLarge,
                         color =
-                            if (outgoing) {
+                            if (outgoing && !emojiOnly) {
                                 Color.White
                             } else {
                                 MaterialTheme
@@ -1094,7 +1133,7 @@ private fun TextBubble(
                                 .typography
                                 .labelSmall,
                         color =
-                            if (outgoing) {
+                            if (outgoing && !emojiOnly) {
                                 Color.White.copy(
                                     alpha = 0.7f
                                 )
@@ -1125,13 +1164,13 @@ private fun HistoricalCallEvent(
             color =
                 MaterialTheme
                     .colorScheme
-                    .surfaceVariant,
+                    .background,
         ) {
             Row(
                 modifier =
                     Modifier.padding(
                         horizontal = 12.dp,
-                        vertical = 7.dp,
+                        vertical = 2.dp,
                     ),
                 verticalAlignment =
                     Alignment.CenterVertically,
@@ -1159,7 +1198,7 @@ private fun HistoricalCallEvent(
                 )
                 Text(
                     text =
-                        entry.shortLabel() +
+                        phoneCallLabel(entry) +
                             " · " +
                             entry.displayTime(),
                     style =
@@ -1299,7 +1338,7 @@ private fun ConversationActions(
             MaterialTheme
                 .colorScheme
                 .surface,
-        shadowElevation = 8.dp,
+        shadowElevation = 2.dp,
     ) {
         Column {
             Row(
@@ -1436,22 +1475,19 @@ private fun ConversationActions(
                                         CallVisualState
                                             .READY
                                 ) {
-                                    MaterialTheme
-                                        .colorScheme
-                                        .primary
+                                    Color.Transparent
                                 } else {
                                     MaterialTheme
                                         .colorScheme
                                         .error
                                 },
-                            onClick =
-                                onCall,
-                            modifier =
-                                Modifier.weight(
-                                    1f
-                                ),
+                            content = if (state.callState == CallVisualState.READY)
+                                MaterialTheme.colorScheme.primary else Color.White,
+                            outlined = state.callState == CallVisualState.READY,
+                            onClick = onCall,
+                            modifier = Modifier.weight(1f),
                         )
-    
+
                         if (
                             state.callState ==
                                 CallVisualState.OUTGOING &&
@@ -1494,6 +1530,8 @@ private fun ConversationActions(
             PhoneTextComposer(
                 enabled = state.textEnabled,
                 onSend = onSendText,
+                unavailableHint = if (state.peerConnection == PeerConnectionState.DISCONNECTED)
+                    "Connect your watch to enable messages" else "Messages unavailable right now",
             )
         }
     }
@@ -1503,6 +1541,7 @@ private fun ConversationActions(
 private fun PhoneTextComposer(
     enabled: Boolean,
     onSend: (String) -> Unit,
+    unavailableHint: String,
 ) {
     var draft by rememberSaveable {
         mutableStateOf("")
@@ -1520,6 +1559,16 @@ private fun PhoneTextComposer(
 
         onSend(value)
         draft = ""
+    }
+
+    if (!enabled) {
+        Text(
+            text = unavailableHint,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
+        )
+        return
     }
 
     OutlinedTextField(
@@ -1608,9 +1657,11 @@ private fun ActionButton(
     container: Color,
     modifier: Modifier = Modifier,
     content: Color = Color.White,
+    outlined: Boolean = false,
     onClick: () -> Unit,
 ) {
     Button(
+        border = if (outlined) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null,
         onClick = onClick,
         enabled = enabled,
         modifier =
@@ -1861,10 +1912,10 @@ private fun headerStatusText(
                 "restoring call"
 
             state.callEnabled ->
-                "CALL ready"
+                "Ready to call"
 
             state.talkEnabled ->
-                "TALK ready"
+                "Voice messages available"
 
             else ->
                 "busy"
@@ -2016,5 +2067,30 @@ private fun PhoneMessengerPreview() {
             onDelete = {},
             onClear = {},
         )
+    }
+}
+
+// Keep protocol/device metadata intact; presentation removes only the known role prefix.
+private fun displayPeerName(name: String): String =
+    name.removePrefix("Watch · ").removePrefix("Phone · ")
+
+private fun isEmojiReply(text: String): Boolean {
+    val points = text.trim().codePoints().toArray()
+    return points.isNotEmpty() && points.size <= 16 &&
+        points.any { it in 0x1F000..0x1FAFF || it in 0x2600..0x27BF } &&
+        points.all {
+            it in 0x1F000..0x1FAFF || it in 0x2600..0x27BF ||
+                it == 0xFE0F || it == 0x200D || Character.isWhitespace(it)
+        }
+}
+
+private fun phoneCallLabel(entry: CallHistoryEntry): String {
+    val prefix = if (entry.mode == CallMode.PRIORITY) "Priority call · " else ""
+    return when (entry.outcome) {
+        CallOutcome.CANCELLED_BY_ME -> prefix + "You cancelled"
+        CallOutcome.CANCELLED_BY_PEER -> prefix + "Peer cancelled"
+        CallOutcome.DECLINED_BY_ME -> prefix + "You declined"
+        CallOutcome.DECLINED_BY_PEER -> prefix + "Peer declined"
+        else -> entry.shortLabel()
     }
 }

@@ -1,0 +1,33 @@
+name: Clean merged PR debug releases
+
+on:
+  push:
+    branches: [main]
+  workflow_run:
+    workflows: [Android CI]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+
+# Shared with publication: a late build cannot recreate a deleted release.
+concurrency:
+  group: debug-dist-lifecycle
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      # Always execute the trusted default-branch script, never PR code/artifacts.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const cleanup = require('./.github/scripts/cleanup-debug-releases.cjs');
+            await cleanup({ github, context, core });
