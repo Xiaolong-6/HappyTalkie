@@ -111,8 +111,15 @@ class LiveCallService : Service() {
         if (activeCall == null) {
             cancelRetry()
 
-            if (outgoingCall != null) {
-                ensureRingTimeout(outgoingCall)
+            if (
+                outgoingCall != null &&
+                !StateStore.priorityLocked(
+                    this
+                )
+            ) {
+                ensureRingTimeout(
+                    outgoingCall
+                )
             } else {
                 cancelRingTimeout()
             }
@@ -477,6 +484,13 @@ class LiveCallService : Service() {
             } else {
                 "End"
             }
+        val lockedWatch =
+            packageManager.hasSystemFeature(
+                PackageManager.FEATURE_WATCH
+            ) &&
+                StateStore.priorityLocked(
+                    this
+                )
 
         if (
             packageManager.hasSystemFeature(
@@ -494,16 +508,14 @@ class LiveCallService : Service() {
                             .sym_call_incoming
                     )
                     .setContentTitle(
-                        "HappyTalky"
+                        if (lockedWatch) {
+                            "Priority call"
+                        } else {
+                            "HappyTalky"
+                        }
                     )
                     .setContentText(text)
                     .setContentIntent(pending)
-                    .addAction(
-                        android.R.drawable
-                            .sym_call_missed,
-                        actionLabel,
-                        hangUpPending
-                    )
                     .setOngoing(true)
                     .setCategory(
                         NotificationCompat
@@ -513,6 +525,15 @@ class LiveCallService : Service() {
                         NotificationCompat
                             .VISIBILITY_PUBLIC
                     )
+
+            if (!lockedWatch) {
+                builder.addAction(
+                    android.R.drawable
+                        .sym_call_missed,
+                    actionLabel,
+                    hangUpPending
+                )
+            }
 
             val ongoingActivity =
                 OngoingActivity.Builder(
