@@ -709,16 +709,44 @@ class HappyTalkyListenerService : WearableListenerService() {
     }
 
     private fun receiveCancel(callId: String) {
-        if (StateStore.incomingCall(this) != callId) return
+        val incomingMatches =
+            StateStore.incomingCall(this) ==
+                callId
+        val lockedActiveMatches =
+            EndpointRole.fromContext(this) ==
+                EndpointRole.WATCH &&
+                StateStore.priorityLocked(
+                    this
+                ) &&
+                StateStore.activeCall(this) ==
+                    callId
+
+        if (
+            !incomingMatches &&
+            !lockedActiveMatches
+        ) {
+            return
+        }
 
         CallHistoryStore.append(
             this,
             callId,
             CallDirection.INCOMING,
-            CallOutcome.CANCELLED_BY_PEER
+            CallOutcome.CANCELLED_BY_PEER,
+            startedAt =
+                if (lockedActiveMatches) {
+                    StateStore.activeStartedAt(
+                        this
+                    )
+                } else {
+                    0L
+                }
         )
         StateStore.clearCallState(this)
-        StateStore.setStatus(this, "Call cancelled")
+        StateStore.setStatus(
+            this,
+            "Priority call cancelled by phone"
+        )
         AlertController.stop(this)
         LiveCallAudio.stop(this)
         LiveCallService.stop(this)
