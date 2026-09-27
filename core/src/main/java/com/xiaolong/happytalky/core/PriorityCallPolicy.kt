@@ -71,4 +71,18 @@ object PriorityCallPolicy {
             localRole == EndpointRole.WATCH &&
                 locked
             )
+
+    fun acceptsPhoneCancelOnWatch(
+        localRole: EndpointRole,
+        locked: Boolean,
+        incomingMatches: Boolean,
+        activeMatches: Boolean
+    ): Boolean =
+        incomingMatches ||
+            (
+                localRole ==
+                    EndpointRole.WATCH &&
+                    locked &&
+                    activeMatches
+                )
 }
