@@ -140,4 +140,30 @@ class PriorityCallPolicyTest {
                 )
         )
     }
+
+    @Test
+    fun phoneCancelStillClosesLockedWatchAfterAutoAnswerRace() {
+        assertTrue(
+            PriorityCallPolicy
+                .acceptsPhoneCancelOnWatch(
+                    localRole =
+                        EndpointRole.WATCH,
+                    locked = true,
+                    incomingMatches = false,
+                    activeMatches = true
+                )
+        )
+
+        assertFalse(
+            PriorityCallPolicy
+                .acceptsPhoneCancelOnWatch(
+                    localRole =
+                        EndpointRole.WATCH,
+                    locked = false,
+                    incomingMatches = false,
+                    activeMatches = true
+                )
+        )
+    }
+
 }
