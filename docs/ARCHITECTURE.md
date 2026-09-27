@@ -118,7 +118,7 @@ Audio parameters:
 
 Phone starts on the system-selected communication route. Speaker is an explicit user toggle. Wear requests its built-in communication speaker when available. Priority CALL uses the same audio path after answer; it changes escalation/answer policy, not transport or microphone behavior.
 
-A foreground service keeps outgoing/live-call state alive in the background and exposes Cancel/End from the ongoing notification. On Wear OS, active/outgoing calls are also published as an `OngoingActivity` so the watch face/launcher can provide a one-tap return path.
+A foreground service keeps outgoing/live-call state alive in the background and exposes Cancel/End from the ongoing notification. On Wear OS, active calls are also published as an `OngoingActivity` so the watch face/launcher can provide a one-tap return path.
 
 ## Reconnection
 
