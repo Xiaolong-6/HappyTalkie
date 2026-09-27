@@ -481,7 +481,8 @@ class LiveCallService : Service() {
         if (
             packageManager.hasSystemFeature(
                 PackageManager.FEATURE_WATCH
-            )
+            ) &&
+            StateStore.activeCall(this) != null
         ) {
             val builder =
                 NotificationCompat.Builder(
