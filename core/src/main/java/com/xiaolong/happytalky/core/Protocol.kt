@@ -9,6 +9,7 @@ object Protocol {
     const val CALL_BUSY = "$BASE/call/busy"
     const val CALL_END = "$BASE/call/end"
     const val CALL_DISCONNECTED = "$BASE/call/disconnected"
+    // Legacy v1 escalation path kept for mixed-version compatibility.
     const val CALL_PRIORITY = "$BASE/call/priority"
     const val CALL_PRIORITY_LOCKED = "$BASE/call/priority-locked"
     const val CALL_AUDIO_PREFIX = "$BASE/call/audio/"
@@ -34,6 +35,7 @@ object Protocol {
     const val CAPABILITY_CALL_V1 = "call_v1"
     const val CAPABILITY_DEVICE_INFO_V1 = "device_info_v1"
     const val CAPABILITY_CONVERSATION_V1 = "conversation_v1"
+    // Legacy v1 capability; new locked behavior uses the capability below.
     const val CAPABILITY_PRIORITY_CALL_V1 = "priority_call_v1"
     const val CAPABILITY_PRIORITY_LOCKED_CALL_V1 =
         "priority_locked_call_v1"
@@ -46,7 +48,6 @@ object Protocol {
     const val EXTRA_OPEN_INBOX = "happytalky.open_inbox"
 
     const val CALL_TIMEOUT_MS = 20_000L
-    const val PRIORITY_OFFER_DELAY_MS = 5_000L
     const val RECONNECT_GRACE_MS = 15_000L
     const val RECONNECT_RETRY_MS = 1_500L
     const val MAX_RECORDING_MS = 60_000
