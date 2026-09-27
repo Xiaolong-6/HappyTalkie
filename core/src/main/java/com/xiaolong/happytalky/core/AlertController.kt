@@ -20,7 +20,12 @@ import android.os.Vibrator
 import android.os.VibratorManager
 
 object AlertController {
-    private const val CALL_CHANNEL = "happytalky_calls_v3"
+    // v4 intentionally recreates the call channel after the Wear incoming
+    // presentation change. Android preserves old channel alert settings
+    // across app updates, so v3's silent/no-vibration configuration could
+    // leave a Watch with no glanceable incoming-call cue once unsupported
+    // full-screen intents were removed.
+    private const val CALL_CHANNEL = "happytalky_calls_v4"
     private const val MESSAGE_CHANNEL = "happytalky_messages_v1"
     private const val CALL_NOTIFICATION_ID = 1001
     private const val MESSAGE_NOTIFICATION_ID = 1002
@@ -238,6 +243,9 @@ object AlertController {
             .setPriority(Notification.PRIORITY_MAX)
             .setOngoing(true)
             .setAutoCancel(false)
+            .setTimeoutAfter(
+                Protocol.CALL_TIMEOUT_MS
+            )
 
         if (
             !context.packageManager.hasSystemFeature(
@@ -361,7 +369,14 @@ object AlertController {
             channel.description =
                 "Incoming HappyTalky calls"
             channel.setSound(null, null)
-            channel.enableVibration(false)
+            channel.enableVibration(true)
+            channel.vibrationPattern =
+                longArrayOf(
+                    0L,
+                    500L,
+                    250L,
+                    500L
+                )
             manager.createNotificationChannel(channel)
         }
 
