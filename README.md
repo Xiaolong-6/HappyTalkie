@@ -1,5 +1,7 @@
 # HappyTalky
 
+Current `main` app build: **0.3.2** (`versionCode 5`) for both Phone and Watch.
+
 HappyTalky is a deliberately simple Android + Wear OS companion app for a paired phone and Pixel Watch.
 
 Its primary child-facing communication actions are:
@@ -79,9 +81,12 @@ The phone and watch APKs from one build use the same package name and debug sign
 
 See [docs/DEPLOY.md](docs/DEPLOY.md).
 
-## Architecture
+## Documentation
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+- [Documentation map](docs/README.md) — canonical vs historical docs and maintenance rules.
+- [Architecture](docs/ARCHITECTURE.md) — protocol, persistence, routing, CALL/TALK/TEXT behavior and UI contracts.
+- [Deploy and validation](docs/DEPLOY.md) — install, device checks, CI-equivalent validation and debug distribution.
+- [UI development baseline](docs/UI_GUIDELINES.md) — current Android/Wear design rules, responsive testing and project-specific interaction invariants.
 
 ## Package
 
