@@ -785,7 +785,6 @@ abstract class HappyTalkyActivity : ComponentActivity() {
         StateStore.setStatus(this, "Calling $peer…")
         LiveCallService.start(this)
         refreshUiState()
-        schedulePriorityOfferRefresh()
 
         transport.sendSignal(
             Protocol.CALL_RING,
