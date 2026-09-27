@@ -106,7 +106,7 @@ private fun readyState(
                     .Protocol
                     .CAPABILITY_PRIORITY_LOCKED_CALL_V1
             ),
-        priorityOfferAvailable = true,
+        priorityCallAvailable = true,
         textEnabled = true,
         messages = messages,
     )
@@ -220,7 +220,7 @@ fun PhonePriorityOfferScreenshot() {
                 status = "Ready",
                 callState =
                     CallVisualState.READY,
-                priorityOfferAvailable =
+                priorityCallAvailable =
                     true,
             ),
         dark = true,
@@ -244,7 +244,7 @@ fun PhonePriorityRequestedScreenshot() {
                 callState =
                     CallVisualState.OUTGOING,
                 talkEnabled = false,
-                priorityOfferAvailable = false,
+                priorityCallAvailable = false,
                 callMode = CallMode.PRIORITY,
                 priorityLocked = true,
             ),
@@ -438,7 +438,7 @@ fun PhonePriorityEscalationScreenshot() {
         PriorityCallOptions(
             state = readyState().copy(
                 peerCapabilities = setOf(com.xiaolong.happytalky.core.Protocol.CAPABILITY_PRIORITY_LOCKED_CALL_V1),
-                priorityOfferAvailable = true,
+                priorityCallAvailable = true,
                 callState = CallVisualState.READY,
             ),
             onDismiss = {}, onPriorityCall = {},
