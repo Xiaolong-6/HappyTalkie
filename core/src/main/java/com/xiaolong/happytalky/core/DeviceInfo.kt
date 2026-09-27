@@ -12,7 +12,8 @@ data class DeviceInfo(
     val appVersion: String,
     val protocolVersion: Int,
     val capabilities: Set<String>,
-    val priorityAutoAnswerEnabled: Boolean = false
+    val priorityAutoAnswerEnabled: Boolean = false,
+    val updatedAt: Long = 0L
 ) {
     fun displayLabel(): String {
         val roleLabel =
@@ -138,7 +139,9 @@ object LocalDeviceIdentity {
                 role == EndpointRole.WATCH &&
                     PriorityCallSettings.isEnabled(
                         context
-                    )
+                    ),
+            updatedAt =
+                System.currentTimeMillis()
         )
     }
 }
@@ -153,11 +156,29 @@ object PeerInfoStore {
     ) {
         val prefix =
             info.role.wireValue
+        val prefs =
+            context.getSharedPreferences(
+                PREFS,
+                Context.MODE_PRIVATE
+            )
+        val existingUpdatedAt =
+            prefs.getLong(
+                "$prefix.updatedAt",
+                0L
+            )
 
-        context.getSharedPreferences(
-            PREFS,
-            Context.MODE_PRIVATE
-        )
+        if (
+            !PeerDeviceInfoPolicy.shouldReplace(
+                existingUpdatedAt =
+                    existingUpdatedAt,
+                incomingUpdatedAt =
+                    info.updatedAt
+            )
+        ) {
+            return
+        }
+
+        prefs
             .edit()
             .putString(
                 "$prefix.deviceId",
@@ -186,6 +207,10 @@ object PeerInfoStore {
             .putBoolean(
                 "$prefix.priorityAutoAnswer",
                 info.priorityAutoAnswerEnabled
+            )
+            .putLong(
+                "$prefix.updatedAt",
+                info.updatedAt
             )
             .apply()
     }
@@ -270,6 +295,11 @@ object PeerInfoStore {
                 prefs.getBoolean(
                     "$prefix.priorityAutoAnswer",
                     false
+                ),
+            updatedAt =
+                prefs.getLong(
+                    "$prefix.updatedAt",
+                    0L
                 )
         )
     }
@@ -355,6 +385,41 @@ object PeerInfoStore {
                 capability
             ) == true
     }
+}
+
+object PeerDeviceInfoPolicy {
+    fun shouldReplace(
+        existingUpdatedAt: Long,
+        incomingUpdatedAt: Long
+    ): Boolean =
+        incomingUpdatedAt <= 0L ||
+            existingUpdatedAt <= 0L ||
+            incomingUpdatedAt >=
+                existingUpdatedAt
+}
+
+object TextCapabilityPolicy {
+    fun canSend(
+        connection: PeerConnectionState,
+        peerInfo: DeviceInfo?
+    ): Boolean =
+        when {
+            peerInfo?.capabilities
+                ?.contains(
+                    Protocol
+                        .CAPABILITY_TEXT_V1
+                ) == true ->
+                true
+
+            peerInfo == null &&
+                connection ==
+                    PeerConnectionState
+                        .CONNECTED ->
+                true
+
+            else ->
+                false
+        }
 }
 
 object PriorityCallSettings {
