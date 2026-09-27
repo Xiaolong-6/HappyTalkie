@@ -2061,7 +2061,7 @@ private fun wearCallLabel(
         state.callState !=
             CallVisualState.READY
     ) {
-        "LOCKED"
+        "LOCK"
     } else {
         when (state.callState) {
             CallVisualState.LIVE -> "END"
