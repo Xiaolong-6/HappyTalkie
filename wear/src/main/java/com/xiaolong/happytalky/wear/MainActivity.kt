@@ -732,8 +732,18 @@ private fun PrimaryCallAction(
         colors = ButtonDefaults.buttonColors(
             containerColor = container,
             contentColor = Color.White,
-            disabledContainerColor = Color(0xFF1C293C),
-            disabledContentColor = Color(0xFF7D8A9F),
+            disabledContainerColor =
+                if (lockedCall) {
+                    Color(0xFFFFA000)
+                } else {
+                    Color(0xFF1C293C)
+                },
+            disabledContentColor =
+                if (lockedCall) {
+                    Color(0xFF221500)
+                } else {
+                    Color(0xFF7D8A9F)
+                },
         ),
         modifier = Modifier.size(66.dp),
     )
