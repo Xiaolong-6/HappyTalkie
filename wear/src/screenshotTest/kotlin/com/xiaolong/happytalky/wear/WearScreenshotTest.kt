@@ -407,6 +407,78 @@ fun WatchTalkDeletedConfirmationScreenshot() {
 
 @PreviewTest
 @Preview(
+    name = "Watch message deleted confirmation",
+    device = WATCH_DEVICE,
+    showBackground = true,
+    backgroundColor = WATCH_BACKGROUND,
+)
+@Composable
+fun WatchMessageDeletedConfirmationScreenshot() {
+    MaterialTheme {
+        Box(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            WearInbox(
+                messages = watchMessages,
+                callHistory = watchCallHistory,
+                timeline = watchConversation,
+                unreadCount = 1,
+                peerName = "Phone",
+                textEnabled = true,
+                priorityCallsEnabled = true,
+                onBack = {},
+                onPlay = {},
+            )
+
+            WearDeleteConfirmation(
+                label = "Message deleted ✓",
+                modifier =
+                    Modifier.align(
+                        Alignment.Center
+                    )
+            )
+        }
+    }
+}
+
+@PreviewTest
+@Preview(
+    name = "Watch call deleted confirmation",
+    device = WATCH_DEVICE,
+    showBackground = true,
+    backgroundColor = WATCH_BACKGROUND,
+)
+@Composable
+fun WatchCallDeletedConfirmationScreenshot() {
+    MaterialTheme {
+        Box(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            WearInbox(
+                messages = watchMessages,
+                callHistory = watchCallHistory,
+                timeline = watchConversation,
+                unreadCount = 1,
+                peerName = "Phone",
+                textEnabled = true,
+                priorityCallsEnabled = true,
+                onBack = {},
+                onPlay = {},
+            )
+
+            WearDeleteConfirmation(
+                label = "Call deleted ✓",
+                modifier =
+                    Modifier.align(
+                        Alignment.Center
+                    )
+            )
+        }
+    }
+}
+
+@PreviewTest
+@Preview(
     name = "Watch CALL history",
     device = WATCH_DEVICE,
     showBackground = true,

@@ -324,9 +324,15 @@ abstract class HappyTalkyActivity : ComponentActivity() {
     protected fun sendText(
         rawText: String
     ) {
+        val peerInfo =
+            peerInfo()
+        val connection =
+            StateStore.peerConnection(this)
+
         if (
-            !peerSupports(
-                Protocol.CAPABILITY_TEXT_V1
+            !TextCapabilityPolicy.canSend(
+                connection = connection,
+                peerInfo = peerInfo
             )
         ) {
             StateStore.setStatus(
@@ -596,6 +602,46 @@ abstract class HappyTalkyActivity : ComponentActivity() {
                     } else {
                         "s deleted"
                     }
+            )
+        }
+
+        refreshUiState()
+    }
+
+    protected fun deleteConversationItems(
+        ids: Set<String>
+    ) {
+        if (ids.isEmpty()) {
+            return
+        }
+
+        AudioPlayer.stop()
+        val voiceDeleted =
+            VoiceMessageStore.delete(
+                this,
+                ids
+            )
+        val metadataDeleted =
+            ConversationStore.deleteItems(
+                this,
+                ids
+            )
+        val deleted =
+            voiceDeleted +
+                metadataDeleted
+
+        if (deleted > 0) {
+            AlertController
+                .refreshMessageNotification(
+                    this
+                )
+            StateStore.setStatus(
+                this,
+                if (deleted == 1) {
+                    "Conversation item deleted"
+                } else {
+                    "$deleted conversation items deleted"
+                }
             )
         }
 
@@ -975,11 +1021,10 @@ abstract class HappyTalkyActivity : ComponentActivity() {
                 priorityOfferAvailable =
                     priorityOfferIsAvailable(),
                 textEnabled =
-                    peerInfo?.capabilities
-                        ?.contains(
-                            Protocol
-                                .CAPABILITY_TEXT_V1
-                        ) == true,
+                    TextCapabilityPolicy.canSend(
+                        connection = connection,
+                        peerInfo = peerInfo
+                    ),
                 unreadTextCount =
                     TextMessageStore.unreadCount(
                         this

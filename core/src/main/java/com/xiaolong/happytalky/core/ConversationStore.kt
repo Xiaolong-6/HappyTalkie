@@ -215,6 +215,14 @@ internal interface ConversationDao {
 
     @Query(
         """
+        DELETE FROM conversation_items
+        WHERE id IN (:ids)
+        """
+    )
+    fun deleteItems(ids: Set<String>): Int
+
+    @Query(
+        """
         UPDATE conversation_items
         SET deliveryState = :state
         WHERE id = :id
@@ -382,6 +390,16 @@ object ConversationStore {
     ) {
         dao(context).clearCalls()
     }
+
+    fun deleteItems(
+        context: Context,
+        ids: Set<String>
+    ): Int =
+        if (ids.isEmpty()) {
+            0
+        } else {
+            dao(context).deleteItems(ids)
+        }
 
     fun updateDeliveryState(
         context: Context,

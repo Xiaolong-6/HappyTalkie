@@ -1548,7 +1548,7 @@ private fun PhoneTextComposer(
                 if (enabled) {
                     "Message…"
                 } else {
-                    "Update peer for text"
+                    "Text unavailable"
                 }
             )
         },

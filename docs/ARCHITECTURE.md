@@ -33,7 +33,7 @@ TALK audio remains in app-private `voice-history` files. The first database acce
 
 The current Store APIs remain synchronous during this migration so the existing UI/state machine does not change behavior. A later UI pass can expose Room as Flow without changing the persisted schema.
 
-TEXT uses a stable UUID and is stored directly in Room. Outgoing text is initially `LOCAL`. If `DataClient.putDataItem()` accepts it while the peer is reachable, the UI may label the local send attempt `SENT`; if the peer is offline it remains `QUEUED` for later synchronization. Neither state claims remote receipt. HappyTalky does not label an outgoing message Delivered or Read without an explicit receiver acknowledgement.
+TEXT uses a stable UUID and is stored directly in Room. Outgoing text is initially `LOCAL`. If `DataClient.putDataItem()` accepts it while the peer is reachable, the UI may label the local send attempt `SENT`; if the peer is offline it remains `QUEUED` for later synchronization. Neither state claims remote receipt. HappyTalky does not label an outgoing message Delivered or Read without an explicit receiver acknowledgement. A reachable peer may send TEXT while device-info metadata is still refreshing; offline queueing requires previously confirmed `text_v1` support.
 
 ## Companion discovery
 
@@ -50,7 +50,7 @@ Each endpoint also publishes persistent metadata at:
 
 `/happytalky/device-info/<stable-device-id>`
 
-The payload contains the endpoint role, manufacturer/model, app version, protocol version and supported feature capabilities. A stable app-scoped UUID identifies the endpoint across ordinary Data Layer reconnects. `Node.displayName` is retained only as a human-readable fallback while the persistent device-info item has not arrived.
+The payload contains the endpoint role, manufacturer/model, app version, protocol version, supported feature capabilities, and a publication timestamp. A stable app-scoped UUID identifies the endpoint across ordinary Data Layer reconnects. Peer metadata is accepted only when it is at least as fresh as the cached snapshot, so legacy persistent DataItems from an older install cannot overwrite current capabilities. `Node.displayName` is retained only as a human-readable fallback while the persistent device-info item has not arrived.
 
 This lets presentation use labels such as `Watch · Pixel Watch 3` and lets later protocol features be gated by advertised capabilities instead of assuming both endpoints were upgraded simultaneously.
 
@@ -159,7 +159,7 @@ Incoming CALL uses:
 - a dedicated Answer / Decline screen whenever the Wear activity is already foregrounded;
 - the same Answer/Decline actions in the foreground Compose UI.
 
-Wear OS does not support `setFullScreenIntent()` or the `USE_FULL_SCREEN_INTENT` permission, so the Wear build does not request that permission or attempt that notification path. Background incoming calls remain actionable from the high-priority notification; after answer, the live-call foreground service publishes an `OngoingActivity` return path. Priority auto-answer still requires the Watch activity to be resumed/visible and never starts microphone capture silently from background.
+Wear OS does not support `setFullScreenIntent()` or the `USE_FULL_SCREEN_INTENT` permission, so the Wear build does not request that permission or attempt that notification path. Background incoming calls use a dedicated high-importance Wear notification channel with vibration plus an expandable `NotificationCompat` notification containing Answer / Decline actions; after answer, the live-call foreground service publishes an `OngoingActivity` return path. Priority auto-answer still requires the Watch activity to be resumed/visible and never starts microphone capture silently from background.
 
 If the user does nothing, the ring times out rather than remaining active indefinitely. Final CALL outcomes are persisted locally, including completed duration, declined, missed/no-answer, cancelled, busy, failed, and disconnected cases.
 
@@ -241,7 +241,7 @@ Wear Material 3 presents a shorter wrist-first loop:
 - swipe left from the home screen to enter the unified Inbox;
 - Inbox supports touch scrolling and the watch rotary/crown;
 - unread incoming TALK is counted and bold/highlighted in chronological history, and loses emphasis after playback completes;
-- TEXT, TALK and CALL rows are interleaved by timestamp; TALK rows can be swiped left to reveal Delete, followed by a short `TALK deleted ✓` confirmation;
+- TEXT, TALK and CALL rows are interleaved by timestamp; every persisted row can be swiped left to reveal Delete, with a short type-specific confirmation. Deletion is local history management; TEXT/CALL deletion is not a remote recall operation, while TALK deletion also removes its local audio file;
 - persisted CALL events are interleaved with TEXT/TALK by timestamp, while the latest CALL is still summarized on the home screen;
 - Inbox exposes the explicit **Priority calls** opt-in; enabling it republishes Watch device-info immediately;
 - priority incoming presentation is visually labelled before the resumed foreground UI performs auto-answer;
