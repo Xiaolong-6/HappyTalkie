@@ -257,6 +257,11 @@ class HappyTalkyListenerService : WearableListenerService() {
                                     map.getBoolean(
                                         Protocol
                                             .KEY_PRIORITY_AUTO_ANSWER
+                                    ),
+                                updatedAt =
+                                    map.getLong(
+                                        Protocol
+                                            .KEY_DEVICE_INFO_UPDATED_AT
                                     )
                             )
 
