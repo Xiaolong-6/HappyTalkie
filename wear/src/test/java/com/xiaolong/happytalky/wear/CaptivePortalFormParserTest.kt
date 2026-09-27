@@ -155,4 +155,68 @@ class CaptivePortalFormParserTest {
             page.form
         )
     }
+    @Test
+    fun sendsOnlyPreferredAcceptSubmitControl() {
+        val page =
+            CaptivePortalFormParser.parse(
+                html =
+                    """
+                    <form method="post" action="/decision">
+                      <input type="hidden" name="token" value="abc">
+                      <button type="submit" name="decision" value="decline">Decline</button>
+                      <button type="submit" name="decision" value="accept">Accept & connect</button>
+                    </form>
+                    """.trimIndent(),
+                baseUrl =
+                    "http://portal.example/start",
+            )
+
+        val form =
+            page.form!!
+
+        assertTrue(
+            form.fields.contains(
+                "decision" to "accept"
+            )
+        )
+        assertTrue(
+            !form.fields.contains(
+                "decision" to "decline"
+            )
+        )
+    }
+
+    @Test
+    fun recognisesSwedishAcceptAction() {
+        val page =
+            CaptivePortalFormParser.parse(
+                html =
+                    """
+                    <form method="post" action="/wifi">
+                      <label><input type="checkbox" name="villkor" value="1">Jag godkänner villkoren</label>
+                      <button type="submit" name="action" value="ok">Godkänn och anslut</button>
+                    </form>
+                    """.trimIndent(),
+                baseUrl =
+                    "http://portal.example/start",
+            )
+
+        val form =
+            page.form!!
+
+        assertTrue(
+            form.unsupportedFields
+                .isEmpty()
+        )
+        assertEquals(
+            "Godkänn och anslut",
+            form.submitLabel,
+        )
+        assertTrue(
+            form.fields.contains(
+                "villkor" to "1"
+            )
+        )
+    }
+
 }
