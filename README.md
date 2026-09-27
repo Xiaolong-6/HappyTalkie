@@ -65,7 +65,7 @@ Phone and Watch share product state and communication logic, but not page layout
 - **Phone:** Jetpack Compose Material 3
 - **Wear:** Wear Compose Material 3, designed independently for a small round screen
 
-Wear prioritizes **route/status → CALL → TALK**, with a left-swipe unified Inbox for TEXT/TALK/CALL, explicit TALK playback/delete with a short confirmation, crown scrolling, and a fixed system-input Message composer. Incoming calls stay actionable from the call notification; when HappyTalky is foregrounded, the dedicated wrist call UI is used.
+Wear prioritizes **route/status → CALL → TALK**, with a unified Inbox where TEXT, TALK and CALL history rows can all be swiped left for local deletion, crown scrolling, and a fixed system-input Message composer. Incoming calls stay actionable from the call notification; when HappyTalky is foregrounded, the dedicated wrist call UI is used.
 
 Compose screenshot previews are rendered in CI so phone and 192 dp round-watch layouts can be visually reviewed before shipping APKs.
 
