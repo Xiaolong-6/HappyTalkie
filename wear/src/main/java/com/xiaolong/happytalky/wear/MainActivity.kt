@@ -313,6 +313,8 @@ fun WearHome(
             priority =
                 state.callMode ==
                     CallMode.PRIORITY,
+            locked =
+                state.priorityLocked,
             onAnswer = onCall,
             onDecline = onDecline,
         )
@@ -460,6 +462,7 @@ private fun WearHomePage(
 private fun WearIncomingCallScreen(
     peerName: String,
     priority: Boolean = false,
+    locked: Boolean = false,
     onAnswer: () -> Unit,
     onDecline: () -> Unit,
 ) {
@@ -529,30 +532,65 @@ private fun WearIncomingCallScreen(
                     Color(0xFF76DCA5),
             )
 
-            Row(
-                horizontalArrangement =
-                    Arrangement.spacedBy(
-                        14.dp
-                    ),
-            ) {
-                CallCircleButton(
-                    text = "NO",
-                    icon =
-                        Icons.Rounded
-                            .CallEnd,
-                    color =
-                        Color(0xFFD9485E),
-                    onClick = onDecline,
-                )
+            if (locked) {
+                Column(
+                    horizontalAlignment =
+                        Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text =
+                            "Connecting automatically…",
+                        style =
+                            MaterialTheme
+                                .typography
+                                .labelMedium,
+                        color =
+                            Color(0xFFFFD35A),
+                        textAlign =
+                            TextAlign.Center,
+                    )
+                    Spacer(
+                        Modifier.height(4.dp)
+                    )
+                    Text(
+                        text =
+                            "Ends from phone",
+                        style =
+                            MaterialTheme
+                                .typography
+                                .labelSmall,
+                        color =
+                            Color(0xFF8E9AAF),
+                        textAlign =
+                            TextAlign.Center,
+                    )
+                }
+            } else {
+                Row(
+                    horizontalArrangement =
+                        Arrangement.spacedBy(
+                            14.dp
+                        ),
+                ) {
+                    CallCircleButton(
+                        text = "NO",
+                        icon =
+                            Icons.Rounded
+                                .CallEnd,
+                        color =
+                            Color(0xFFD9485E),
+                        onClick = onDecline,
+                    )
 
-                CallCircleButton(
-                    text = "YES",
-                    icon =
-                        Icons.Rounded.Call,
-                    color =
-                        Color(0xFF1DAA6B),
-                    onClick = onAnswer,
-                )
+                    CallCircleButton(
+                        text = "YES",
+                        icon =
+                            Icons.Rounded.Call,
+                        color =
+                            Color(0xFF1DAA6B),
+                        onClick = onAnswer,
+                    )
+                }
             }
         }
     }
@@ -640,40 +678,55 @@ private fun PrimaryCallAction(
     state: HappyTalkyUiState,
     onCall: () -> Unit,
 ) {
+    val lockedCall =
+        state.priorityLocked &&
+            state.callState !=
+                CallVisualState.READY
+
     val container =
-        when (state.callState) {
-            CallVisualState.LIVE,
-            CallVisualState.OUTGOING,
-            CallVisualState.CONNECTING,
-            CallVisualState.RECONNECTING ->
-                Color(0xFFD9485E)
+        if (lockedCall) {
+            Color(0xFFFFA000)
+        } else {
+            when (state.callState) {
+                CallVisualState.LIVE,
+                CallVisualState.OUTGOING,
+                CallVisualState.CONNECTING,
+                CallVisualState.RECONNECTING ->
+                    Color(0xFFD9485E)
 
-            CallVisualState.INCOMING ->
-                Color(0xFF1DAA6B)
+                CallVisualState.INCOMING ->
+                    Color(0xFF1DAA6B)
 
-            CallVisualState.READY ->
-                Color(0xFF176DFF)
+                CallVisualState.READY ->
+                    Color(0xFF176DFF)
+            }
         }
 
     Button(
         onClick = onCall,
-        enabled = state.callEnabled,
+        enabled =
+            state.callEnabled &&
+                !lockedCall,
         label = {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Icon(
                     imageVector =
-                        when (state.callState) {
-                            CallVisualState.LIVE,
-                            CallVisualState.OUTGOING,
-                            CallVisualState.CONNECTING,
-                            CallVisualState.RECONNECTING ->
-                                Icons.Rounded.CallEnd
+                        if (lockedCall) {
+                            Icons.Rounded.Call
+                        } else {
+                            when (state.callState) {
+                                CallVisualState.LIVE,
+                                CallVisualState.OUTGOING,
+                                CallVisualState.CONNECTING,
+                                CallVisualState.RECONNECTING ->
+                                    Icons.Rounded.CallEnd
 
-                            CallVisualState.INCOMING,
-                            CallVisualState.READY ->
-                                Icons.Rounded.Call
+                                CallVisualState.INCOMING,
+                                CallVisualState.READY ->
+                                    Icons.Rounded.Call
+                            }
                         },
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
@@ -1175,31 +1228,7 @@ fun WearInbox(
                     }
                 }
 
-                item(key = "priority-call-setting") {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0xFF111A29))
-                            .toggleable(
-                                value = priorityCallsEnabled,
-                                role = Role.Switch,
-                                onValueChange = onPriorityCallsChanged,
-                            )
-                            .heightIn(min = 48.dp)
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                    ) {
-                        Text("Priority calls", style = MaterialTheme.typography.labelMedium,
-                            color = Color.White)
-                        Text(
-                            if (priorityCallsEnabled) "Auto-answer · On" else "Auto-answer · Off",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (priorityCallsEnabled) Color(0xFFFFD35A) else Color(0xFF8E9AAF),
-                        )
-                    }
-                }
+
 
                 if (
                     displayTimeline.isEmpty()
@@ -1964,12 +1993,22 @@ private fun wearRouteLabel(state: HappyTalkyUiState): String =
             "Checking"
     }
 
-private fun wearCallLabel(state: HappyTalkyUiState): String =
-    when (state.callState) {
-        CallVisualState.LIVE -> "END"
-        CallVisualState.INCOMING -> "ANSWER"
-        CallVisualState.OUTGOING -> "CANCEL"
-        CallVisualState.CONNECTING -> "END"
-        CallVisualState.RECONNECTING -> "END"
-        CallVisualState.READY -> "CALL"
+private fun wearCallLabel(
+    state: HappyTalkyUiState
+): String =
+    if (
+        state.priorityLocked &&
+        state.callState !=
+            CallVisualState.READY
+    ) {
+        "PRIORITY"
+    } else {
+        when (state.callState) {
+            CallVisualState.LIVE -> "END"
+            CallVisualState.INCOMING -> "ANSWER"
+            CallVisualState.OUTGOING -> "CANCEL"
+            CallVisualState.CONNECTING -> "END"
+            CallVisualState.RECONNECTING -> "END"
+            CallVisualState.READY -> "CALL"
+        }
     }
