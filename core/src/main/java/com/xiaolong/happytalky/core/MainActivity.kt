@@ -608,6 +608,46 @@ abstract class HappyTalkyActivity : ComponentActivity() {
         refreshUiState()
     }
 
+    protected fun deleteConversationItems(
+        ids: Set<String>
+    ) {
+        if (ids.isEmpty()) {
+            return
+        }
+
+        AudioPlayer.stop()
+        val voiceDeleted =
+            VoiceMessageStore.delete(
+                this,
+                ids
+            )
+        val metadataDeleted =
+            ConversationStore.deleteItems(
+                this,
+                ids
+            )
+        val deleted =
+            voiceDeleted +
+                metadataDeleted
+
+        if (deleted > 0) {
+            AlertController
+                .refreshMessageNotification(
+                    this
+                )
+            StateStore.setStatus(
+                this,
+                if (deleted == 1) {
+                    "Conversation item deleted"
+                } else {
+                    "$deleted conversation items deleted"
+                }
+            )
+        }
+
+        refreshUiState()
+    }
+
     protected fun clearMessages() {
         AudioPlayer.stop()
         val deleted =
