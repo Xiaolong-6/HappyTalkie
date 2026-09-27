@@ -207,9 +207,13 @@ fun HappyTalkyPhoneScreen(
     if (showPriorityOptions) {
         PriorityCallOptions(
             state = state,
-            onDismiss = { showPriorityOptions = false },
-            onStartCall = { showPriorityOptions = false; onCall() },
-            onPriorityCall = { showPriorityOptions = false; onPriorityCall() },
+            onDismiss = {
+                showPriorityOptions = false
+            },
+            onPriorityCall = {
+                showPriorityOptions = false
+                onPriorityCall()
+            },
         )
     }
     var selectedIds by remember {
@@ -1508,42 +1512,19 @@ private fun ConversationActions(
                             modifier = Modifier.weight(1f),
                         )
 
-                        if (
-                            state.callState ==
-                                CallVisualState.OUTGOING &&
-                            state.priorityOfferAvailable
-                        ) {
-                            ActionButton(
-                                text = "PRIORITY",
-                                icon =
-                                    Icons.Rounded.Call,
-                                enabled = true,
-                                container =
-                                    Color(0xFFFFA000),
-                                content =
-                                    Color(0xFF221500),
-                                onClick =
-                                    onPriorityCall,
-                                modifier =
-                                    Modifier.weight(
-                                        1.35f
-                                    ),
-                            )
-                        } else {
-                            HoldTalkAction(
-                                state = state,
-                                onStart =
-                                    onTalkStart,
-                                onFinish =
-                                    onTalkFinish,
-                                onCancel =
-                                    onTalkCancel,
-                                modifier =
-                                    Modifier.weight(
-                                        1.35f
-                                    ),
-                            )
-                        }
+                        HoldTalkAction(
+                            state = state,
+                            onStart =
+                                onTalkStart,
+                            onFinish =
+                                onTalkFinish,
+                            onCancel =
+                                onTalkCancel,
+                            modifier =
+                                Modifier.weight(
+                                    1.35f
+                                ),
+                        )
                     }
                 }
             }
@@ -2127,55 +2108,89 @@ private fun phoneCallLabel(entry: CallHistoryEntry): String {
 internal fun PriorityCallOptions(
     state: HappyTalkyUiState,
     onDismiss: () -> Unit,
-    onStartCall: () -> Unit,
     onPriorityCall: () -> Unit,
 ) {
-    val supported = Protocol.CAPABILITY_PRIORITY_CALL_V1 in state.peerCapabilities
-    val canStart = supported && state.peerPriorityCallsAllowed &&
-        state.callState == CallVisualState.READY && state.callEnabled && !state.recording
-    val explanation = when {
-        state.callMode == CallMode.PRIORITY ->
-            "Priority call requested. The watch answers when its call screen is visible."
-        state.peerConnection != PeerConnectionState.CONNECTED ->
-            "Connect your watch to check priority call availability."
-        !supported ->
-            "This watch has not reported priority call support. Update both apps and reconnect."
-        !state.peerPriorityCallsAllowed ->
-            "On your watch, open Inbox and turn on Priority calls · Auto-answer. Then call the watch normally."
-        state.priorityOfferAvailable ->
-            "The watch has not answered. You can now request auto-answer when its call screen is visible."
-        state.callState == CallVisualState.OUTGOING ->
-            "Wait 5 seconds after starting the call. The PRIORITY button then appears beside CANCEL."
-        state.callState != CallVisualState.READY || state.recording ->
-            "Finish the current call or recording before starting a priority call."
-        else ->
-            "Start a normal call. If it is unanswered after 5 seconds, tap PRIORITY to request auto-answer."
-    }
+    val supported =
+        Protocol
+            .CAPABILITY_PRIORITY_LOCKED_CALL_V1 in
+            state.peerCapabilities
+    val canStart =
+        state.priorityOfferAvailable
+
+    val explanation =
+        when {
+            state.priorityLocked &&
+                state.callState !=
+                    CallVisualState.READY ->
+                "Priority call is active. Only the phone can end it normally."
+
+            state.peerConnection !=
+                PeerConnectionState.CONNECTED ->
+                "Connect the watch before starting a priority call."
+
+            !supported ->
+                "This watch does not support locked priority calls yet. Update both apps and reconnect."
+
+            state.callState !=
+                CallVisualState.READY ||
+                state.recording ->
+                "Finish the current call or TALK recording first."
+
+            else ->
+                "Starts immediately without a normal ringing phase. The watch cannot decline or end the call."
+        }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Priority call") },
+        title = {
+            Text("Priority call")
+        },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                verticalArrangement =
+                    Arrangement.spacedBy(
+                        12.dp
+                    )
+            ) {
                 Text(explanation)
                 Text(
-                    "Auto-answer must be enabled on the watch. If its call screen cannot open, the call keeps ringing for manual answer.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    "If the watch app is already visible, it auto-connects immediately. Android does not allow background microphone capture until the watch app becomes foreground.",
+                    style =
+                        MaterialTheme
+                            .typography
+                            .bodySmall,
+                    color =
+                        MaterialTheme
+                            .colorScheme
+                            .onSurfaceVariant,
                 )
             }
         },
         confirmButton = {
-            if (state.priorityOfferAvailable) {
-                TextButton(onClick = onPriorityCall) { Text("Request priority call") }
-            } else if (canStart) {
-                TextButton(onClick = onStartCall) { Text("Start call") }
+            if (canStart) {
+                TextButton(
+                    onClick =
+                        onPriorityCall
+                ) {
+                    Text(
+                        "Start priority call"
+                    )
+                }
             } else {
-                TextButton(onClick = onDismiss) { Text("Got it") }
+                TextButton(
+                    onClick = onDismiss
+                ) {
+                    Text("Got it")
+                }
             }
         },
         dismissButton = {
-            if (state.priorityOfferAvailable || canStart) {
-                TextButton(onClick = onDismiss) { Text("Cancel") }
+            if (canStart) {
+                TextButton(
+                    onClick = onDismiss
+                ) {
+                    Text("Cancel")
+                }
             }
         },
     )
