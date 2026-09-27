@@ -100,6 +100,13 @@ private fun readyState(
         peerName = "Watch",
         peerConnection = PeerConnectionState.CONNECTED,
         peerRoute = PeerRoute.NEARBY_DIRECT,
+        peerCapabilities =
+            setOf(
+                com.xiaolong.happytalky.core
+                    .Protocol
+                    .CAPABILITY_PRIORITY_LOCKED_CALL_V1
+            ),
+        priorityOfferAvailable = true,
         textEnabled = true,
         messages = messages,
     )
@@ -200,7 +207,7 @@ fun PhoneCallingScreenshot() {
 
 @PreviewTest
 @Preview(
-    name = "Phone priority offer",
+    name = "Phone priority ready",
     widthDp = 412,
     heightDp = 915,
     showBackground = true,
@@ -210,11 +217,11 @@ fun PhonePriorityOfferScreenshot() {
     PhoneShot(
         state =
             readyState().copy(
-                status = "Ringing Watch…",
-                callState = CallVisualState.OUTGOING,
-                talkEnabled = false,
-                priorityOfferAvailable = true,
-                peerPriorityCallsAllowed = true,
+                status = "Ready",
+                callState =
+                    CallVisualState.READY,
+                priorityOfferAvailable =
+                    true,
             ),
         dark = true,
     )
@@ -232,12 +239,14 @@ fun PhonePriorityRequestedScreenshot() {
     PhoneShot(
         state =
             readyState().copy(
-                status = "Priority call requested…",
-                callState = CallVisualState.OUTGOING,
+                status =
+                    "Priority call sent · waiting for Watch",
+                callState =
+                    CallVisualState.OUTGOING,
                 talkEnabled = false,
                 priorityOfferAvailable = false,
-                peerPriorityCallsAllowed = true,
                 callMode = CallMode.PRIORITY,
+                priorityLocked = true,
             ),
         dark = true,
     )
@@ -415,24 +424,24 @@ fun PhoneTextUnavailableScreenshot() {
 fun PhonePriorityHelpScreenshot() {
     HappyTalkyPhoneTheme(darkTheme = false) {
         PriorityCallOptions(
-            state = readyState().copy(peerCapabilities = setOf(com.xiaolong.happytalky.core.Protocol.CAPABILITY_PRIORITY_CALL_V1)),
-            onDismiss = {}, onStartCall = {}, onPriorityCall = {},
+            state = readyState().copy(peerCapabilities = setOf(com.xiaolong.happytalky.core.Protocol.CAPABILITY_PRIORITY_LOCKED_CALL_V1)),
+            onDismiss = {}, onPriorityCall = {},
         )
     }
 }
 
 @PreviewTest
-@Preview(name = "Phone priority escalation dialog", widthDp = 360, heightDp = 800, showBackground = true)
+@Preview(name = "Phone direct priority dialog", widthDp = 360, heightDp = 800, showBackground = true)
 @Composable
 fun PhonePriorityEscalationScreenshot() {
     HappyTalkyPhoneTheme(darkTheme = true) {
         PriorityCallOptions(
             state = readyState().copy(
-                peerCapabilities = setOf(com.xiaolong.happytalky.core.Protocol.CAPABILITY_PRIORITY_CALL_V1),
-                peerPriorityCallsAllowed = true, priorityOfferAvailable = true,
-                callState = CallVisualState.OUTGOING,
+                peerCapabilities = setOf(com.xiaolong.happytalky.core.Protocol.CAPABILITY_PRIORITY_LOCKED_CALL_V1),
+                priorityOfferAvailable = true,
+                callState = CallVisualState.READY,
             ),
-            onDismiss = {}, onStartCall = {}, onPriorityCall = {},
+            onDismiss = {}, onPriorityCall = {},
         )
     }
 }
