@@ -27,6 +27,7 @@ object Protocol {
     const val KEY_PROTOCOL_VERSION = "protocolVersion"
     const val KEY_CAPABILITIES = "capabilities"
     const val KEY_PRIORITY_AUTO_ANSWER = "priorityAutoAnswer"
+    const val KEY_DEVICE_INFO_UPDATED_AT = "deviceInfoUpdatedAt"
 
     const val CAPABILITY_TALK_V1 = "talk_v1"
     const val CAPABILITY_CALL_V1 = "call_v1"
