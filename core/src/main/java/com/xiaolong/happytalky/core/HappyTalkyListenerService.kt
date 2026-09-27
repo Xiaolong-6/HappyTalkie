@@ -722,8 +722,23 @@ class HappyTalkyListenerService : WearableListenerService() {
                     callId
 
         if (
-            !incomingMatches &&
-            !lockedActiveMatches
+            !PriorityCallPolicy
+                .acceptsPhoneCancelOnWatch(
+                    localRole =
+                        EndpointRole.fromContext(
+                            this
+                        ),
+                    locked =
+                        StateStore.priorityLocked(
+                            this
+                        ),
+                    incomingMatches =
+                        incomingMatches,
+                    activeMatches =
+                        StateStore.activeCall(
+                            this
+                        ) == callId
+                )
         ) {
             return
         }
