@@ -456,6 +456,13 @@ private fun WearIncomingCallScreen(
     onAnswer: () -> Unit,
     onDecline: () -> Unit,
 ) {
+    if (locked) {
+        WearLockedPriorityIncomingScreen(
+            peerName = peerName
+        )
+        return
+    }
+
     AppScaffold(
         containerColor = Color.Black,
         contentColor = Color.White,
@@ -522,66 +529,121 @@ private fun WearIncomingCallScreen(
                     Color(0xFF76DCA5),
             )
 
-            if (locked) {
-                Column(
-                    horizontalAlignment =
-                        Alignment.CenterHorizontally,
-                ) {
-                    Text(
-                        text =
-                            "Connecting automatically…",
-                        style =
-                            MaterialTheme
-                                .typography
-                                .labelMedium,
-                        color =
-                            Color(0xFFFFD35A),
-                        textAlign =
-                            TextAlign.Center,
-                    )
-                    Spacer(
-                        Modifier.height(4.dp)
-                    )
-                    Text(
-                        text =
-                            "Ends from phone",
-                        style =
-                            MaterialTheme
-                                .typography
-                                .labelSmall,
-                        color =
-                            Color(0xFF8E9AAF),
-                        textAlign =
-                            TextAlign.Center,
-                    )
-                }
-            } else {
-                Row(
-                    horizontalArrangement =
-                        Arrangement.spacedBy(
-                            14.dp
-                        ),
-                ) {
-                    CallCircleButton(
-                        text = "NO",
-                        icon =
-                            Icons.Rounded
-                                .CallEnd,
-                        color =
-                            Color(0xFFD9485E),
-                        onClick = onDecline,
-                    )
+            Row(
+                horizontalArrangement =
+                    Arrangement.spacedBy(
+                        14.dp
+                    ),
+            ) {
+                CallCircleButton(
+                    text = "NO",
+                    icon =
+                        Icons.Rounded
+                            .CallEnd,
+                    color =
+                        Color(0xFFD9485E),
+                    onClick = onDecline,
+                )
 
-                    CallCircleButton(
-                        text = "YES",
-                        icon =
-                            Icons.Rounded.Call,
-                        color =
-                            Color(0xFF1DAA6B),
-                        onClick = onAnswer,
-                    )
-                }
+                CallCircleButton(
+                    text = "YES",
+                    icon =
+                        Icons.Rounded.Call,
+                    color =
+                        Color(0xFF1DAA6B),
+                    onClick = onAnswer,
+                )
             }
+        }
+    }
+}
+
+@Composable
+private fun WearLockedPriorityIncomingScreen(
+    peerName: String,
+) {
+    AppScaffold(
+        containerColor = Color.Black,
+        contentColor = Color.White,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(
+                    start = 18.dp,
+                    end = 18.dp,
+                    top = 26.dp,
+                    bottom = 18.dp,
+                ),
+            horizontalAlignment =
+                Alignment.CenterHorizontally,
+            verticalArrangement =
+                Arrangement.spacedBy(
+                    5.dp,
+                    Alignment.CenterVertically
+                ),
+        ) {
+            Text(
+                text = "PRIORITY CALL",
+                style =
+                    MaterialTheme
+                        .typography
+                        .labelMedium,
+                color =
+                    Color(0xFFFFD35A),
+                fontWeight =
+                    FontWeight.Bold,
+                maxLines = 1,
+            )
+
+            Text(
+                text = peerName,
+                style =
+                    MaterialTheme
+                        .typography
+                        .titleMedium,
+                fontWeight =
+                    FontWeight.Bold,
+                textAlign =
+                    TextAlign.Center,
+                maxLines = 2,
+                overflow =
+                    TextOverflow.Ellipsis,
+            )
+
+            Icon(
+                imageVector =
+                    Icons.Rounded.Call,
+                contentDescription = null,
+                modifier =
+                    Modifier.size(30.dp),
+                tint =
+                    Color(0xFF76DCA5),
+            )
+
+            Text(
+                text = "AUTO CONNECT",
+                style =
+                    MaterialTheme
+                        .typography
+                        .labelMedium,
+                color =
+                    Color(0xFFFFD35A),
+                fontWeight =
+                    FontWeight.Bold,
+                maxLines = 1,
+            )
+
+            Text(
+                text = "Phone ends call",
+                style =
+                    MaterialTheme
+                        .typography
+                        .labelSmall,
+                color =
+                    Color(0xFF8E9AAF),
+                maxLines = 1,
+            )
         }
     }
 }
@@ -1999,7 +2061,7 @@ private fun wearCallLabel(
         state.callState !=
             CallVisualState.READY
     ) {
-        "PRIORITY"
+        "LOCKED"
     } else {
         when (state.callState) {
             CallVisualState.LIVE -> "END"
