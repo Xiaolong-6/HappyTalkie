@@ -37,7 +37,7 @@ The Wear build therefore:
 - does not call `setFullScreenIntent()` for Watch notifications;
 - keeps high-priority `CATEGORY_CALL` notification actions for Answer / Decline;
 - keeps the dedicated in-app call screen when HappyTalky is already foregrounded;
-- publishes active/outgoing Watch CALL as a Wear `OngoingActivity` for a one-tap return path.
+- publishes active Watch CALL as a Wear `OngoingActivity` for a one-tap return path.
 
 Priority auto-answer remains explicitly gated on the Watch activity being resumed/visible. It does not silently start microphone capture from background.
 
