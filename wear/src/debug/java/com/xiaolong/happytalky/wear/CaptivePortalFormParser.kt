@@ -23,12 +23,12 @@ internal data class ParsedPortalPage(
 internal object CaptivePortalFormParser {
     private val acceptWords =
         Regex(
-            "(?i)\\b(accept|agree|continue|connect|go online|start|internet|online|proceed)\\b"
+            "(?i)\\b(accept|agree|continue|connect|go online|start|internet|online|proceed|surf|browse|hyväksy|hyväksyn|jatka|yhdistä|verkkoon|godkänn|acceptera|fortsätt|anslut|godta|fortsett|tilkob|zustimmen|weiter|verbinden)\\b"
         )
 
     private val termsWords =
         Regex(
-            "(?i)\\b(term|terms|agree|accept|condition|conditions|privacy|policy)\\b"
+            "(?i)\\b(term|terms|agree|accept|condition|conditions|privacy|policy|ehdot|käyttöehdot|hyväks|villkor|godkänn|integritet|betingelser|vilkår|zustimmen|datenschutz)\\b"
         )
 
     fun parse(
@@ -107,6 +107,8 @@ internal object CaptivePortalFormParser {
         val unsupported =
             mutableListOf<String>()
         var submitLabel = ""
+        var submitField:
+            Pair<String, String>? = null
 
         form.select("input").forEach { input ->
             val name =
@@ -131,19 +133,33 @@ internal object CaptivePortalFormParser {
 
                 "submit",
                 "button" -> {
-                    if (submitLabel.isBlank()) {
-                        submitLabel =
-                            value
-                                .ifBlank {
-                                    input.attr("aria-label")
-                                }
-                                .trim()
-                    }
+                    val label =
+                        value
+                            .ifBlank {
+                                input.attr("aria-label")
+                            }
+                            .trim()
+                    val isPreferred =
+                        acceptWords
+                            .containsMatchIn(
+                                label
+                            )
+
                     if (
-                        name.isNotBlank() &&
-                        value.isNotBlank()
+                        submitLabel.isBlank() ||
+                        isPreferred
                     ) {
-                        fields += name to value
+                        submitLabel =
+                            label
+                        submitField =
+                            if (
+                                name.isNotBlank() &&
+                                value.isNotBlank()
+                            ) {
+                                name to value
+                            } else {
+                                null
+                            }
                     }
                 }
 
@@ -186,33 +202,59 @@ internal object CaptivePortalFormParser {
                     .ifBlank { "submit" }
                     .lowercase(Locale.ROOT)
             if (type == "submit") {
-                if (submitLabel.isBlank()) {
-                    submitLabel =
-                        button
-                            .text()
-                            .trim()
-                            .ifBlank {
-                                button
-                                    .attr("aria-label")
-                                    .trim()
-                            }
-                }
+                val label =
+                    button
+                        .text()
+                        .trim()
+                        .ifBlank {
+                            button
+                                .attr("aria-label")
+                                .trim()
+                        }
+                val isPreferred =
+                    acceptWords
+                        .containsMatchIn(
+                            label
+                        )
+                val currentPreferred =
+                    acceptWords
+                        .containsMatchIn(
+                            submitLabel
+                        )
 
-                val name =
-                    button
-                        .attr("name")
-                        .trim()
-                val value =
-                    button
-                        .attr("value")
-                        .trim()
                 if (
-                    name.isNotBlank() &&
-                    value.isNotBlank()
+                    submitLabel.isBlank() ||
+                    (
+                        isPreferred &&
+                        !currentPreferred
+                    )
                 ) {
-                    fields += name to value
+                    submitLabel =
+                        label
+
+                    val name =
+                        button
+                            .attr("name")
+                            .trim()
+                    val value =
+                        button
+                            .attr("value")
+                            .trim()
+                    submitField =
+                        if (
+                            name.isNotBlank() &&
+                            value.isNotBlank()
+                        ) {
+                            name to value
+                        } else {
+                            null
+                        }
                 }
             }
+        }
+
+        submitField?.let {
+            fields += it
         }
 
         form.select("select[name], textarea[name]")
