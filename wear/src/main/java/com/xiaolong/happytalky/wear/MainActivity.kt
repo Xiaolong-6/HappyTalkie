@@ -65,6 +65,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -1032,17 +1033,17 @@ fun WearInbox(
             }
         }
 
-    var deleteConfirmationVisible by
+    var deleteConfirmation by
         remember {
-            mutableStateOf(false)
+            mutableStateOf<String?>(null)
         }
 
     LaunchedEffect(
-        deleteConfirmationVisible
+        deleteConfirmation
     ) {
-        if (deleteConfirmationVisible) {
+        if (deleteConfirmation != null) {
             delay(1_500L)
-            deleteConfirmationVisible = false
+            deleteConfirmation = null
         }
     }
 
@@ -1262,38 +1263,86 @@ fun WearInbox(
                             ConversationItemType.VOICE -> {
                                 voiceById[item.id]
                                     ?.let { message ->
-                                        SwipeDeleteTalkMessage(
-                                            message =
-                                                message,
-                                            peerName =
-                                                peerName,
-                                            onPlay =
-                                                onPlay,
+                                        SwipeDeleteRow(
+                                            itemId =
+                                                item.id,
+                                            deleteDescription =
+                                                "Delete TALK",
+                                            rowHeight =
+                                                54.dp,
                                             onDelete = {
-                                                    ids ->
-                                                onDelete(ids)
-                                                deleteConfirmationVisible =
-                                                    true
+                                                onDelete(
+                                                    setOf(
+                                                        item.id
+                                                    )
+                                                )
+                                                deleteConfirmation =
+                                                    "TALK deleted ✓"
                                             },
-                                        )
+                                        ) {
+                                            WearTalkMessage(
+                                                message =
+                                                    message,
+                                                peerName =
+                                                    peerName,
+                                                onPlay =
+                                                    onPlay,
+                                            )
+                                        }
                                     }
                             }
 
                             ConversationItemType.TEXT -> {
-                                WearTextMessage(
-                                    item = item,
-                                    peerName =
-                                        peerName,
-                                )
+                                SwipeDeleteRow(
+                                    itemId =
+                                        item.id,
+                                    deleteDescription =
+                                        "Delete message",
+                                    rowHeight =
+                                        54.dp,
+                                    onDelete = {
+                                        onDelete(
+                                            setOf(
+                                                item.id
+                                            )
+                                        )
+                                        deleteConfirmation =
+                                            "Message deleted ✓"
+                                    },
+                                ) {
+                                    WearTextMessage(
+                                        item = item,
+                                        peerName =
+                                            peerName,
+                                    )
+                                }
                             }
 
                             ConversationItemType.CALL -> {
                                 callById[item.id]
                                     ?.let { entry ->
-                                        WearCallHistoryCard(
-                                            entry =
-                                                entry
-                                        )
+                                        SwipeDeleteRow(
+                                            itemId =
+                                                item.id,
+                                            deleteDescription =
+                                                "Delete call",
+                                            rowHeight =
+                                                48.dp,
+                                            onDelete = {
+                                                onDelete(
+                                                    setOf(
+                                                        item.id
+                                                    )
+                                                )
+                                                deleteConfirmation =
+                                                    "Call deleted ✓"
+                                            },
+                                        ) {
+                                            WearCallHistoryCard(
+                                                entry =
+                                                    entry
+                                            )
+                                        }
                                     }
                             }
                         }
@@ -1314,20 +1363,23 @@ fun WearInbox(
                     ),
             )
 
-            if (deleteConfirmationVisible) {
-                WearDeleteConfirmation(
-                    modifier =
-                        Modifier.align(
-                            Alignment.Center
-                        )
-                )
-            }
+            deleteConfirmation
+                ?.let { label ->
+                    WearDeleteConfirmation(
+                        label = label,
+                        modifier =
+                            Modifier.align(
+                                Alignment.Center
+                            )
+                    )
+                }
         }
     }
 }
 
 @Composable
 internal fun WearDeleteConfirmation(
+    label: String = "TALK deleted ✓",
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -1345,7 +1397,7 @@ internal fun WearDeleteConfirmation(
             Alignment.Center,
     ) {
         Text(
-            text = "TALK deleted ✓",
+            text = label,
             style =
                 MaterialTheme
                     .typography
@@ -1562,11 +1614,12 @@ private fun wearMessageTime(
     )
 
 @Composable
-private fun SwipeDeleteTalkMessage(
-    message: VoiceMessage,
-    peerName: String,
-    onPlay: (VoiceMessage) -> Unit,
-    onDelete: (Set<String>) -> Unit,
+private fun SwipeDeleteRow(
+    itemId: String,
+    deleteDescription: String,
+    rowHeight: Dp,
+    onDelete: () -> Unit,
+    content: @Composable () -> Unit,
 ) {
     val revealPx =
         with(LocalDensity.current) {
@@ -1574,14 +1627,14 @@ private fun SwipeDeleteTalkMessage(
         }
 
     var offsetX by
-        remember(message.id) {
+        remember(itemId) {
             mutableFloatStateOf(0f)
         }
 
     Box(
         modifier = Modifier
             .width(146.dp)
-            .height(54.dp),
+            .height(rowHeight),
         contentAlignment =
             Alignment.CenterEnd,
     ) {
@@ -1603,9 +1656,7 @@ private fun SwipeDeleteTalkMessage(
         ) {
             TextButton(
                 onClick = {
-                    onDelete(
-                        setOf(message.id)
-                    )
+                    onDelete()
                     offsetX = 0f
                 },
                 modifier =
@@ -1615,7 +1666,7 @@ private fun SwipeDeleteTalkMessage(
                     imageVector =
                         Icons.Rounded.Delete,
                     contentDescription =
-                        "Delete TALK",
+                        deleteDescription,
                     tint = Color.White,
                     modifier =
                         Modifier.size(20.dp),
@@ -1635,7 +1686,7 @@ private fun SwipeDeleteTalkMessage(
                     )
                 }
                 .pointerInput(
-                    message.id
+                    itemId
                 ) {
                     detectHorizontalDragGestures(
                         onHorizontalDrag = {
@@ -1669,11 +1720,7 @@ private fun SwipeDeleteTalkMessage(
                     )
                 }
         ) {
-            WearTalkMessage(
-                message = message,
-                peerName = peerName,
-                onPlay = onPlay,
-            )
+            content()
         }
     }
 }
