@@ -7,7 +7,6 @@ import android.os.Bundle
 import android.view.inputmethod.EditorInfo
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -22,7 +21,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -53,7 +51,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -155,8 +152,6 @@ class MainActivity : HappyTalkyActivity() {
                     onPlay = ::playMessage,
                     onDelete =
                         ::deleteConversationItems,
-                    onPriorityCallsChanged =
-                        ::setPriorityCallsEnabled,
                     onComposeText =
                         ::launchTextInput,
                     openInbox = openInboxRequested,
@@ -277,7 +272,6 @@ fun WearHome(
     onTalkCancel: () -> Unit,
     onPlay: (VoiceMessage) -> Unit,
     onDelete: (Set<String>) -> Unit = {},
-    onPriorityCallsChanged: (Boolean) -> Unit = {},
     onComposeText: () -> Unit = {},
     openInbox: Boolean = false,
     onInboxOpened: () -> Unit = {},
@@ -334,10 +328,6 @@ fun WearHome(
                 state.textEnabled,
             onComposeText =
                 onComposeText,
-            priorityCallsEnabled =
-                state.localPriorityCallsAllowed,
-            onPriorityCallsChanged =
-                onPriorityCallsChanged,
             onBack = {
                 showInbox = false
             },
@@ -990,8 +980,6 @@ fun WearInbox(
     peerName: String,
     textEnabled: Boolean = false,
     onComposeText: () -> Unit = {},
-    priorityCallsEnabled: Boolean = false,
-    onPriorityCallsChanged: (Boolean) -> Unit = {},
     onBack: () -> Unit,
     onPlay: (VoiceMessage) -> Unit,
     onDelete: (Set<String>) -> Unit = {},
