@@ -392,10 +392,17 @@ object PeerDeviceInfoPolicy {
         existingUpdatedAt: Long,
         incomingUpdatedAt: Long
     ): Boolean =
-        incomingUpdatedAt <= 0L ||
-            existingUpdatedAt <= 0L ||
-            incomingUpdatedAt >=
-                existingUpdatedAt
+        when {
+            existingUpdatedAt <= 0L ->
+                true
+
+            incomingUpdatedAt <= 0L ->
+                false
+
+            else ->
+                incomingUpdatedAt >=
+                    existingUpdatedAt
+        }
 }
 
 object TextCapabilityPolicy {
@@ -403,23 +410,13 @@ object TextCapabilityPolicy {
         connection: PeerConnectionState,
         peerInfo: DeviceInfo?
     ): Boolean =
-        when {
+        connection ==
+            PeerConnectionState.CONNECTED ||
             peerInfo?.capabilities
                 ?.contains(
                     Protocol
                         .CAPABILITY_TEXT_V1
-                ) == true ->
-                true
-
-            peerInfo == null &&
-                connection ==
-                    PeerConnectionState
-                        .CONNECTED ->
-                true
-
-            else ->
-                false
-        }
+                ) == true
 }
 
 object PriorityCallSettings {
