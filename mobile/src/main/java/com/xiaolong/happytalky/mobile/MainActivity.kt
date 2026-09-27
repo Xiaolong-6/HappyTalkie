@@ -514,7 +514,7 @@ private fun ConversationHeader(
                     "Priority\ncall",
                     style = MaterialTheme.typography.labelMedium,
                     textAlign = TextAlign.Center,
-                    color = if (state.priorityOfferAvailable) MaterialTheme.colorScheme.primary
+                    color = if (state.priorityCallAvailable) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -2115,7 +2115,7 @@ internal fun PriorityCallOptions(
             .CAPABILITY_PRIORITY_LOCKED_CALL_V1 in
             state.peerCapabilities
     val canStart =
-        state.priorityOfferAvailable
+        state.priorityCallAvailable
 
     val explanation =
         when {
