@@ -96,7 +96,7 @@ Open HappyTalky once on both devices and grant:
 - Microphone
 - Notifications
 
-For incoming CALL, Android may also control whether full-screen call notifications are permitted. If full-screen presentation is unavailable, the high-priority call notification still exposes Answer/Decline.
+For incoming normal CALL, Android may also control whether full-screen call notifications are permitted on Phone. Wear OS does not support full-screen-intent notifications; the Watch uses high-priority call notifications instead.
 
 ## Behavior to verify
 
@@ -119,13 +119,23 @@ For incoming CALL, Android may also control whether full-screen call notificatio
 2. Start CALL from the peer.
 3. Verify a call-style notification appears.
 4. Verify Answer and Decline work.
-5. If the OS allows full-screen call intents, verify the incoming UI appears over the lock screen.
-6. On Wear, verify the screen wakes and the dedicated full-screen **YES / NO** incoming-call UI appears when full-screen-intent access is permitted.
-7. On Android 14+ Wear, if full-screen access is disabled, grant it from the system screen opened by HappyTalky and repeat.
-8. Ignore one call and verify it times out rather than ringing forever.
-9. Verify the missed call appears in Watch CALL history with its time.
-10. Complete a call and verify the history records its time and duration.
-11. Decline a call from each side and verify the correct declined outcome is recorded.
+5. On Phone, if the OS allows full-screen call intents, verify the incoming UI appears over the lock screen.
+6. On Wear, verify the high-priority call notification appears with Answer / Decline and opens the dedicated **YES / NO** in-app screen.
+7. Ignore one normal call and verify it times out rather than ringing forever.
+8. Verify the missed call appears in Watch CALL history with its time.
+9. Complete a call and verify the history records its time and duration.
+10. Decline a normal call from each side and verify the correct declined outcome is recorded.
+
+### Locked Priority CALL
+
+1. Install the same current build on Phone and Watch and open both once so `priority_locked_call_v1` metadata is published.
+2. From an idle connected Phone, open **Priority call** and start it directly. Verify no normal CALL or five-second wait occurs first.
+3. With HappyTalky already visible on Watch, verify the Watch enters the locked Priority screen and auto-connects without a YES/NO choice.
+4. Verify Watch has no Decline/END control in the activity, incoming notification, or active-call notification.
+5. End the call from Phone and verify both endpoints return to idle and record Priority history.
+6. Start another locked Priority call and cancel it from Phone during connection. Repeat while Watch is transitioning into active state; verify the Watch still closes the call and does not leave an orphan live state.
+7. Background HappyTalky on Watch and start locked Priority. Verify the persistent Priority notification appears immediately. Because Android microphone permission is while-in-use, verify audio does not start until HappyTalky becomes foreground, then verify auto-connect occurs.
+8. During an active locked Priority call, interrupt the route long enough to exceed reconnect grace and verify `DISCONNECTED` is still allowed as the failure exit.
 
 ### Route change / reconnect
 
