@@ -38,9 +38,7 @@ data class HappyTalkyUiState(
     val speakerOn: Boolean = false,
     val peerName: String = "Watch",
     val peerCapabilities: Set<String> = emptySet(),
-    val peerPriorityCallsAllowed: Boolean = false,
-    val localPriorityCallsAllowed: Boolean = false,
-    val priorityOfferAvailable: Boolean = false,
+    val priorityCallAvailable: Boolean = false,
     val priorityLocked: Boolean = false,
     val textEnabled: Boolean = false,
     val unreadTextCount: Int = 0,
@@ -342,30 +340,6 @@ abstract class HappyTalkyActivity : ComponentActivity() {
         }
     }
 
-    protected fun setPriorityCallsEnabled(
-        enabled: Boolean
-    ) {
-        if (
-            role != EndpointRole.WATCH
-        ) {
-            return
-        }
-
-        PriorityCallSettings.setEnabled(
-            this,
-            enabled
-        )
-        transport.publishDeviceInfo()
-        StateStore.setStatus(
-            this,
-            if (enabled) {
-                "Priority calls allowed"
-            } else {
-                "Priority calls disabled"
-            }
-        )
-        refreshUiState()
-    }
 
     protected fun sendText(
         rawText: String
@@ -1077,15 +1051,7 @@ abstract class HappyTalkyActivity : ComponentActivity() {
                 peerCapabilities =
                     peerInfo?.capabilities
                         .orEmpty(),
-                peerPriorityCallsAllowed =
-                    peerInfo
-                        ?.priorityAutoAnswerEnabled ==
-                        true,
-                localPriorityCallsAllowed =
-                    role == EndpointRole.WATCH &&
-                        PriorityCallSettings
-                            .isEnabled(this),
-                priorityOfferAvailable =
+                priorityCallAvailable =
                     priorityCallIsAvailable(),
                 priorityLocked =
                     priorityLocked,
