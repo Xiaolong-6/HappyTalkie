@@ -132,6 +132,10 @@ object LocalDeviceIdentity {
                     )
                     add(
                         Protocol
+                            .CAPABILITY_PRIORITY_LOCKED_CALL_V1
+                    )
+                    add(
+                        Protocol
                             .CAPABILITY_TEXT_V1
                     )
                 },
