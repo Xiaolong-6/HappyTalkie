@@ -37,6 +37,7 @@ import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.NetworkCell
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -760,14 +761,22 @@ private fun PrimaryCallAction(
             state.callEnabled &&
                 !lockedCall,
         label = {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
+            if (lockedCall) {
                 Icon(
                     imageVector =
-                        if (lockedCall) {
-                            Icons.Rounded.Call
-                        } else {
+                        Icons.Rounded.Lock,
+                    contentDescription =
+                        "Locked priority call · phone ends call",
+                    modifier =
+                        Modifier.size(26.dp),
+                )
+            } else {
+                Column(
+                    horizontalAlignment =
+                        Alignment.CenterHorizontally,
+                ) {
+                    Icon(
+                        imageVector =
                             when (state.callState) {
                                 CallVisualState.LIVE,
                                 CallVisualState.OUTGOING,
@@ -778,17 +787,23 @@ private fun PrimaryCallAction(
                                 CallVisualState.INCOMING,
                                 CallVisualState.READY ->
                                     Icons.Rounded.Call
-                            }
-                        },
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                )
-                Text(
-                    text = wearCallLabel(state),
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                )
+                            },
+                        contentDescription = null,
+                        modifier =
+                            Modifier.size(20.dp),
+                    )
+                    Text(
+                        text =
+                            wearCallLabel(state),
+                        style =
+                            MaterialTheme
+                                .typography
+                                .labelMedium,
+                        fontWeight =
+                            FontWeight.SemiBold,
+                        maxLines = 1,
+                    )
+                }
             }
         },
         colors = ButtonDefaults.buttonColors(
