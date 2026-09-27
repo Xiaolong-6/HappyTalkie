@@ -215,7 +215,7 @@ Current build baseline:
 - Material 3 Adaptive dependency 1.3.0 in the Phone module
 - Wear Compose Material 3 1.7.0
 
-The CI installs the Android 37 preview platform package explicitly while targetSdk remains 36.
+The CI installs the Android 37.0 SDK platform package explicitly while `targetSdk` remains 36.
 
 CI-equivalent local checks:
 
