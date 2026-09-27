@@ -1,5 +1,7 @@
 # Architecture
 
+> Canonical current-state architecture for `main`. PR-specific closure notes under `docs/` are historical unless this document links to them as normative behavior.
+
 ## Product contract
 
 HappyTalky keeps two primary child-facing voice actions:
@@ -31,7 +33,7 @@ Every row carries a stable ID, direction, creation time, read time and delivery 
 
 TALK audio remains in app-private `voice-history` files. The first database access imports legacy TALK filename/read-state metadata and legacy CALL JSONL entries once, preserving existing installs while new writes go to Room.
 
-The current Store APIs remain synchronous during this migration so the existing UI/state machine does not change behavior. A later UI pass can expose Room as Flow without changing the persisted schema.
+The Store APIs are currently synchronous so the existing UI/state machine can read a consistent snapshot without a broader reactive-state refactor. A future change may expose Room as `Flow` without changing the persisted schema or protocol semantics.
 
 TEXT uses a stable UUID and is stored directly in Room. Outgoing text is initially `LOCAL`. If `DataClient.putDataItem()` accepts it while the peer is reachable, the UI may label the local send attempt `SENT`; if the peer is offline it remains `QUEUED` for later synchronization. Neither state claims remote receipt. HappyTalky does not label an outgoing message Delivered or Read without an explicit receiver acknowledgement. A reachable peer may send TEXT while device-info metadata is still refreshing; offline queueing requires previously confirmed `text_v1` support.
 
@@ -75,7 +77,7 @@ Locked Priority CALL is a separate immediate Phone-to-Watch request. It is not a
 - New support is advertised through `priority_locked_call_v1`. The older `priority_call_v1` path is retained only for protocol compatibility with older builds.
 - Phone can start locked Priority only from an idle, CALL-capable route and only after the Watch advertises the new capability.
 - Starting Priority creates a fresh call ID and sends `/happytalky/call/priority-locked` immediately. It does not start a normal CALL first and has no delay.
-- Watch does not expose an opt-out switch for locked Priority.
+- Watch does not expose an opt-out switch for locked Priority. The legacy `PriorityCallSettings` / `priorityAutoAnswer` field remains only for compatibility with the older `/happytalky/call/priority` path; it does not gate `/happytalky/call/priority-locked`.
 - A locked Priority incoming state has no Decline action and no ordinary missed-call timeout. The Watch call screen shows the locked state without NO/END controls.
 - Once connected, the Watch cannot normally terminate a locked Priority call through Compose UI, notification actions, `CallActionReceiver`, or the foreground-service notification. The Phone remains allowed to cancel a pending request or end an active call.
 - If Phone CANCEL races with Watch auto-answer, Watch accepts the Phone cancellation even after the local state has already moved from incoming to active.
@@ -229,7 +231,7 @@ The phone history supports tap-to-play, selective deletion, select-all, and clea
 
 ## UI contract
 
-Phone and Watch share `HappyTalkyUiState`, not presentation code.
+Phone and Watch share `HappyTalkyUiState`, not presentation code. New UI work must also follow [UI_GUIDELINES.md](UI_GUIDELINES.md), which defines the current Android/Wear design baseline and screenshot/device review requirements.
 
 ### Phone
 
