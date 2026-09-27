@@ -149,7 +149,8 @@ class MainActivity : HappyTalkyActivity() {
                     onTalkFinish = ::finishTalk,
                     onTalkCancel = ::cancelTalk,
                     onPlay = ::playMessage,
-                    onDelete = ::deleteMessages,
+                    onDelete =
+                        ::deleteConversationItems,
                     onPriorityCallsChanged =
                         ::setPriorityCallsEnabled,
                     onComposeText =
