@@ -7,48 +7,45 @@ import org.junit.Test
 
 class PriorityCallPolicyTest {
     @Test
-    fun phoneOfferRequiresDelaySupportAndWatchOptIn() {
+    fun phoneCanRequestLockedPriorityImmediately() {
         assertTrue(
-            PriorityCallPolicy.canOffer(
+            PriorityCallPolicy.canRequestLocked(
                 localRole = EndpointRole.PHONE,
-                outgoingCallPresent = true,
-                elapsedMs =
-                    Protocol.PRIORITY_OFFER_DELAY_MS,
-                peerSupportsPriority = true,
-                peerAllowsAutoAnswer = true
+                callInProgress = false,
+                recording = false,
+                peerConnected = true,
+                peerSupportsLockedPriority = true
             )
         )
 
         assertFalse(
-            PriorityCallPolicy.canOffer(
+            PriorityCallPolicy.canRequestLocked(
                 localRole = EndpointRole.PHONE,
-                outgoingCallPresent = true,
-                elapsedMs =
-                    Protocol.PRIORITY_OFFER_DELAY_MS -
-                        1L,
-                peerSupportsPriority = true,
-                peerAllowsAutoAnswer = true
+                callInProgress = true,
+                recording = false,
+                peerConnected = true,
+                peerSupportsLockedPriority = true
             )
         )
 
         assertFalse(
-            PriorityCallPolicy.canOffer(
+            PriorityCallPolicy.canRequestLocked(
                 localRole = EndpointRole.PHONE,
-                outgoingCallPresent = true,
-                elapsedMs =
-                    Protocol.PRIORITY_OFFER_DELAY_MS,
-                peerSupportsPriority = true,
-                peerAllowsAutoAnswer = false
+                callInProgress = false,
+                recording = false,
+                peerConnected = true,
+                peerSupportsLockedPriority = false
             )
         )
     }
 
     @Test
-    fun watchAutoAnswerRequiresVisibleOptedInPriorityCall() {
+    fun lockedPriorityAutoAnswersWhenWatchActivityIsVisible() {
         assertTrue(
             PriorityCallPolicy.canAutoAnswer(
                 localRole = EndpointRole.WATCH,
-                enabled = true,
+                locked = true,
+                legacyEnabled = false,
                 mode = CallMode.PRIORITY,
                 incomingCallPresent = true,
                 activityVisible = true
@@ -58,23 +55,62 @@ class PriorityCallPolicyTest {
         assertFalse(
             PriorityCallPolicy.canAutoAnswer(
                 localRole = EndpointRole.WATCH,
-                enabled = true,
+                locked = true,
+                legacyEnabled = false,
                 mode = CallMode.PRIORITY,
                 incomingCallPresent = true,
                 activityVisible = false
             )
         )
+    }
 
+    @Test
+    fun legacyPriorityStillRequiresOptIn() {
         assertFalse(
             PriorityCallPolicy.canAutoAnswer(
                 localRole = EndpointRole.WATCH,
-                enabled = true,
-                mode = CallMode.NORMAL,
+                locked = false,
+                legacyEnabled = false,
+                mode = CallMode.PRIORITY,
+                incomingCallPresent = true,
+                activityVisible = true
+            )
+        )
+
+        assertTrue(
+            PriorityCallPolicy.canAutoAnswer(
+                localRole = EndpointRole.WATCH,
+                locked = false,
+                legacyEnabled = true,
+                mode = CallMode.PRIORITY,
                 incomingCallPresent = true,
                 activityVisible = true
             )
         )
     }
+
+    @Test
+    fun watchCannotTerminateLockedPriorityCall() {
+        assertFalse(
+            PriorityCallPolicy.canLocalTerminate(
+                localRole = EndpointRole.WATCH,
+                locked = true
+            )
+        )
+        assertTrue(
+            PriorityCallPolicy.canLocalTerminate(
+                localRole = EndpointRole.PHONE,
+                locked = true
+            )
+        )
+        assertTrue(
+            PriorityCallPolicy.canLocalTerminate(
+                localRole = EndpointRole.WATCH,
+                locked = false
+            )
+        )
+    }
+
     @Test
     fun sameActiveCallIgnoresLatePriorityInsteadOfBusy() {
         assertEquals(
@@ -104,5 +140,4 @@ class PriorityCallPolicyTest {
                 )
         )
     }
-
 }
