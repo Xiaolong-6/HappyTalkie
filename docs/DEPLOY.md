@@ -1,5 +1,7 @@
 # Deploy HappyTalky
 
+Current `main` app version: **0.3.2** (`versionCode 5`) on both Phone and Watch.
+
 HappyTalky installs as two APKs with the same application ID:
 
 - `HappyTalky-phone-debug.apk` -> Android phone
@@ -26,7 +28,7 @@ GitHub Actions artifacts remain available as a secondary path.
 
 ## Rename cutover
 
-HappyTalky 0.3.0 uses the new package `com.xiaolong.happytalky`. It intentionally does not upgrade the old `com.xiaolong.happytalkie` install. Remove the old phone/watch app after installing the renamed build so two launcher entries and two Data Layer endpoints cannot be confused.
+The package rename happened in **0.3.0**. Current `main` remains on `com.xiaolong.happytalky` and intentionally does not upgrade the old `com.xiaolong.happytalkie` install. Remove the old phone/watch app after installing a current build so two launcher entries and two Data Layer endpoints cannot be confused.
 
 ## Install on the Android phone
 
@@ -190,6 +192,15 @@ This is intentional: the current live implementation uses a continuous Data Laye
 5. Restore connectivity.
 6. Verify the Data Layer synchronizes the TALK.
 
+### TEXT and unified timeline
+
+1. With the peer reachable, send TEXT from Phone and verify it appears in the same timeline as TALK and CALL events.
+2. On Watch, open Inbox and launch the compact Message composer; verify entry is delegated to the Wear OS system RemoteInput/IME rather than an in-app phone-style keyboard.
+3. Make the peer unavailable and send TEXT only after the cached peer advertises `text_v1`; verify the local row shows **Queued**, not Delivered/Read.
+4. Restore connectivity and verify the queued DataItem synchronizes without creating a duplicate row or duplicate notification.
+5. Open Watch Inbox and verify incoming TEXT is marked read locally; confirm TALK still requires playback completion before its unread state clears.
+6. Delete TEXT and CALL rows locally on Watch and verify this behaves as local history management, not remote recall. Delete a TALK row and verify its local audio file is removed as well.
+
 ## Build locally
 
 Current build baseline:
@@ -200,16 +211,21 @@ Current build baseline:
 - target SDK 36
 - JDK 17
 - Compose BOM 2026.09.00
-- phone Material 3
+- phone Material 3 via Compose BOM 2026.09.00
+- Material 3 Adaptive dependency 1.3.0 in the Phone module
 - Wear Compose Material 3 1.7.0
 
-The CI installs the Android 37 preview platform package explicitly while targetSdk remains 36.
+The CI installs the Android 37.0 SDK platform package explicitly while `targetSdk` remains 36.
 
-Build:
+CI-equivalent local checks:
 
 ~~~text
+node --test .github/scripts/cleanup-debug-releases.test.cjs
 gradle :core:testDebugUnitTest :mobile:assembleDebug :wear:assembleDebug
+gradle :mobile:updateDebugScreenshotTest :wear:updateDebugScreenshotTest
 ~~~
+
+For UI changes, review [UI_GUIDELINES.md](UI_GUIDELINES.md) before implementation and visually inspect the rendered artifacts rather than treating a successful Compose build as sufficient validation.
 
 Outputs:
 

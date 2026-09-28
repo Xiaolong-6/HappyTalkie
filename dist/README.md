@@ -29,6 +29,8 @@ The phone and watch APKs in one release are always built from the same commit an
 
 Phone APKs can be downloaded directly on Android and handed to the system package installer.
 
-For Wear OS, ordinary apps cannot silently install arbitrary APKs on a paired watch. The planned debug updater will transfer the matching Wear APK from phone to watch and launch the watch system installer, so the user only needs to confirm the install on the watch.
+**Current `main` does not contain an in-app Watch APK updater.** For Wear OS, ordinary apps cannot silently install arbitrary APKs on a paired watch. A future debug updater may transfer the matching Wear APK from phone to watch and launch the watch system installer, but the user would still need to confirm installation through the platform flow.
+
+For the supported manual install paths, see [docs/DEPLOY.md](../docs/DEPLOY.md).
 
 For production-like one-device management, use Google Play internal/closed testing, where phone/desktop Play Store can remotely request installation on a paired Wear OS device.
