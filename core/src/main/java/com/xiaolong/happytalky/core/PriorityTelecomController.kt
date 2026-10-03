@@ -160,15 +160,6 @@ object PriorityTelecomController {
                     it
                 )
             }
-
-            if (
-                StateStore.activeCall(appContext) !=
-                    callId &&
-                StateStore.incomingCall(appContext) !=
-                    callId
-            ) {
-                clearSession(callId)
-            }
         }
     }
 
@@ -192,7 +183,6 @@ object PriorityTelecomController {
                     )
                 )
             }
-            clearSession(callId)
         }
     }
 
