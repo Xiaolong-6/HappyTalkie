@@ -292,6 +292,11 @@ class LiveCallService : Service() {
     ) {
         cancelRetry()
         LiveCallAudio.stop(this)
+        PriorityTelecomController
+            .disconnectForFailure(
+                this,
+                callId
+            )
 
         CallHistoryStore.append(
             this,
