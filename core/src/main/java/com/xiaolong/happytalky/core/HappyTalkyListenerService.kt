@@ -705,9 +705,28 @@ class HappyTalkyListenerService : WearableListenerService() {
             this,
             PeerConnectionState.CONNECTED
         )
+        val telecomAutoAnswer =
+            PriorityCallPolicy
+                .canUseTelecomAutoAnswer(
+                    localRole =
+                        EndpointRole.fromContext(
+                            this
+                        ),
+                    locked = true,
+                    mode = CallMode.PRIORITY,
+                    incomingCallPresent = true,
+                    telecomAvailable =
+                        PriorityTelecomController
+                            .isSupported(this)
+                )
+
         StateStore.setStatus(
             this,
-            "Priority call · opening"
+            if (telecomAutoAnswer) {
+                "Priority call · auto-connecting"
+            } else {
+                "Priority call · open watch to connect"
+            }
         )
         AlertController.startIncomingCall(
             this,
@@ -715,6 +734,15 @@ class HappyTalkyListenerService : WearableListenerService() {
             priority = true,
             locked = true
         )
+
+        if (telecomAutoAnswer) {
+            PriorityTelecomController
+                .startLockedIncoming(
+                    this,
+                    callId
+                )
+        }
+
         EventBus.notifyStateChanged(
             this
         )
@@ -816,6 +844,11 @@ class HappyTalkyListenerService : WearableListenerService() {
                     0L
                 }
         )
+        PriorityTelecomController
+            .disconnectFromPhone(
+                this,
+                callId
+            )
         StateStore.clearCallState(this)
         StateStore.setStatus(
             this,
@@ -902,6 +935,12 @@ class HappyTalkyListenerService : WearableListenerService() {
                 }
         )
 
+        PriorityTelecomController
+            .disconnectFromPhone(
+                this,
+                callId,
+                disconnected = disconnected
+            )
         StateStore.clearCallState(this)
         StateStore.setStatus(
             this,
