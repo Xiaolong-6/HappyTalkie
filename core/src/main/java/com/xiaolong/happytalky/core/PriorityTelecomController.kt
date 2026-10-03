@@ -293,11 +293,11 @@ object PriorityTelecomController {
                         )
                     ) {
                         is CallControlResult.Success -> {
-                            routeToWatchSpeaker()
                             activateIfNeeded(
                                 context,
                                 callId
                             )
+                            routeToWatchSpeaker()
                         }
 
                         is CallControlResult.Error -> {
