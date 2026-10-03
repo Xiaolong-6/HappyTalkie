@@ -29,7 +29,9 @@ dependencies {
 
     api("com.google.android.gms:play-services-wearable:20.0.1")
     implementation("androidx.activity:activity:1.13.0")
-    implementation("androidx.core:core:1.19.1")\n    implementation("androidx.core:core-telecom:1.1.0-beta01")\n    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+    implementation("androidx.core:core:1.19.1")
+    implementation("androidx.core:core-telecom:1.1.0-beta01")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     implementation("androidx.wear:wear-ongoing:1.1.0")
     implementation(composeBom)
     implementation("androidx.compose.runtime:runtime")
