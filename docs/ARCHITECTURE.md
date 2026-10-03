@@ -58,7 +58,7 @@ This lets presentation use labels such as `Watch · Pixel Watch 3` and lets late
 
 ## Nearby BLE finding
 
-Physical-device status: **not yet validated** on the target Phone + Watch pair. CI covers protocol/state logic and builds, but RSSI stability, permissions, radio coexistence, and the 60 s session must still be checked on hardware.
+Physical-device status: **basic end-to-end validation passed** on the target Phone + Watch pair. BLE discovery/proximity behavior was exercised on real hardware. This is functional acceptance rather than exhaustive RF characterization across all distances, interference conditions, and environments.
 
 Phone exposes **Find Watch** as a secondary utility. It complements Android Find Hub and does not duplicate system ringing or map location.
 
@@ -90,6 +90,8 @@ Signaling uses transient `MessageClient` paths:
 - `/happytalky/call/priority-locked`
 
 ### Priority CALL
+
+Physical-device status: **basic end-to-end validation passed** on the target Phone + Watch pair for locked Priority calling, including the background auto-connect path.
 
 Locked Priority CALL is a separate immediate Phone-to-Watch request. It is not an escalation of an ordinary ringing CALL.
 

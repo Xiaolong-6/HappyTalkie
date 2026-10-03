@@ -11,7 +11,7 @@ Its primary child-facing communication actions are:
 
 Secondary **TEXT** messaging is also supported. Text, TALK voice messages and CALL events share one local conversation timeline on each endpoint.
 
-Phone also provides **Find Watch**, a short-lived BLE proximity view for nearby searching. It complements Find Hub rather than duplicating ringing or map location, and reports qualitative signal proximity/trend instead of pretending RSSI is an exact distance or direction. **Find Watch hardware validation is still pending** on the target Phone + Watch pair; inclusion in main does not mean its RSSI/permission behavior has been physically accepted yet.
+Phone also provides **Find Watch**, a short-lived BLE proximity view for nearby searching. It complements Find Hub rather than duplicating ringing or map location, and reports qualitative signal proximity/trend instead of pretending RSSI is an exact distance or direction. **Find Watch has passed basic end-to-end physical-device validation** on the target Phone + Watch pair, including real BLE discovery/proximity behavior. This records functional acceptance; it is not a claim of exhaustive RF characterization across every environment.
 
 ## Why two modes?
 
@@ -58,7 +58,7 @@ Incoming normal CALL uses an actionable high-priority call notification. Phone m
 
 **Priority call** is a separate immediate parent-initiated request. It does not wait for an unanswered normal CALL and has no five-second escalation delay. A compatible Watch advertises `priority_locked_call_v1`; the Phone creates a fresh Priority call ID and sends the locked request directly. The Watch cannot decline the locked request or normally end the active Priority call from the app, notification, or foreground-service notification. The Phone can cancel while connection is pending and can end the connected call. Route loss or system failure can still terminate it.
 
-Android 14+ treats microphone access as a while-in-use permission. Locked Priority therefore uses AndroidX Core-Telecom instead of directly starting a microphone foreground service from the background. The Watch registers the request as an incoming VoIP call, requests immediate answer, and then starts the existing Data Layer PCM transport. Opening HappyTalky remains a fallback if Telecom setup is unavailable or fails.
+Android 14+ treats microphone access as a while-in-use permission. Locked Priority therefore uses AndroidX Core-Telecom instead of directly starting a microphone foreground service from the background. The Watch registers the request as an incoming VoIP call, requests immediate answer, and then starts the existing Data Layer PCM transport. Opening HappyTalky remains a fallback if Telecom setup is unavailable or fails. **The background locked-Priority path has passed basic end-to-end physical-device validation** on the target Phone + Watch pair.
 
 Phone live calls include an explicit **Speaker** toggle. Phone audio does not force speaker mode by default. Wear uses its communication speaker route.
 
@@ -101,4 +101,4 @@ MIT
 
 ## Experimental hardware gates
 
-Public Wi-Fi captive-portal support remains a debug-only PoC and has **not yet been validated on the target Pixel Watch**. Its parser/build tests may pass while Wear OS still refuses to keep an unvalidated captive network attached long enough for the flow to finish. BLE Find Watch is likewise merged for integration but remains hardware-unverified until the Phone + Watch test is completed.
+Public Wi-Fi captive-portal support remains a debug-only PoC and has **not yet been validated on the target Pixel Watch**. Its parser/build tests may pass while Wear OS still refuses to keep an unvalidated captive network attached long enough for the flow to finish. **BLE Find Watch and locked Priority Call have both passed basic end-to-end physical-device validation** on the target Phone + Watch pair.
