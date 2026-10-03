@@ -63,6 +63,19 @@ object PriorityCallPolicy {
                     legacyEnabled
             )
 
+    fun canUseTelecomAutoAnswer(
+        localRole: EndpointRole,
+        locked: Boolean,
+        mode: CallMode,
+        incomingCallPresent: Boolean,
+        telecomAvailable: Boolean
+    ): Boolean =
+        localRole == EndpointRole.WATCH &&
+            locked &&
+            mode == CallMode.PRIORITY &&
+            incomingCallPresent &&
+            telecomAvailable
+
     fun canLocalTerminate(
         localRole: EndpointRole,
         locked: Boolean

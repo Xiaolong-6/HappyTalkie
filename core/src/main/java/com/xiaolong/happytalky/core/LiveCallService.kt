@@ -10,11 +10,13 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 import androidx.wear.ongoing.OngoingActivity
 
 class LiveCallService : Service() {
@@ -36,9 +38,11 @@ class LiveCallService : Service() {
     override fun onCreate() {
         super.onCreate()
         ensureChannel()
-        startForeground(
+        ServiceCompat.startForeground(
+            this,
             NOTIFICATION_ID,
-            notification("Preparing call…")
+            notification("Preparing call…"),
+            foregroundServiceType()
         )
         registerStateReceiver()
         updateFromState()
@@ -292,6 +296,11 @@ class LiveCallService : Service() {
     ) {
         cancelRetry()
         LiveCallAudio.stop(this)
+        PriorityTelecomController
+            .disconnectForFailure(
+                this,
+                callId
+            )
 
         CallHistoryStore.append(
             this,
@@ -576,6 +585,27 @@ class LiveCallService : Service() {
                 Notification.CATEGORY_CALL
             )
             .build()
+    }
+
+    private fun foregroundServiceType(): Int {
+        val telecomPriorityOnWatch =
+            packageManager.hasSystemFeature(
+                PackageManager.FEATURE_WATCH
+            ) &&
+                PriorityTelecomController
+                    .isManaging(
+                        StateStore.activeCall(
+                            this
+                        )
+                    )
+
+        return if (telecomPriorityOnWatch) {
+            ServiceInfo
+                .FOREGROUND_SERVICE_TYPE_PHONE_CALL
+        } else {
+            ServiceInfo
+                .FOREGROUND_SERVICE_TYPE_MICROPHONE
+        }
     }
 
     companion object {

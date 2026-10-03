@@ -1,5 +1,6 @@
 package com.xiaolong.happytalky.mobile
 
+import android.content.Intent
 import android.os.Bundle
 import kotlinx.coroutines.delay
 import androidx.activity.compose.setContent
@@ -40,6 +41,7 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.LocationSearching
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.NetworkCell
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -121,6 +123,14 @@ class MainActivity : HappyTalkyActivity() {
                     onDecline = ::declineIncomingCall,
                     onSpeakerToggle = ::toggleSpeaker,
                     onPriorityCall = ::requestPriorityCall,
+                    onFindWatch = {
+                        startActivity(
+                            Intent(
+                                this,
+                                FindWatchActivity::class.java
+                            )
+                        )
+                    },
                     onSendText = ::sendText,
                     onTextVisible =
                         ::markTextMessagesRead,
@@ -194,6 +204,7 @@ fun HappyTalkyPhoneScreen(
     onDecline: () -> Unit,
     onSpeakerToggle: () -> Unit,
     onPriorityCall: () -> Unit = {},
+    onFindWatch: () -> Unit = {},
     onSendText: (String) -> Unit = {},
     onTextVisible: () -> Unit = {},
     onTalkStart: () -> Unit,
@@ -328,6 +339,8 @@ fun HappyTalkyPhoneScreen(
                                 true
                         }
                     },
+                    onFindWatch =
+                        onFindWatch,
                 )
             } else {
                 SelectionHeader(
@@ -425,6 +438,7 @@ fun HappyTalkyPhoneScreen(
 private fun ConversationHeader(
     state: HappyTalkyUiState,
     onPriorityAction: () -> Unit,
+    onFindWatch: () -> Unit,
 ) {
     Surface(
         color =
@@ -516,6 +530,19 @@ private fun ConversationHeader(
                                 .Ellipsis,
                     )
                 }
+            }
+            IconButton(
+                onClick = onFindWatch,
+                modifier = Modifier.size(44.dp),
+            ) {
+                Icon(
+                    imageVector =
+                        Icons.Rounded.LocationSearching,
+                    contentDescription =
+                        "Find Watch nearby",
+                    tint =
+                        MaterialTheme.colorScheme.primary,
+                )
             }
             TextButton(
                 onClick = onPriorityAction

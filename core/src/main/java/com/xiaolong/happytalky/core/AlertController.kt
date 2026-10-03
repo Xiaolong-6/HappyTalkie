@@ -276,7 +276,7 @@ object AlertController {
                     .setContentTitle(title)
                     .setContentText(
                         if (locked) {
-                            "Open HappyTalky · auto-connect"
+                            "Auto-connecting · tap to open"
                         } else {
                             text
                         }

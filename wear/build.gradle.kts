@@ -48,7 +48,10 @@ dependencies {
     implementation("androidx.wear.compose:compose-material3:1.7.0")
     implementation("androidx.wear:wear-input:1.2.0")
 
+    debugImplementation("org.jsoup:jsoup:1.23.2")
     debugImplementation("androidx.compose.ui:ui-tooling")
+
+    testImplementation("junit:junit:4.13.2")
 
     screenshotTestImplementation("com.android.tools.screenshot:screenshot-validation-api:0.0.1-alpha16")
     screenshotTestImplementation("androidx.compose.ui:ui-tooling")

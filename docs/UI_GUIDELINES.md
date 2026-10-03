@@ -35,6 +35,7 @@ Phone and Watch share product state, protocol semantics, brand identity and acce
 - Treat window size as variable. New layouts should be able to evolve through Material 3 Adaptive instead of hard-coding the 412 x 915 screenshot size.
 - Keep CALL and TALK as the primary child-facing actions; TEXT remains secondary.
 - Keep state feedback explicit for disabled, queued, ringing, connecting, live, reconnecting and failed states.
+- Keep **Find Watch** secondary to CALL/TALK. BLE RSSI finding may show qualitative proximity and trend, but must not draw a direction arrow or label an exact physical distance.
 - Preserve system theme light/dark behavior while keeping the HappyTalky brand identity stable.
 
 ### Watch
