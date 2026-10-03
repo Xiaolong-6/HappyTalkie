@@ -1,6 +1,10 @@
 package com.xiaolong.happytalky.mobile
 
 import android.Manifest
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -57,6 +61,7 @@ import com.xiaolong.happytalky.core.ProximityReading
 import com.xiaolong.happytalky.core.ProximitySessionToken
 import com.xiaolong.happytalky.core.ProximityTrend
 import com.xiaolong.happytalky.core.Protocol
+import com.xiaolong.happytalky.core.StateStore
 
 data class FindWatchUiState(
     val watchReady: Boolean = false,
@@ -76,6 +81,20 @@ class FindWatchActivity : ComponentActivity() {
     private var sessionToken:
         String? = null
     private var screenStarted = false
+    private var stateReceiverRegistered = false
+
+    private val callStateReceiver =
+        object : BroadcastReceiver() {
+            override fun onReceive(
+                context: Context?,
+                intent: Intent?
+            ) {
+                if (hasAnyCallState()) {
+                    stopSession()
+                    finish()
+                }
+            }
+        }
 
     private var state by
         mutableStateOf(
@@ -206,6 +225,29 @@ class FindWatchActivity : ComponentActivity() {
         messageClient.addListener(
             messageListener
         )
+
+        if (!stateReceiverRegistered) {
+            val filter =
+                IntentFilter(
+                    Protocol.ACTION_STATE_CHANGED
+                )
+
+            if (Build.VERSION.SDK_INT >= 33) {
+                registerReceiver(
+                    callStateReceiver,
+                    filter,
+                    RECEIVER_NOT_EXPORTED
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                registerReceiver(
+                    callStateReceiver,
+                    filter
+                )
+            }
+            stateReceiverRegistered = true
+        }
+
         ensurePermissionAndStart()
     }
 
@@ -215,6 +257,14 @@ class FindWatchActivity : ComponentActivity() {
         messageClient.removeListener(
             messageListener
         )
+
+        if (stateReceiverRegistered) {
+            unregisterReceiver(
+                callStateReceiver
+            )
+            stateReceiverRegistered = false
+        }
+
         super.onStop()
     }
 
@@ -256,6 +306,11 @@ class FindWatchActivity : ComponentActivity() {
             )
         }
     }
+
+    private fun hasAnyCallState(): Boolean =
+        StateStore.incomingCall(this) != null ||
+            StateStore.outgoingCall(this) != null ||
+            StateStore.activeCall(this) != null
 
     private fun requiredPermissions():
         List<String> =
