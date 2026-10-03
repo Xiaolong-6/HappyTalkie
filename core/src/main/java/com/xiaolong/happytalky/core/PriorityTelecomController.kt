@@ -50,6 +50,12 @@ object PriorityTelecomController {
     private val cancelledBeforeAttach =
         mutableSetOf<String>()
 
+    private val requestedClose =
+        mutableSetOf<String>()
+
+    private val fallbackToActivity =
+        mutableSetOf<String>()
+
     fun isSupported(context: Context): Boolean =
         context.packageManager
             .hasSystemFeature(
@@ -125,6 +131,7 @@ object PriorityTelecomController {
             context.applicationContext
         val attached =
             synchronized(this) {
+                requestedClose.add(callId)
                 if (pendingCallId == callId) {
                     cancelledBeforeAttach.add(callId)
                 }
@@ -171,6 +178,7 @@ object PriorityTelecomController {
     ) {
         val attached =
             synchronized(this) {
+                requestedClose.add(callId)
                 session?.takeIf {
                     it.callId == callId
                 }
@@ -293,6 +301,12 @@ object PriorityTelecomController {
                         }
 
                         is CallControlResult.Error -> {
+                            synchronized(
+                                PriorityTelecomController
+                            ) {
+                                fallbackToActivity
+                                    .add(callId)
+                            }
                             StateStore.setStatus(
                                 context,
                                 "Priority call · open watch to connect"
@@ -319,6 +333,9 @@ object PriorityTelecomController {
                 "Telecom Priority auto-answer unavailable",
                 e
             )
+            synchronized(this) {
+                fallbackToActivity.add(callId)
+            }
 
             if (
                 StateStore.incomingCall(context) ==
@@ -333,7 +350,25 @@ object PriorityTelecomController {
                 )
             }
         } finally {
+            val fallback =
+                synchronized(this) {
+                    fallbackToActivity
+                        .remove(callId)
+                }
+            val expectedClose =
+                synchronized(this) {
+                    requestedClose
+                        .remove(callId)
+                }
+
             clearSession(callId)
+
+            if (!fallback && !expectedClose) {
+                handleUnexpectedSessionEnd(
+                    context,
+                    callId
+                )
+            }
         }
     }
 
@@ -475,6 +510,58 @@ object PriorityTelecomController {
                     )
                 }
             }
+    }
+
+    private fun handleUnexpectedSessionEnd(
+        context: Context,
+        callId: String
+    ) {
+        val incoming =
+            StateStore.incomingCall(context) ==
+                callId
+        val active =
+            StateStore.activeCall(context) ==
+                callId
+
+        if (!incoming && !active) return
+
+        CallHistoryStore.append(
+            context,
+            callId,
+            CallDirection.INCOMING,
+            CallOutcome.DISCONNECTED,
+            startedAt =
+                if (active) {
+                    StateStore.activeStartedAt(
+                        context
+                    )
+                } else {
+                    0L
+                }
+        )
+        StateStore.clearCallState(context)
+        StateStore.setPeerConnection(
+            context,
+            PeerConnectionState.DISCONNECTED
+        )
+        StateStore.setPeerRoute(
+            context,
+            PeerRoute.OFFLINE
+        )
+        StateStore.setStatus(
+            context,
+            "Priority call disconnected · TALK recommended"
+        )
+        AlertController.stop(context)
+        LiveCallAudio.stop(context)
+        LiveCallService.stop(context)
+        EventBus.notifyStateChanged(context)
+
+        DataLayerTransport(context)
+            .sendSignal(
+                Protocol.CALL_DISCONNECTED,
+                callId
+            ) { }
     }
 
     private fun clearSession(
