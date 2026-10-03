@@ -90,6 +90,45 @@ class PriorityCallPolicyTest {
     }
 
     @Test
+    fun lockedPriorityCanUseTelecomWithoutVisibleActivity() {
+        assertTrue(
+            PriorityCallPolicy
+                .canUseTelecomAutoAnswer(
+                    localRole =
+                        EndpointRole.WATCH,
+                    locked = true,
+                    mode = CallMode.PRIORITY,
+                    incomingCallPresent = true,
+                    telecomAvailable = true
+                )
+        )
+
+        assertFalse(
+            PriorityCallPolicy
+                .canUseTelecomAutoAnswer(
+                    localRole =
+                        EndpointRole.WATCH,
+                    locked = true,
+                    mode = CallMode.PRIORITY,
+                    incomingCallPresent = true,
+                    telecomAvailable = false
+                )
+        )
+
+        assertFalse(
+            PriorityCallPolicy
+                .canUseTelecomAutoAnswer(
+                    localRole =
+                        EndpointRole.PHONE,
+                    locked = true,
+                    mode = CallMode.PRIORITY,
+                    incomingCallPresent = true,
+                    telecomAvailable = true
+                )
+        )
+    }
+
+    @Test
     fun watchCannotTerminateLockedPriorityCall() {
         assertFalse(
             PriorityCallPolicy.canLocalTerminate(
