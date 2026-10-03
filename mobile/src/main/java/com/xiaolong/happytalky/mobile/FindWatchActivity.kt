@@ -108,7 +108,7 @@ class FindWatchActivity : ComponentActivity() {
                                 Build.VERSION.SDK_INT >=
                                     31
                             ) {
-                                "Allow Nearby devices to use Bluetooth finding."
+                                "Allow Nearby devices and precise location so Bluetooth signal strength can guide nearby finding."
                             } else {
                                 "Allow location while using the app for Bluetooth scanning on this Android version."
                             }
@@ -257,7 +257,9 @@ class FindWatchActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= 31) {
             listOf(
                 Manifest.permission
-                    .BLUETOOTH_SCAN
+                    .BLUETOOTH_SCAN,
+                Manifest.permission
+                    .ACCESS_FINE_LOCATION
             )
         } else {
             listOf(
