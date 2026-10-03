@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Watch
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -665,21 +666,31 @@ private fun ProximitySignalVisual(
                 contentAlignment =
                     Alignment.Center
             ) {
-                Text(
-                    text =
-                        if (active) {
-                            "BLE"
-                        } else {
-                            "!"
-                        },
-                    fontSize = 24.sp,
-                    fontWeight =
-                        FontWeight.Bold,
-                    color =
-                        MaterialTheme
-                            .colorScheme
-                            .onPrimaryContainer,
-                )
+                if (active) {
+                    Icon(
+                        imageVector =
+                            Icons.Rounded.Watch,
+                        contentDescription =
+                            null,
+                        modifier =
+                            Modifier.size(44.dp),
+                        tint =
+                            MaterialTheme
+                                .colorScheme
+                                .onPrimaryContainer,
+                    )
+                } else {
+                    Text(
+                        text = "!",
+                        fontSize = 24.sp,
+                        fontWeight =
+                            FontWeight.Bold,
+                        color =
+                            MaterialTheme
+                                .colorScheme
+                                .onPrimaryContainer,
+                    )
+                }
             }
         }
     }
