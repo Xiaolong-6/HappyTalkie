@@ -20,6 +20,9 @@ import com.xiaolong.happytalky.core.DeliveryState
 import com.xiaolong.happytalky.core.HappyTalkyUiState
 import com.xiaolong.happytalky.core.PeerConnectionState
 import com.xiaolong.happytalky.core.PeerRoute
+import com.xiaolong.happytalky.core.ProximityBand
+import com.xiaolong.happytalky.core.ProximityReading
+import com.xiaolong.happytalky.core.ProximityTrend
 import com.xiaolong.happytalky.core.VoiceDirection
 import com.xiaolong.happytalky.core.VoiceMessage
 import java.io.File
@@ -134,6 +137,39 @@ fun WatchReadyScreenshot() {
             onTalkFinish = {},
             onTalkCancel = {},
             onPlay = {},
+        )
+    }
+}
+
+
+@PreviewTest
+@Preview(
+    name = "Watch Find Phone close",
+    device = WATCH_DEVICE,
+    showBackground = true,
+    backgroundColor = WATCH_BACKGROUND,
+)
+@Composable
+fun WatchFindPhoneScreenshot() {
+    MaterialTheme {
+        FindPhoneScreen(
+            state =
+                FindPhoneUiState(
+                    phoneReady = true,
+                    searching = false,
+                    reading =
+                        ProximityReading(
+                            rawRssi = -58,
+                            filteredRssi = -59.2,
+                            band =
+                                ProximityBand.CLOSE,
+                            trend =
+                                ProximityTrend.GETTING_CLOSER,
+                            sampleCount = 8,
+                        ),
+                ),
+            onClose = {},
+            onRetry = {},
         )
     }
 }
