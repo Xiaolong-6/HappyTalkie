@@ -218,10 +218,14 @@ class FindWatchActivity : ComponentActivity() {
     }
 
     private fun ensurePermissionAndStart() {
-        if (
-            !PeerInfoStore.peerSupports(
+        val peerInfo =
+            PeerInfoStore.get(
                 this,
-                EndpointRole.PHONE,
+                EndpointRole.WATCH
+            )
+        if (
+            peerInfo != null &&
+            !peerInfo.capabilities.contains(
                 Protocol
                     .CAPABILITY_BLE_PROXIMITY_V1
             )
