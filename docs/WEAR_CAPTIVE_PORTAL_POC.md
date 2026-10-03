@@ -1,6 +1,6 @@
 # Wear OS captive portal proof of concept
 
-Branch: `experiment/wear-captive-portal-poc`
+Originally developed on: `experiment/wear-captive-portal-poc`; now integrated into the mainline codebase as a debug-only, hardware-unverified PoC.
 
 ## Goal
 
