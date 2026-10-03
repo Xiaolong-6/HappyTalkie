@@ -142,6 +142,10 @@ object LocalDeviceIdentity {
                         Protocol
                             .CAPABILITY_BLE_PROXIMITY_V1
                     )
+                    add(
+                        Protocol
+                            .CAPABILITY_BLE_PROXIMITY_V2
+                    )
                 },
             priorityAutoAnswerEnabled =
                 role == EndpointRole.WATCH &&

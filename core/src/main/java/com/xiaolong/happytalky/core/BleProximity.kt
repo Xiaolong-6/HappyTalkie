@@ -165,7 +165,7 @@ class BleProximityScanner(
             }.getOrNull()
                 ?: run {
                     onError(
-                        "Turn on Bluetooth to find the Watch"
+                        "Turn on Bluetooth to continue nearby finding"
                     )
                     return false
                 }
@@ -324,6 +324,16 @@ object BleProximityAdvertiser {
 
         val appContext =
             context.applicationContext
+        val endpointLabel =
+            if (
+                EndpointRole.fromContext(
+                    appContext
+                ) == EndpointRole.PHONE
+            ) {
+                "Phone"
+            } else {
+                "Watch"
+            }
 
         if (
             Build.VERSION.SDK_INT >= 31 &&
@@ -335,7 +345,7 @@ object BleProximityAdvertiser {
                 ProximityAdvertiseResult(
                     started = false,
                     error =
-                        "Enable Nearby devices on Watch"
+                        "$endpointLabel needs Nearby devices permission"
                 )
             )
             return
@@ -356,7 +366,7 @@ object BleProximityAdvertiser {
                         ProximityAdvertiseResult(
                             started = false,
                             error =
-                                "Watch Bluetooth advertising unavailable"
+                                "$endpointLabel Bluetooth advertising unavailable"
                         )
                     )
                     return
@@ -421,7 +431,8 @@ object BleProximityAdvertiser {
                             started = false,
                             error =
                                 advertiseError(
-                                    errorCode
+                                    errorCode,
+                                    endpointLabel
                                 )
                         )
                     )
@@ -455,7 +466,7 @@ object BleProximityAdvertiser {
                 ProximityAdvertiseResult(
                     started = false,
                     error =
-                        "Enable Nearby devices on Watch"
+                        "$endpointLabel needs Nearby devices permission"
                 )
             )
         } catch (_: Exception) {
@@ -464,7 +475,7 @@ object BleProximityAdvertiser {
                 ProximityAdvertiseResult(
                     started = false,
                     error =
-                        "Could not start Watch Bluetooth beacon"
+                        "Could not start $endpointLabel Bluetooth beacon"
                 )
             )
         }
@@ -516,27 +527,28 @@ object BleProximityAdvertiser {
     }
 
     private fun advertiseError(
-        code: Int
+        code: Int,
+        endpointLabel: String
     ): String =
         when (code) {
             AdvertiseCallback
                 .ADVERTISE_FAILED_DATA_TOO_LARGE ->
-                "Watch BLE payload is too large"
+                "BLE payload is too large"
 
             AdvertiseCallback
                 .ADVERTISE_FAILED_TOO_MANY_ADVERTISERS ->
-                "Watch Bluetooth is busy"
+                "$endpointLabel Bluetooth is busy"
 
             AdvertiseCallback
                 .ADVERTISE_FAILED_ALREADY_STARTED ->
-                "Watch Bluetooth beacon is already active"
+                "$endpointLabel Bluetooth beacon is already active"
 
             AdvertiseCallback
                 .ADVERTISE_FAILED_FEATURE_UNSUPPORTED ->
-                "Watch does not support BLE advertising"
+                "$endpointLabel does not support BLE advertising"
 
             else ->
-                "Watch Bluetooth advertising failed " +
+                "$endpointLabel Bluetooth advertising failed " +
                     "(code $code)"
         }
 }

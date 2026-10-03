@@ -1,4 +1,4 @@
-package com.xiaolong.happytalky.mobile
+package com.xiaolong.happytalky.wear
 
 import android.Manifest
 import android.content.BroadcastReceiver
@@ -10,46 +10,35 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Watch
-import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.rounded.Link
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.wear.compose.material3.AppScaffold
+import androidx.wear.compose.material3.Icon
+import androidx.wear.compose.material3.MaterialTheme
+import androidx.wear.compose.material3.Text
+import androidx.wear.compose.material3.TextButton
 import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.Wearable
 import com.xiaolong.happytalky.core.BleProximityScanner
@@ -62,24 +51,21 @@ import com.xiaolong.happytalky.core.ProximitySessionToken
 import com.xiaolong.happytalky.core.ProximityTrend
 import com.xiaolong.happytalky.core.Protocol
 import com.xiaolong.happytalky.core.StateStore
+import kotlin.math.roundToInt
 
-data class FindWatchUiState(
-    val watchReady: Boolean = false,
+data class FindPhoneUiState(
+    val phoneReady: Boolean = false,
     val searching: Boolean = true,
     val reading: ProximityReading? = null,
     val error: String? = null
 )
 
-class FindWatchActivity : ComponentActivity() {
-    private lateinit var transport:
-        DataLayerTransport
-    private lateinit var messageClient:
-        MessageClient
+class FindPhoneActivity : ComponentActivity() {
+    private lateinit var transport: DataLayerTransport
+    private lateinit var messageClient: MessageClient
 
-    private var scanner:
-        BleProximityScanner? = null
-    private var sessionToken:
-        String? = null
+    private var scanner: BleProximityScanner? = null
+    private var sessionToken: String? = null
     private var screenStarted = false
     private var stateReceiverRegistered = false
 
@@ -98,7 +84,7 @@ class FindWatchActivity : ComponentActivity() {
 
     private var state by
         mutableStateOf(
-            FindWatchUiState()
+            FindPhoneUiState()
         )
 
     private val permissionLauncher =
@@ -121,17 +107,10 @@ class FindWatchActivity : ComponentActivity() {
                 startSession()
             } else if (!granted) {
                 state =
-                    FindWatchUiState(
+                    FindPhoneUiState(
                         searching = false,
                         error =
-                            if (
-                                Build.VERSION.SDK_INT >=
-                                    31
-                            ) {
-                                "Allow Nearby devices and precise location so Bluetooth signal strength can guide nearby finding."
-                            } else {
-                                "Allow location while using the app for Bluetooth scanning on this Android version."
-                            }
+                            "Allow Nearby devices and precise location to use Bluetooth signal strength for Find Phone."
                     )
             }
         }
@@ -159,7 +138,7 @@ class FindWatchActivity : ComponentActivity() {
                                     ) {
                                         state =
                                             state.copy(
-                                                watchReady =
+                                                phoneReady =
                                                     true,
                                                 error =
                                                     null
@@ -180,8 +159,9 @@ class FindWatchActivity : ComponentActivity() {
                                             '|'
                                         )
                                         .ifBlank {
-                                            "Watch could not start Bluetooth finding."
+                                            "Phone could not start Bluetooth finding."
                                         }
+
                                 runOnUiThread {
                                     failSession(
                                         reason
@@ -196,7 +176,6 @@ class FindWatchActivity : ComponentActivity() {
         savedInstanceState: Bundle?
     ) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
 
         transport =
             DataLayerTransport(this)
@@ -206,8 +185,8 @@ class FindWatchActivity : ComponentActivity() {
             )
 
         setContent {
-            HappyTalkyPhoneTheme {
-                FindWatchScreen(
+            MaterialTheme {
+                FindPhoneScreen(
                     state = state,
                     onClose = ::finish,
                     onRetry = {
@@ -269,23 +248,33 @@ class FindWatchActivity : ComponentActivity() {
     }
 
     private fun ensurePermissionAndStart() {
+        if (hasAnyCallState()) {
+            state =
+                FindPhoneUiState(
+                    searching = false,
+                    error =
+                        "Finish the current call before using Find Phone."
+                )
+            return
+        }
+
         val peerInfo =
             PeerInfoStore.get(
                 this,
-                EndpointRole.WATCH
+                EndpointRole.PHONE
             )
         if (
             peerInfo != null &&
             !peerInfo.capabilities.contains(
                 Protocol
-                    .CAPABILITY_BLE_PROXIMITY_V1
+                    .CAPABILITY_BLE_PROXIMITY_V2
             )
         ) {
             state =
-                FindWatchUiState(
+                FindPhoneUiState(
                     searching = false,
                     error =
-                        "The Watch app needs the BLE finding update."
+                        "The Phone app needs the bidirectional BLE finding update."
                 )
             return
         }
@@ -344,7 +333,7 @@ class FindWatchActivity : ComponentActivity() {
             ProximitySessionToken.create()
         sessionToken = token
         state =
-            FindWatchUiState(
+            FindPhoneUiState(
                 searching = true
             )
 
@@ -358,7 +347,7 @@ class FindWatchActivity : ComponentActivity() {
 
             if (!sent) {
                 failSession(
-                    "Watch is unreachable. Open HappyTalky on the Watch once, then try again."
+                    "Phone is unreachable. Open HappyTalky on the Phone once, then try again."
                 )
                 return@sendSignal
             }
@@ -421,7 +410,7 @@ class FindWatchActivity : ComponentActivity() {
         }
 
         state =
-            FindWatchUiState(
+            FindPhoneUiState(
                 searching = false,
                 error = message
             )
@@ -444,212 +433,176 @@ class FindWatchActivity : ComponentActivity() {
 }
 
 @Composable
-fun FindWatchScreen(
-    state: FindWatchUiState,
+internal fun FindPhoneScreen(
+    state: FindPhoneUiState,
     onClose: () -> Unit,
-    onRetry: () -> Unit
+    onRetry: () -> Unit,
 ) {
-    Scaffold(
-        containerColor =
-            MaterialTheme
-                .colorScheme
-                .background,
-        contentWindowInsets =
-            WindowInsets(0, 0, 0, 0),
-        topBar = {
-            Surface(
-                color =
-                    MaterialTheme
-                        .colorScheme
-                        .background,
-                shadowElevation = 1.dp,
+    AppScaffold(
+        containerColor = Color.Black,
+        contentColor = Color.White,
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(
+                modifier =
+                    Modifier.width(154.dp),
+                horizontalAlignment =
+                    Alignment.CenterHorizontally,
+                verticalArrangement =
+                    Arrangement.spacedBy(
+                        5.dp
+                    ),
             ) {
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .statusBarsPadding()
-                            .height(60.dp)
-                            .padding(
-                                horizontal =
-                                    8.dp
-                            ),
-                    verticalAlignment =
-                        Alignment.CenterVertically,
-                ) {
-                    IconButton(
-                        onClick = onClose
-                    ) {
-                        Icon(
-                            imageVector =
-                                Icons.Rounded.Close,
-                            contentDescription =
-                                "Close Find Watch"
-                        )
-                    }
+                Text(
+                    text = "FIND PHONE",
+                    style =
+                        MaterialTheme
+                            .typography
+                            .labelMedium,
+                    color =
+                        Color(0xFF8CC0FF),
+                    fontWeight =
+                        FontWeight.Bold,
+                    maxLines = 1,
+                )
+
+                if (state.error != null) {
+                    Icon(
+                        imageVector =
+                            Icons.Rounded.Link,
+                        contentDescription = null,
+                        modifier =
+                            Modifier.size(28.dp),
+                        tint =
+                            Color(0xFFFF8C9B),
+                    )
+
                     Text(
-                        text = "Find Watch",
+                        text = state.error,
                         style =
                             MaterialTheme
                                 .typography
-                                .titleLarge,
-                        fontWeight =
-                            FontWeight.SemiBold,
+                                .labelSmall,
+                        color =
+                            Color(0xFFD3D9E3),
+                        textAlign =
+                            TextAlign.Center,
+                        maxLines = 4,
                     )
-                }
-            }
-        }
-    ) { padding ->
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(
-                        horizontal = 28.dp,
-                        vertical = 24.dp
-                    ),
-            horizontalAlignment =
-                Alignment.CenterHorizontally,
-            verticalArrangement =
-                Arrangement.Center,
-        ) {
-            ProximitySignalVisual(
-                score =
-                    state.reading
-                        ?.signalScore
-                        ?: 0,
-                active =
-                    state.error ==
-                        null
-            )
 
-            Spacer(
-                Modifier.height(30.dp)
-            )
-
-            val status =
-                when {
-                    state.error != null ->
-                        "Nearby search unavailable"
-
-                    state.reading != null ->
-                        bandLabel(
-                            state.reading.band
-                        )
-
-                    state.watchReady ->
-                        "Searching nearby"
-
-                    else ->
-                        "Starting Watch beacon"
-                }
-
-            Text(
-                text = status,
-                fontSize = 28.sp,
-                lineHeight = 34.sp,
-                fontWeight =
-                    FontWeight.Bold,
-                textAlign =
-                    TextAlign.Center,
-            )
-
-            Spacer(
-                Modifier.height(10.dp)
-            )
-
-            Text(
-                text =
-                    when {
-                        state.error != null ->
-                            state.error
-
-                        state.reading != null ->
-                            trendLabel(
-                                state.reading
-                                    .trend
+                    Row(
+                        horizontalArrangement =
+                            Arrangement.spacedBy(
+                                4.dp
                             )
+                    ) {
+                        TextButton(
+                            onClick = onClose
+                        ) {
+                            Text("Close")
+                        }
+                        TextButton(
+                            onClick = onRetry
+                        ) {
+                            Text("Retry")
+                        }
+                    }
+                    return@Column
+                }
 
-                        state.watchReady ->
-                            "Move around slowly until the signal gets stronger."
+                val reading =
+                    state.reading
 
-                        else ->
-                            "Asking the Watch to start a temporary Bluetooth beacon…"
-                    },
-                style =
-                    MaterialTheme
-                        .typography
-                        .bodyLarge,
-                color =
-                    MaterialTheme
-                        .colorScheme
-                        .onSurfaceVariant,
-                textAlign =
-                    TextAlign.Center,
-            )
-
-            Spacer(
-                Modifier.height(28.dp)
-            )
-
-            LinearProgressIndicator(
-                progress = {
-                    (
-                        state.reading
-                            ?.signalScore
-                            ?: 0
-                        ) / 100f
-                },
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .height(6.dp),
-            )
-
-            Spacer(
-                Modifier.height(14.dp)
-            )
-
-            Text(
-                text =
-                    "Bluetooth signal strength only · no exact distance or direction",
-                style =
-                    MaterialTheme
-                        .typography
-                        .bodySmall,
-                color =
-                    MaterialTheme
-                        .colorScheme
-                        .onSurfaceVariant,
-                textAlign =
-                    TextAlign.Center,
-            )
-
-            if (state.error != null) {
-                Spacer(
-                    Modifier.height(24.dp)
+                Text(
+                    text =
+                        if (reading == null) {
+                            "SEARCHING"
+                        } else {
+                            phoneBandLabel(
+                                reading.band
+                            )
+                        },
+                    style =
+                        MaterialTheme
+                            .typography
+                            .titleMedium,
+                    color =
+                        phoneBandColor(
+                            reading?.band
+                        ),
+                    fontWeight =
+                        FontWeight.Bold,
+                    maxLines = 1,
                 )
-                Button(
-                    onClick = onRetry,
-                    contentPadding =
-                        PaddingValues(
-                            horizontal =
-                                22.dp,
-                            vertical =
-                                12.dp
-                        )
-                ) {
-                    Icon(
-                        imageVector =
-                            Icons.Rounded.Refresh,
-                        contentDescription =
-                            null
+
+                FindPhoneBars(
+                    band = reading?.band
+                )
+
+                Text(
+                    text =
+                        if (reading == null) {
+                            if (
+                                state.phoneReady
+                            ) {
+                                "Listening for signal…"
+                            } else {
+                                "Starting phone beacon…"
+                            }
+                        } else {
+                            phoneTrendLabel(
+                                reading.trend
+                            )
+                        },
+                    style =
+                        MaterialTheme
+                            .typography
+                            .labelSmall,
+                    color =
+                        Color(0xFFB7C2D2),
+                    textAlign =
+                        TextAlign.Center,
+                    maxLines = 1,
+                )
+
+                if (reading != null) {
+                    Text(
+                        text =
+                            reading.filteredRssi
+                                .roundToInt()
+                                .toString() +
+                                " dBm",
+                        style =
+                            MaterialTheme
+                                .typography
+                                .labelSmall,
+                        color =
+                            Color(0xFF7F8DA2),
+                        maxLines = 1,
                     )
+                } else {
                     Spacer(
-                        Modifier.size(8.dp)
+                        Modifier.height(2.dp)
                     )
-                    Text("Try again")
+                }
+
+                TextButton(
+                    onClick = onClose,
+                    modifier =
+                        Modifier
+                            .width(86.dp)
+                            .height(30.dp),
+                ) {
+                    Text(
+                        text = "Stop",
+                        style =
+                            MaterialTheme
+                                .typography
+                                .labelMedium,
+                    )
                 }
             }
         }
@@ -657,122 +610,91 @@ fun FindWatchScreen(
 }
 
 @Composable
-private fun ProximitySignalVisual(
-    score: Int,
-    active: Boolean
+private fun FindPhoneBars(
+    band: ProximityBand?
 ) {
-    val fraction =
-        score
-            .coerceIn(0, 100) /
-            100f
-    val primary =
-        MaterialTheme
-            .colorScheme
-            .primary
+    val active =
+        when (band) {
+            ProximityBand.FAR -> 1
+            ProximityBand.NEARBY -> 2
+            ProximityBand.CLOSE -> 3
+            ProximityBand.VERY_CLOSE -> 4
+            null -> 0
+        }
 
-    Box(
-        modifier =
-            Modifier.size(220.dp),
-        contentAlignment =
-            Alignment.Center,
+    Row(
+        horizontalArrangement =
+            Arrangement.spacedBy(
+                4.dp
+            ),
+        verticalAlignment =
+            Alignment.Bottom,
     ) {
-        Box(
-            modifier =
-                Modifier
-                    .size(220.dp)
-                    .alpha(
-                        if (active) {
-                            0.08f +
-                                0.12f *
-                                fraction
-                        } else {
-                            0.05f
-                        }
-                    )
-                    .background(
-                        primary,
-                        CircleShape
-                    )
-        )
-        Box(
-            modifier =
-                Modifier
-                    .size(158.dp)
-                    .alpha(
-                        if (active) {
-                            0.12f +
-                                0.18f *
-                                fraction
-                        } else {
-                            0.07f
-                        }
-                    )
-                    .background(
-                        primary,
-                        CircleShape
-                    )
-        )
-        Surface(
-            modifier =
-                Modifier.size(96.dp),
-            shape = CircleShape,
-            color =
-                MaterialTheme
-                    .colorScheme
-                    .primaryContainer,
-        ) {
+        repeat(4) {
+            index ->
             Box(
-                contentAlignment =
-                    Alignment.Center
-            ) {
-                if (active) {
-                    Icon(
-                        imageVector =
-                            Icons.Rounded.Watch,
-                        contentDescription =
-                            null,
-                        modifier =
-                            Modifier.size(44.dp),
-                        tint =
-                            MaterialTheme
-                                .colorScheme
-                                .onPrimaryContainer,
-                    )
-                } else {
-                    Text(
-                        text = "!",
-                        fontSize = 24.sp,
-                        fontWeight =
-                            FontWeight.Bold,
-                        color =
-                            MaterialTheme
-                                .colorScheme
-                                .onPrimaryContainer,
-                    )
-                }
-            }
+                modifier =
+                    Modifier
+                        .width(17.dp)
+                        .height(
+                            (7 + index * 4)
+                                .dp
+                        )
+                        .background(
+                            color =
+                                if (
+                                    index < active
+                                ) {
+                                    phoneBandColor(
+                                        band
+                                    )
+                                } else {
+                                    Color(
+                                        0xFF263347
+                                    )
+                                },
+                            shape =
+                                RoundedCornerShape(
+                                    3.dp
+                                )
+                        )
+            )
         }
     }
 }
 
-private fun bandLabel(
+private fun phoneBandLabel(
     band: ProximityBand
 ): String =
     when (band) {
-        ProximityBand.FAR ->
-            "Far"
-
-        ProximityBand.NEARBY ->
-            "Nearby"
-
-        ProximityBand.CLOSE ->
-            "Close"
-
+        ProximityBand.FAR -> "FAR"
+        ProximityBand.NEARBY -> "NEARBY"
+        ProximityBand.CLOSE -> "CLOSE"
         ProximityBand.VERY_CLOSE ->
-            "Very close"
+            "VERY CLOSE"
     }
 
-private fun trendLabel(
+private fun phoneBandColor(
+    band: ProximityBand?
+): Color =
+    when (band) {
+        ProximityBand.FAR ->
+            Color(0xFFFFA45E)
+
+        ProximityBand.NEARBY ->
+            Color(0xFFFFD35A)
+
+        ProximityBand.CLOSE ->
+            Color(0xFF71DFA4)
+
+        ProximityBand.VERY_CLOSE ->
+            Color(0xFF2DDE91)
+
+        null ->
+            Color(0xFF8CC0FF)
+    }
+
+private fun phoneTrendLabel(
     trend: ProximityTrend
 ): String =
     when (trend) {
@@ -783,5 +705,5 @@ private fun trendLabel(
             "Getting farther ↓"
 
         ProximityTrend.STEADY ->
-            "About the same — move around slowly"
+            "Signal steady"
     }

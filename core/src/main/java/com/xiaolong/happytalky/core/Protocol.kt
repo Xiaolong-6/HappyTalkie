@@ -45,6 +45,7 @@ object Protocol {
         "priority_locked_call_v1"
     const val CAPABILITY_TEXT_V1 = "text_v1"
     const val CAPABILITY_BLE_PROXIMITY_V1 = "ble_proximity_v1"
+    const val CAPABILITY_BLE_PROXIMITY_V2 = "ble_proximity_v2"
 
     const val META_ROLE = "happytalky.role"
     const val CAPABILITY_PHONE = "happytalky_phone"

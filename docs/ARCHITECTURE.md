@@ -58,22 +58,22 @@ This lets presentation use labels such as `Watch · Pixel Watch 3` and lets late
 
 ## Nearby BLE finding
 
-Physical-device status: **basic end-to-end validation passed** on the target Phone + Watch pair. BLE discovery/proximity behavior was exercised on real hardware. This is functional acceptance rather than exhaustive RF characterization across all distances, interference conditions, and environments.
+Physical-device status: **Find Watch has passed basic end-to-end validation** on the target Phone + Watch pair. **Find Phone is software/CI validated but still requires a physical-device acceptance test.** RSSI proximity is functional guidance, not exhaustive RF characterization or an exact distance measurement.
 
-Phone exposes **Find Watch** as a secondary utility. It complements Android Find Hub and does not duplicate system ringing or map location.
+BLE finding is bidirectional:
 
-The first implementation is BLE proximity only:
-
-- Phone sends `/happytalky/proximity/start` with a fresh random 64-bit session token over the Wear OS Data Layer.
-- Watch advertises that token for at most 60 seconds as BLE service data under a HappyTalky-specific UUID. The BLE payload contains no stable device ID, account identifier, device name, or other persistent identity.
-- Phone performs a filtered low-latency scan for the exact session token and converts RSSI into **Far / Nearby / Close / Very close**, plus **Getting closer / About the same / Getting farther**.
+- **Find Watch:** Phone creates a fresh random 64-bit session token, sends `/happytalky/proximity/start`, Watch advertises the token, and Phone scans.
+- **Find Phone:** Watch creates the session token and sends the same start path, Phone advertises the token, and Watch scans.
+- The responder advertises the token for at most 60 seconds as BLE service data under a HappyTalky-specific UUID. The payload contains no stable device ID, account identifier, device name, or other persistent identity.
+- The requester performs a filtered low-latency scan for the exact token and converts RSSI into **Far / Nearby / Close / Very close**, plus **Getting closer / About the same / Getting farther**.
 - RSSI presentation uses a short median window followed by exponential smoothing. It deliberately does not claim exact distance or direction.
-- Closing Find Watch sends `/happytalky/proximity/stop`; Watch advertising also has an independent timeout.
-- Watch reports `/happytalky/proximity/ready` or `/happytalky/proximity/error` for the active token so Phone can distinguish Watch-side BLE/permission failure from a weak or temporarily missing radio signal.
-- Support is advertised as `ble_proximity_v1`. A missing cached peer-info record is treated as unknown and allowed to attempt the new protocol; a known peer that explicitly lacks the capability is rejected with an upgrade message.
-- The ranging layer is intentionally separate from CALL/TALK so a future UWB or Bluetooth Channel Sounding backend can replace RSSI without changing the high-level Find Watch interaction.
+- Closing either Find screen sends `/happytalky/proximity/stop`; advertising also has an independent timeout.
+- The responder reports `/happytalky/proximity/ready` or `/happytalky/proximity/error` so the requester can distinguish permission/radio failure from weak or temporarily missing signal.
+- `ble_proximity_v1` remains the compatibility capability for Phone→Watch Find Watch. `ble_proximity_v2` advertises bidirectional support, including Watch→Phone Find Phone.
+- CALL state takes precedence: an active Find screen exits when call state begins, and a busy responder rejects a new proximity request.
+- The ranging layer stays separate from CALL/TALK so a future UWB or Bluetooth Channel Sounding backend can replace RSSI without changing the high-level interaction.
 
-Android 12+ requires runtime `BLUETOOTH_SCAN` on Phone and `BLUETOOTH_ADVERTISE` on Watch. Because Find Watch intentionally derives physical proximity from scan results, Phone also declares and requests `ACCESS_FINE_LOCATION` instead of using the `neverForLocation` assertion. Watch asks for advertising access while its activity is visible so a later Data Layer request does not depend on showing a permission dialog from the background.
+Android 12+ requires runtime `BLUETOOTH_SCAN` on the scanning endpoint and `BLUETOOTH_ADVERTISE` on the advertising endpoint. Because HappyTalky intentionally derives physical proximity from scan RSSI, the scanning endpoint also requests foreground location permission instead of using the `neverForLocation` assertion. The Phone is provisioned for advertising while HappyTalky is opened so a later Watch-initiated request does not depend on a background permission dialog; the Watch requests scan/location permission in context when Find Phone is opened.
 
 ## CALL state machine
 

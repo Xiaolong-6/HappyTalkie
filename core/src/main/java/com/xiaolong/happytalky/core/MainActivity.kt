@@ -1228,7 +1228,6 @@ abstract class HappyTalkyActivity : ComponentActivity() {
         }
 
         if (
-            role == EndpointRole.WATCH &&
             Build.VERSION.SDK_INT >= 31 &&
             checkSelfPermission(
                 Manifest.permission.BLUETOOTH_ADVERTISE

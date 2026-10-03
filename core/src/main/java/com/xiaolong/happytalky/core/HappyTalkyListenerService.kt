@@ -451,11 +451,21 @@ class HappyTalkyListenerService : WearableListenerService() {
     private fun receiveProximityStart(
         token: String
     ) {
+        if (!ProximitySessionToken.isValid(token)) {
+            return
+        }
+
         if (
-            EndpointRole.fromContext(this) !=
-                EndpointRole.WATCH ||
-            !ProximitySessionToken.isValid(token)
+            StateStore.incomingCall(this) != null ||
+            StateStore.outgoingCall(this) != null ||
+            StateStore.activeCall(this) != null
         ) {
+            DataLayerTransport(this)
+                .sendSignal(
+                    Protocol.PROXIMITY_ERROR,
+                    token +
+                        "|Device is busy with a call"
+                ) { }
             return
         }
 
@@ -490,13 +500,6 @@ class HappyTalkyListenerService : WearableListenerService() {
     private fun receiveProximityStop(
         token: String
     ) {
-        if (
-            EndpointRole.fromContext(this) !=
-                EndpointRole.WATCH
-        ) {
-            return
-        }
-
         BleProximityAdvertiser.stop(token)
     }
 

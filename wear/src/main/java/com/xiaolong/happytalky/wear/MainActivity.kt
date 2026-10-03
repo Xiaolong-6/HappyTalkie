@@ -155,6 +155,14 @@ class MainActivity : HappyTalkyActivity() {
                         ::deleteConversationItems,
                     onComposeText =
                         ::launchTextInput,
+                    onFindPhone = {
+                        startActivity(
+                            Intent(
+                                this,
+                                FindPhoneActivity::class.java
+                            )
+                        )
+                    },
                     openInbox = openInboxRequested,
                     onInboxOpened = {
                         openInboxRequested = false
@@ -274,6 +282,7 @@ fun WearHome(
     onPlay: (VoiceMessage) -> Unit,
     onDelete: (Set<String>) -> Unit = {},
     onComposeText: () -> Unit = {},
+    onFindPhone: () -> Unit = {},
     openInbox: Boolean = false,
     onInboxOpened: () -> Unit = {},
 ) {
@@ -347,6 +356,7 @@ fun WearHome(
         onOpenInbox = {
             showInbox = true
         },
+        onFindPhone = onFindPhone,
     )
 }
 
@@ -358,6 +368,7 @@ private fun WearHomePage(
     onTalkFinish: () -> Unit,
     onTalkCancel: () -> Unit,
     onOpenInbox: () -> Unit,
+    onFindPhone: () -> Unit,
 ) {
     var horizontalDrag by remember {
         mutableFloatStateOf(0f)
@@ -423,12 +434,20 @@ private fun WearHomePage(
                     onCall = onCall,
                 )
 
-                InboxButton(
+                QuickActionsRow(
                     unread =
                         state.unreadVoiceCount +
                             state.unreadTextCount,
-                    onClick =
+                    onInbox =
                         onOpenInbox,
+                    onFindPhone =
+                        onFindPhone,
+                    findPhoneEnabled =
+                        state.callState ==
+                            CallVisualState.READY &&
+                            !state.recording &&
+                            state.peerConnection ==
+                                PeerConnectionState.CONNECTED,
                 )
 
             }
@@ -834,42 +853,84 @@ private fun PrimaryCallAction(
 }
 
 @Composable
-private fun InboxButton(
+private fun QuickActionsRow(
     unread: Int,
-    onClick: () -> Unit,
+    onInbox: () -> Unit,
+    onFindPhone: () -> Unit,
+    findPhoneEnabled: Boolean,
 ) {
-    TextButton(
-        onClick = onClick,
-        modifier = Modifier
-            .width(138.dp)
-            .height(28.dp),
+    Row(
+        modifier =
+            Modifier
+                .width(154.dp)
+                .height(28.dp),
+        verticalAlignment =
+            Alignment.CenterVertically,
+        horizontalArrangement =
+            Arrangement.SpaceBetween,
     ) {
-        Text(
-            text =
-                if (unread > 0) {
-                    unread.toString() +
-                        " unread · swipe ←"
-                } else {
-                    "Inbox · swipe ←"
-                },
-            style =
-                MaterialTheme
-                    .typography
-                    .labelSmall,
-            fontWeight =
-                if (unread > 0) {
-                    FontWeight.Bold
-                } else {
-                    FontWeight.Normal
-                },
-            color =
-                if (unread > 0) {
-                    Color(0xFFFFD35A)
-                } else {
-                    Color(0xFF8E9AAF)
-                },
-            maxLines = 1,
-        )
+        TextButton(
+            onClick = onInbox,
+            modifier =
+                Modifier
+                    .width(76.dp)
+                    .height(28.dp),
+        ) {
+            Text(
+                text =
+                    if (unread > 0) {
+                        "Inbox " +
+                            unread.toString()
+                    } else {
+                        "Inbox"
+                    },
+                style =
+                    MaterialTheme
+                        .typography
+                        .labelSmall,
+                fontWeight =
+                    if (unread > 0) {
+                        FontWeight.Bold
+                    } else {
+                        FontWeight.Normal
+                    },
+                color =
+                    if (unread > 0) {
+                        Color(0xFFFFD35A)
+                    } else {
+                        Color(0xFF8E9AAF)
+                    },
+                maxLines = 1,
+            )
+        }
+
+        TextButton(
+            onClick = onFindPhone,
+            enabled = findPhoneEnabled,
+            modifier =
+                Modifier
+                    .width(76.dp)
+                    .height(28.dp)
+                    .semantics {
+                        contentDescription =
+                            "Find phone"
+                    },
+        ) {
+            Text(
+                text = "Find phone",
+                style =
+                    MaterialTheme
+                        .typography
+                        .labelSmall,
+                color =
+                    if (findPhoneEnabled) {
+                        Color(0xFF8CC0FF)
+                    } else {
+                        Color(0xFF536176)
+                    },
+                maxLines = 1,
+            )
+        }
     }
 }
 
