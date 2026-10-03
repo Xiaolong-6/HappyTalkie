@@ -16,6 +16,10 @@ object Protocol {
     const val VOICE_PREFIX = "$BASE/voice/"
     const val MESSAGE_PREFIX = "$BASE/message/"
     const val DEVICE_INFO_PREFIX = "$BASE/device-info/"
+    const val PROXIMITY_START = "$BASE/proximity/start"
+    const val PROXIMITY_STOP = "$BASE/proximity/stop"
+    const val PROXIMITY_READY = "$BASE/proximity/ready"
+    const val PROXIMITY_ERROR = "$BASE/proximity/error"
 
     const val KEY_ID = "id"
     const val KEY_ORIGIN = "origin"
@@ -40,6 +44,7 @@ object Protocol {
     const val CAPABILITY_PRIORITY_LOCKED_CALL_V1 =
         "priority_locked_call_v1"
     const val CAPABILITY_TEXT_V1 = "text_v1"
+    const val CAPABILITY_BLE_PROXIMITY_V1 = "ble_proximity_v1"
 
     const val META_ROLE = "happytalky.role"
     const val CAPABILITY_PHONE = "happytalky_phone"
