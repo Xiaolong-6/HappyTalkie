@@ -458,6 +458,18 @@ object LiveCallAudio {
                 PackageManager.FEATURE_WATCH
             )
 
+        // When Core-Telecom owns a locked Priority call, Telecom owns call
+        // audio routing. Calling setCommunicationDevice here would race the
+        // platform endpoint controller and can break Wear call audio.
+        if (
+            isWatch &&
+            PriorityTelecomController.isManaging(
+                StateStore.activeCall(context)
+            )
+        ) {
+            return
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (isWatch) {
                 val speaker =
