@@ -1161,10 +1161,9 @@ abstract class HappyTalkyActivity : ComponentActivity() {
 
         callId ?: return
 
-        // Android 14+ treats RECORD_AUDIO as a while-in-use permission.
-        // A locked Priority request is therefore answered as soon as the
-        // Watch Activity is resumed; background receipt alone cannot
-        // legally start microphone capture.
+        // Core-Telecom handles locked Priority calls in the background.
+        // Keep the visible-Activity path as a fallback for devices where
+        // Telecom setup is unavailable or fails.
         handler.post {
             if (
                 StateStore.incomingCall(this) ==
