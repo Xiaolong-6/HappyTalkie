@@ -56,6 +56,16 @@ class BleProximityScanner(
     private var sessionBytes: ByteArray? = null
     private var lastSeenAt = 0L
 
+    private val sessionTimeout =
+        Runnable {
+            if (running) {
+                stop()
+                onError(
+                    "Nearby search timed out · try again"
+                )
+            }
+        }
+
     private val staleCheck =
         object : Runnable {
             override fun run() {
@@ -104,6 +114,9 @@ class BleProximityScanner(
                 running = false
                 mainHandler.removeCallbacks(
                     staleCheck
+                )
+                mainHandler.removeCallbacks(
+                    sessionTimeout
                 )
                 onError(
                     "Bluetooth scan failed " +
@@ -186,6 +199,11 @@ class BleProximityScanner(
             mainHandler.post(
                 staleCheck
             )
+            mainHandler.postDelayed(
+                sessionTimeout,
+                ProximityBleProtocol
+                    .SESSION_TIMEOUT_MS
+            )
             true
         } catch (_: SecurityException) {
             running = false
@@ -216,6 +234,9 @@ class BleProximityScanner(
         processor.reset()
         mainHandler.removeCallbacks(
             staleCheck
+        )
+        mainHandler.removeCallbacks(
+            sessionTimeout
         )
 
         if (currentScanner != null) {
