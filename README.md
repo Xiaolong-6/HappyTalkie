@@ -11,7 +11,7 @@ Its primary child-facing communication actions are:
 
 Secondary **TEXT** messaging is also supported. Text, TALK voice messages and CALL events share one local conversation timeline on each endpoint.
 
-Phone also provides **Find Watch**, a short-lived BLE proximity view for nearby searching. It complements Find Hub rather than duplicating ringing or map location, and reports qualitative signal proximity/trend instead of pretending RSSI is an exact distance or direction. **Find Watch has passed basic end-to-end physical-device validation** on the target Phone + Watch pair, including real BLE discovery/proximity behavior. This records functional acceptance; it is not a claim of exhaustive RF characterization across every environment.
+HappyTalky provides bidirectional short-lived BLE proximity finding: **Find Watch** on Phone and **Find Phone** on Watch. Both report qualitative signal proximity/trend instead of pretending RSSI is an exact distance or direction. Find Watch has passed basic end-to-end physical-device validation on the target Phone + Watch pair; Find Phone is software/CI validated in this release and still needs its own physical-device acceptance test.
 
 ## Why two modes?
 
@@ -101,4 +101,4 @@ MIT
 
 ## Experimental hardware gates
 
-Public Wi-Fi captive-portal support remains a debug-only PoC and has **not yet been validated on the target Pixel Watch**. Its parser/build tests may pass while Wear OS still refuses to keep an unvalidated captive network attached long enough for the flow to finish. **BLE Find Watch and locked Priority Call have both passed basic end-to-end physical-device validation** on the target Phone + Watch pair.
+Public Wi-Fi captive-portal support remains a debug-only PoC and has **not yet been validated on the target Pixel Watch**. Its parser/build tests may pass while Wear OS still refuses to keep an unvalidated captive network attached long enough for the flow to finish. **BLE Find Watch and locked Priority Call have passed physical-device validation; Find Phone remains hardware-unverified until the Watch→Phone BLE path is tested on the target pair.**
