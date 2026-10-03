@@ -446,11 +446,8 @@ private fun WearHomePage(
                         state.callState ==
                             CallVisualState.READY &&
                             !state.recording &&
-                            state.peerCapabilities
-                                .contains(
-                                    Protocol
-                                        .CAPABILITY_BLE_PROXIMITY_V2
-                                ),
+                            state.peerConnection ==
+                                PeerConnectionState.CONNECTED,
                 )
 
             }
