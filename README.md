@@ -11,6 +11,8 @@ Its primary child-facing communication actions are:
 
 Secondary **TEXT** messaging is also supported. Text, TALK voice messages and CALL events share one local conversation timeline on each endpoint.
 
+Phone also provides **Find Watch**, a short-lived BLE proximity view for nearby searching. It complements Find Hub rather than duplicating ringing or map location, and reports qualitative signal proximity/trend instead of pretending RSSI is an exact distance or direction.
+
 ## Why two modes?
 
 CALL is for synchronous conversation. Normal CALL uses Wear OS Data Layer signaling and begins live audio after the receiver explicitly answers. Priority CALL uses a separate locked request described below; both modes use the same bidirectional Data Layer audio channel once connected.
