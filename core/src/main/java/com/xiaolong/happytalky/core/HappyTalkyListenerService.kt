@@ -14,31 +14,38 @@ import com.google.android.gms.wearable.WearableListenerService
 class HappyTalkyListenerService : WearableListenerService() {
 
     override fun onMessageReceived(messageEvent: MessageEvent) {
-        val callId = messageEvent.data.toString(Charsets.UTF_8)
-        if (callId.isBlank()) return
+        val payload =
+            messageEvent.data.toString(Charsets.UTF_8)
+        if (payload.isBlank()) return
 
         when (messageEvent.path) {
-            Protocol.CALL_RING -> receiveRing(callId)
-            Protocol.CALL_ANSWER -> receiveAnswer(callId)
-            Protocol.CALL_DECLINE -> receiveDecline(callId)
-            Protocol.CALL_CANCEL -> receiveCancel(callId)
-            Protocol.CALL_BUSY -> receiveBusy(callId)
+            Protocol.PROXIMITY_START ->
+                receiveProximityStart(payload)
+
+            Protocol.PROXIMITY_STOP ->
+                receiveProximityStop(payload)
+
+            Protocol.CALL_RING -> receiveRing(payload)
+            Protocol.CALL_ANSWER -> receiveAnswer(payload)
+            Protocol.CALL_DECLINE -> receiveDecline(payload)
+            Protocol.CALL_CANCEL -> receiveCancel(payload)
+            Protocol.CALL_BUSY -> receiveBusy(payload)
             Protocol.CALL_END ->
                 receiveTerminal(
-                    callId,
+                    payload,
                     disconnected = false
                 )
             Protocol.CALL_DISCONNECTED ->
                 receiveTerminal(
-                    callId,
+                    payload,
                     disconnected = true
                 )
             Protocol.CALL_PRIORITY ->
-                receivePriority(callId)
+                receivePriority(payload)
 
             Protocol.CALL_PRIORITY_LOCKED ->
                 receiveLockedPriority(
-                    callId
+                    payload
                 )
         }
     }
@@ -439,6 +446,58 @@ class HappyTalkyListenerService : WearableListenerService() {
                 )
             }
         }
+    }
+
+    private fun receiveProximityStart(
+        token: String
+    ) {
+        if (
+            EndpointRole.fromContext(this) !=
+                EndpointRole.WATCH ||
+            !ProximitySessionToken.isValid(token)
+        ) {
+            return
+        }
+
+        BleProximityAdvertiser.start(
+            this,
+            token
+        ) { result ->
+            val path =
+                if (result.started) {
+                    Protocol.PROXIMITY_READY
+                } else {
+                    Protocol.PROXIMITY_ERROR
+                }
+            val payload =
+                if (result.started) {
+                    token
+                } else {
+                    token + "|" +
+                        result.error
+                            .orEmpty()
+                            .take(96)
+                }
+
+            DataLayerTransport(this)
+                .sendSignal(
+                    path,
+                    payload
+                ) { }
+        }
+    }
+
+    private fun receiveProximityStop(
+        token: String
+    ) {
+        if (
+            EndpointRole.fromContext(this) !=
+                EndpointRole.WATCH
+        ) {
+            return
+        }
+
+        BleProximityAdvertiser.stop(token)
     }
 
     private fun receiveRing(callId: String) {
