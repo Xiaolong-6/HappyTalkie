@@ -390,6 +390,13 @@ object PriorityTelecomController {
             StateStore.activeCall(context)
 
         if (
+            active == callId &&
+            incoming == null
+        ) {
+            return
+        }
+
+        if (
             incoming != callId &&
             active != callId
         ) {
