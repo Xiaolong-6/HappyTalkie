@@ -56,6 +56,23 @@ The payload contains the endpoint role, manufacturer/model, app version, protoco
 
 This lets presentation use labels such as `Watch · Pixel Watch 3` and lets later protocol features be gated by advertised capabilities instead of assuming both endpoints were upgraded simultaneously.
 
+## Nearby BLE finding
+
+Phone exposes **Find Watch** as a secondary utility. It complements Android Find Hub and does not duplicate system ringing or map location.
+
+The first implementation is BLE proximity only:
+
+- Phone sends `/happytalky/proximity/start` with a fresh random 64-bit session token over the Wear OS Data Layer.
+- Watch advertises that token for at most 60 seconds as BLE service data under a HappyTalky-specific UUID. The BLE payload contains no stable device ID, account identifier, device name, or other persistent identity.
+- Phone performs a filtered low-latency scan for the exact session token and converts RSSI into **Far / Nearby / Close / Very close**, plus **Getting closer / About the same / Getting farther**.
+- RSSI presentation uses a short median window followed by exponential smoothing. It deliberately does not claim exact distance or direction.
+- Closing Find Watch sends `/happytalky/proximity/stop`; Watch advertising also has an independent timeout.
+- Watch reports `/happytalky/proximity/ready` or `/happytalky/proximity/error` for the active token so Phone can distinguish Watch-side BLE/permission failure from a weak or temporarily missing radio signal.
+- Support is advertised as `ble_proximity_v1`. A missing cached peer-info record is treated as unknown and allowed to attempt the new protocol; a known peer that explicitly lacks the capability is rejected with an upgrade message.
+- The ranging layer is intentionally separate from CALL/TALK so a future UWB or Bluetooth Channel Sounding backend can replace RSSI without changing the high-level Find Watch interaction.
+
+Android 12+ requires runtime `BLUETOOTH_SCAN` on Phone and `BLUETOOTH_ADVERTISE` on Watch. Because Find Watch intentionally derives physical proximity from scan results, Phone also declares and requests `ACCESS_FINE_LOCATION` instead of using the `neverForLocation` assertion. Watch asks for advertising access while its activity is visible so a later Data Layer request does not depend on showing a permission dialog from the background.
+
 ## CALL state machine
 
 Signaling uses transient `MessageClient` paths:
