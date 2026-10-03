@@ -1228,6 +1228,17 @@ abstract class HappyTalkyActivity : ComponentActivity() {
                 Manifest.permission.POST_NOTIFICATIONS
         }
 
+        if (
+            role == EndpointRole.WATCH &&
+            Build.VERSION.SDK_INT >= 31 &&
+            checkSelfPermission(
+                Manifest.permission.BLUETOOTH_ADVERTISE
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            missing +=
+                Manifest.permission.BLUETOOTH_ADVERTISE
+        }
+
         if (missing.isNotEmpty()) {
             requestPermissions(
                 missing.toTypedArray(),
