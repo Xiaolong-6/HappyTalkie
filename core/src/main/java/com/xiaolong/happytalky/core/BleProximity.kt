@@ -165,7 +165,7 @@ class BleProximityScanner(
             }.getOrNull()
                 ?: run {
                     onError(
-                        "Turn on Bluetooth to find the Watch"
+                        "Turn on Bluetooth to continue nearby finding"
                     )
                     return false
                 }
@@ -335,7 +335,7 @@ object BleProximityAdvertiser {
                 ProximityAdvertiseResult(
                     started = false,
                     error =
-                        "Enable Nearby devices on Watch"
+                        "Enable Nearby devices for HappyTalky"
                 )
             )
             return
@@ -356,7 +356,7 @@ object BleProximityAdvertiser {
                         ProximityAdvertiseResult(
                             started = false,
                             error =
-                                "Watch Bluetooth advertising unavailable"
+                                "Bluetooth advertising unavailable"
                         )
                     )
                     return
@@ -464,7 +464,7 @@ object BleProximityAdvertiser {
                 ProximityAdvertiseResult(
                     started = false,
                     error =
-                        "Could not start Watch Bluetooth beacon"
+                        "Could not start Bluetooth beacon"
                 )
             )
         }
@@ -521,22 +521,22 @@ object BleProximityAdvertiser {
         when (code) {
             AdvertiseCallback
                 .ADVERTISE_FAILED_DATA_TOO_LARGE ->
-                "Watch BLE payload is too large"
+                "BLE payload is too large"
 
             AdvertiseCallback
                 .ADVERTISE_FAILED_TOO_MANY_ADVERTISERS ->
-                "Watch Bluetooth is busy"
+                "Bluetooth is busy"
 
             AdvertiseCallback
                 .ADVERTISE_FAILED_ALREADY_STARTED ->
-                "Watch Bluetooth beacon is already active"
+                "Bluetooth beacon is already active"
 
             AdvertiseCallback
                 .ADVERTISE_FAILED_FEATURE_UNSUPPORTED ->
-                "Watch does not support BLE advertising"
+                "This device does not support BLE advertising"
 
             else ->
-                "Watch Bluetooth advertising failed " +
+                "Bluetooth advertising failed " +
                     "(code $code)"
         }
 }
