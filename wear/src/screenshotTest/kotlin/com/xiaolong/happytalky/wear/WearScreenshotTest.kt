@@ -161,11 +161,12 @@ fun WatchFindPhoneScreenshot() {
                         ProximityReading(
                             rawRssi = -58,
                             filteredRssi = -59.2,
+                            signalScore = 76,
                             band =
                                 ProximityBand.CLOSE,
                             trend =
                                 ProximityTrend.GETTING_CLOSER,
-                            sampleCount = 8,
+                            timestampMs = 1_000L,
                         ),
                 ),
             onClose = {},
